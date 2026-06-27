@@ -95,6 +95,27 @@ python3 scripts/check_plan_governance.py .
 - 实施中计划是否依赖已替代、已合并或已废弃计划。
 - 实施中计划是否仍有未解决的当前阶段阻塞项。
 
+## 测试覆盖率
+
+本项目使用 `pytest` 和 `pytest-cov` 作为测试与覆盖率门禁。首次运行前安装开发依赖：
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+```
+
+运行测试：
+
+```bash
+python3 -m pytest
+```
+
+覆盖率规则定义在 `pyproject.toml`：
+
+- 统计 `scripts/` 下的 Python 代码。
+- 开启分支覆盖率。
+- 总覆盖率低于 85% 时测试失败。
+- CI 会同时运行测试覆盖率检查和计划治理检查。
+
 ## 状态
 
 统一使用中文状态：

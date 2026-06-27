@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "--cov=scripts",
+  "--cov-report=term-missing",
+  "--cov-fail-under=85",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["scripts"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+  "if __name__ == .__main__.:",
+  "raise SystemExit",
+]
