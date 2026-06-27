@@ -67,6 +67,15 @@ def has_completion_evidence(plan_text):
     return bool(evidence_match and validation_match)
 
 
+def has_coverage_evidence(plan_text):
+    """已完成计划是否包含测试覆盖率证据章节。"""
+    return bool(re.search(
+        r"^#+\s+(测试覆盖率|测试覆盖|覆盖率报告|Coverage|Test Coverage)",
+        plan_text,
+        re.MULTILINE,
+    ))
+
+
 def has_current_blocker(plan_text):
     for row in table_rows(plan_text, "未决问题"):
         joined = "|".join(row)
@@ -146,6 +155,8 @@ def main():
         plan_text = read_utf8(data["path"], errors)
         if data["status"] in COMPLETED and not has_completion_evidence(plan_text):
             fail(errors, f"{data['path']}: 已完成计划缺少 Step 0 证据或验证方式章节")
+        if data["status"] in COMPLETED and not has_coverage_evidence(plan_text):
+            fail(errors, f"{data['path']}: 已完成计划缺少测试覆盖率证据")
         if data["status"] in IMPLEMENTING and has_current_blocker(plan_text):
             fail(errors, f"{data['path']}: 实施中计划仍有未解决的当前阶段阻塞项")
 

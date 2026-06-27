@@ -29,8 +29,9 @@ def plan_map(row):
 """
 
 
-def plan_text(status="待实施", unresolved_blocker=False):
+def plan_text(status="待实施", unresolved_blocker=False, with_coverage=False):
     blocker = "是 | 待确认" if unresolved_blocker else "否 | 已延后"
+    coverage = "## 测试覆盖率\n\npytest-cov 报告：98.8% 覆盖率。\n" if with_coverage else ""
     return f"""# 计划：demo
 
 ## Step 0 证据
@@ -41,6 +42,7 @@ def plan_text(status="待实施", unresolved_blocker=False):
 
 运行检查脚本。
 
+{coverage}
 ## 未决问题
 
 | 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
@@ -65,7 +67,7 @@ def test_valid_plan_map_passes(tmp_path, monkeypatch, capsys):
         tmp_path / "docs" / "PLAN_MAP.md",
         plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
     )
-    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
@@ -179,3 +181,51 @@ def test_completed_plan_without_evidence_fails(tmp_path, monkeypatch, capsys):
 
     assert check_plan_governance.main() == 1
     assert "缺少 Step 0 证据或验证方式章节" in capsys.readouterr().out
+
+
+def test_completed_plan_without_coverage_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 1
+    assert "缺少测试覆盖率证据" in capsys.readouterr().out
+
+
+def test_completed_plan_with_coverage_passes(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    assert "检查通过" in capsys.readouterr().out
+
+
+def test_non_completed_plan_without_coverage_ok(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    assert "检查通过" in capsys.readouterr().out
+
+
+def test_has_coverage_evidence_chinese():
+    assert check_plan_governance.has_coverage_evidence("### 测试覆盖率\n\n报告见附件。") is True
+
+
+def test_has_coverage_evidence_english():
+    assert check_plan_governance.has_coverage_evidence("## Coverage\n\n95% line coverage.") is True
+
+
+def test_has_coverage_evidence_rejects_unrelated():
+    assert check_plan_governance.has_coverage_evidence("本计划覆盖 API 迁移范围。") is False

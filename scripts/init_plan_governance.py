@@ -136,6 +136,10 @@ def plan_content(plan_slug, title, status, phase, goal):
 
 待补充。
 
+### 测试覆盖率
+
+待补充。完成后需要记录测试覆盖率报告，例如 pytest-cov 输出、覆盖率百分比、关键模块覆盖情况等。
+
 ### 完成条件
 
 - Step 0 证据已记录。

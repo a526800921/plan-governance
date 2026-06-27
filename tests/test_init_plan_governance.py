@@ -47,6 +47,7 @@ def test_main_creates_plan_files(tmp_path, capsys):
     plan = tmp_path / "docs" / "plans" / "api-migration.md"
     assert plan.exists()
     assert "分阶段迁移 API。" in plan.read_text(encoding="utf-8")
+    assert "## 测试覆盖率" in plan.read_text(encoding="utf-8")
     assert "初始化完成" in capsys.readouterr().out
 
 
