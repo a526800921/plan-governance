@@ -195,6 +195,24 @@ def test_completed_plan_without_coverage_fails(tmp_path, monkeypatch, capsys):
     assert "缺少测试覆盖率证据" in capsys.readouterr().out
 
 
+def test_completed_plan_with_placeholder_coverage_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        plan_text(with_coverage=True).replace(
+            "pytest-cov 报告：98.8% 覆盖率。",
+            "待补充。",
+        ),
+    )
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 1
+    assert "缺少测试覆盖率证据" in capsys.readouterr().out
+
+
 def test_completed_plan_with_coverage_passes(tmp_path, monkeypatch, capsys):
     write(
         tmp_path / "docs" / "PLAN_MAP.md",
@@ -220,11 +238,15 @@ def test_non_completed_plan_without_coverage_ok(tmp_path, monkeypatch, capsys):
 
 
 def test_has_coverage_evidence_chinese():
-    assert check_plan_governance.has_coverage_evidence("### 测试覆盖率\n\n报告见附件。") is True
+    assert check_plan_governance.has_coverage_evidence("### 测试覆盖率\n\npytest-cov 报告：98.8% 覆盖率。") is True
 
 
 def test_has_coverage_evidence_english():
     assert check_plan_governance.has_coverage_evidence("## Coverage\n\n95% line coverage.") is True
+
+
+def test_has_coverage_evidence_rejects_placeholder():
+    assert check_plan_governance.has_coverage_evidence("### 测试覆盖率\n\n待补充。") is False
 
 
 def test_has_coverage_evidence_rejects_unrelated():

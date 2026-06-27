@@ -68,12 +68,23 @@ def has_completion_evidence(plan_text):
 
 
 def has_coverage_evidence(plan_text):
-    """已完成计划是否包含测试覆盖率证据章节。"""
-    return bool(re.search(
-        r"^#+\s+(测试覆盖率|测试覆盖|覆盖率报告|Coverage|Test Coverage)",
+    """已完成计划是否包含非占位的测试覆盖率证据章节。"""
+    match = re.search(
+        r"^#+\s+(测试覆盖率|测试覆盖|覆盖率报告|Coverage|Test Coverage)\b.*$",
         plan_text,
         re.MULTILINE,
-    ))
+    )
+    if not match:
+        return False
+
+    tail = plan_text[match.end():]
+    next_heading = re.search(r"^#+\s+", tail, re.MULTILINE)
+    section = tail[: next_heading.start()] if next_heading else tail
+    content = section.strip()
+    if not content or re.search(r"^(待补充|TODO|TBD)[。.\s]*$", content, re.IGNORECASE):
+        return False
+
+    return bool(re.search(r"(\d+(?:\.\d+)?%|pytest|coverage|覆盖率|测试通过|passed)", content, re.IGNORECASE))
 
 
 def has_current_blocker(plan_text):

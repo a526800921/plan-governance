@@ -81,6 +81,10 @@ python3 "$tmp_dir/scripts/check_plan_governance.py" "$tmp_dir"
 - 临时目录初始化成功
 - 初始化后的临时目录治理检查通过
 
+### 测试覆盖率
+
+2026-06-27 运行 `python3 -m pytest`，结果为 26 个测试通过，总覆盖率 98.88%，超过 85% 覆盖率门禁。
+
 ### 完成条件
 
 - 本地 Codex skill 已存在。
