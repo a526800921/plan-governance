@@ -17,6 +17,9 @@ VALID_STATUSES = {
     "已废弃",
 }
 
+CLAUDE_SECTION_BEGIN = "<!-- plan-governance:start -->"
+CLAUDE_SECTION_END = "<!-- plan-governance:end -->"
+
 
 def slugify(value):
     value = value.strip().lower()
@@ -33,6 +36,58 @@ def write_file(path, content, force):
         raise FileExistsError(f"{path} 已存在；如需覆盖请加 --force")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def claude_md_section():
+    return f"""{CLAUDE_SECTION_BEGIN}
+## 计划治理
+
+本项目使用轻量计划治理。处理跨阶段、架构、公共 API、Schema、迁移、兼容性或长期任务时，必须遵循以下规则。
+
+实施前必须读取：
+
+- `docs/PLAN_MAP.md`
+- 当前相关的 `docs/plans/*.md`
+- 相关 `docs/adr/*.md`
+- 相关 `docs/migrations/*.md`
+
+实施规则：
+
+1. 只实施当前计划文档中明确的当前阶段。
+2. 当前阶段必须具备 Step 0 证据、验证方式、完成条件，且没有未解决阻塞项。
+3. 如果缺少 Step 0 证据，不要直接改实现；先补充复现、基线、样本、契约测试，或记录替代基线。
+4. 如果实现过程中发现假设变化、计划顺序变化、公共契约变化、兼容策略变化或完成条件变化，先更新治理文档，再继续实现。
+5. 完成后必须更新计划状态、验证证据、测试覆盖证据。
+6. 完成后运行：
+
+   ```bash
+   python3 scripts/check_plan_governance.py .
+   ```
+
+7. 普通小范围 bugfix 或一次性修改不需要强制新建治理文档，除非已有计划覆盖它。
+{CLAUDE_SECTION_END}
+"""
+
+
+def update_claude_md(root):
+    target = root / "CLAUDE.md"
+    section = claude_md_section()
+    if not target.exists():
+        write_file(target, section, force=False)
+        return target
+
+    current = target.read_text(encoding="utf-8")
+    pattern = re.compile(
+        rf"{re.escape(CLAUDE_SECTION_BEGIN)}.*?{re.escape(CLAUDE_SECTION_END)}",
+        re.DOTALL,
+    )
+    if pattern.search(current):
+        updated = pattern.sub(section.rstrip(), current)
+    else:
+        separator = "\n\n" if current.rstrip() else ""
+        updated = f"{current.rstrip()}{separator}{section}"
+    target.write_text(updated, encoding="utf-8")
+    return target
 
 
 def plan_map_content(plan_slug, title, status, phase):
@@ -173,22 +228,64 @@ def copy_checker(root, force):
     return target
 
 
+def docs_warnings(root):
+    warnings = []
+    if not (root / "docs" / "PLAN_MAP.md").exists():
+        warnings.append("缺少 docs/PLAN_MAP.md")
+    plans_dir = root / "docs" / "plans"
+    if not plans_dir.exists() or not any(plans_dir.glob("*.md")):
+        warnings.append("缺少 docs/plans/*.md")
+    return warnings
+
+
+def upgrade_existing(root):
+    written = [
+        copy_checker(root, force=True),
+        update_claude_md(root),
+    ]
+    return written, docs_warnings(root)
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="初始化中文 plan-governance 文档。")
     parser.add_argument("--root", default=".", help="目标仓库根目录，默认当前目录。")
-    parser.add_argument("--plan", required=True, help="计划文件名或计划标识，例如 api-compat-migration。")
+    parser.add_argument("--plan", help="计划文件名或计划标识，例如 api-compat-migration。")
     parser.add_argument("--title", help="计划显示名称，默认使用 --plan。")
     parser.add_argument("--goal", help="计划目标，会写入计划文档。")
     parser.add_argument("--status", default="设计中", choices=sorted(VALID_STATUSES), help="初始状态。")
     parser.add_argument("--phase", default="阶段 0", help="当前阶段名称。")
     parser.add_argument("--copy-checker", action="store_true", help="复制检查脚本到目标仓库 scripts/。")
+    parser.add_argument("--update-claude-md", action="store_true", help="创建或更新目标仓库 CLAUDE.md 中的计划治理规则。")
+    parser.add_argument("--update-claude-md-only", action="store_true", help="只创建或更新 CLAUDE.md，不初始化或覆盖 docs/。")
+    parser.add_argument("--upgrade-existing", action="store_true", help="升级已有项目的辅助文件：刷新检查脚本和 CLAUDE.md，不覆盖 docs/。")
     parser.add_argument("--force", action="store_true", help="允许覆盖已存在的治理文件。")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.update_claude_md_only and args.upgrade_existing:
+        parser.error("--update-claude-md-only 和 --upgrade-existing 不能同时使用")
+    if not args.update_claude_md_only and not args.upgrade_existing and not args.plan:
+        parser.error("正常初始化必须提供 --plan；已有项目可使用 --update-claude-md-only 或 --upgrade-existing")
+    return args
 
 
 def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
     root = Path(args.root).expanduser().resolve()
+
+    if args.update_claude_md_only:
+        target = update_claude_md(root)
+        print(f"已写入：{target}")
+        print("CLAUDE.md 已更新；未修改 docs/。")
+        return 0
+
+    if args.upgrade_existing:
+        written, warnings = upgrade_existing(root)
+        for path in written:
+            print(f"已写入：{path}")
+        for warning in warnings:
+            print(f"WARNING: {warning}")
+        print("已有项目升级完成；未覆盖 docs/。下一步请运行 python3 scripts/check_plan_governance.py .")
+        return 0
+
     plan_slug = slugify(args.plan)
     title = args.title or plan_slug
 
@@ -204,9 +301,11 @@ def main(argv=None):
 
     if args.copy_checker:
         created.append(copy_checker(root, args.force))
+    if args.update_claude_md:
+        created.append(update_claude_md(root))
 
     for path in created:
-        print(f"已创建：{path}")
+        print(f"已写入：{path}")
     print("初始化完成。下一步请补充计划文档中的 Step 0 证据、验证方式和完成条件。")
     return 0
 

@@ -61,7 +61,8 @@ python3 scripts/init_plan_governance.py \
   --plan api-compat-migration \
   --title "API 兼容性迁移" \
   --goal "分阶段完成 API 兼容性迁移" \
-  --copy-checker
+  --copy-checker \
+  --update-claude-md
 ```
 
 这会创建：
@@ -70,13 +71,41 @@ python3 scripts/init_plan_governance.py \
 docs/PLAN_MAP.md
 docs/plans/api-compat-migration.md
 scripts/check_plan_governance.py
+CLAUDE.md
 ```
+
+`--update-claude-md` 会创建或更新 `CLAUDE.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
 
 默认不会覆盖已有文件。需要覆盖时显式加：
 
 ```bash
 --force
 ```
+
+## 更新已有项目
+
+如果项目已经有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`，不要重新初始化计划文档。只让 Claude Code 遵循最新执行规则时运行：
+
+```bash
+python3 scripts/init_plan_governance.py \
+  --root . \
+  --update-claude-md-only
+```
+
+如果要升级已有项目的辅助文件，刷新检查脚本并更新 `CLAUDE.md`，但不覆盖 `docs/`，运行：
+
+```bash
+python3 scripts/init_plan_governance.py \
+  --root . \
+  --upgrade-existing
+```
+
+`--upgrade-existing` 会：
+
+- 覆盖更新 `scripts/check_plan_governance.py`
+- 创建或更新 `CLAUDE.md` 中带标记的计划治理章节
+- 保留已有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`
+- 提示缺失的治理文档
 
 ## 检查
 

@@ -80,6 +80,99 @@ def test_main_can_copy_checker(tmp_path):
     assert checker.stat().st_mode & 0o111
 
 
+def test_main_can_create_claude_md(tmp_path):
+    result = init_plan_governance.main(
+        ["--root", str(tmp_path), "--plan", "demo", "--update-claude-md"]
+    )
+
+    claude_md = tmp_path / "CLAUDE.md"
+    text = claude_md.read_text(encoding="utf-8")
+    assert result == 0
+    assert "## 计划治理" in text
+    assert "docs/PLAN_MAP.md" in text
+    assert "python3 scripts/check_plan_governance.py ." in text
+    assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
+    assert init_plan_governance.CLAUDE_SECTION_END in text
+
+
+def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, capsys):
+    result = init_plan_governance.main(
+        ["--root", str(tmp_path), "--update-claude-md-only"]
+    )
+
+    assert result == 0
+    assert (tmp_path / "CLAUDE.md").exists()
+    assert not (tmp_path / "docs").exists()
+    assert "未修改 docs" in capsys.readouterr().out
+
+
+def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, capsys):
+    plan_map = tmp_path / "docs" / "PLAN_MAP.md"
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    plan.parent.mkdir(parents=True)
+    plan_map.write_text("existing map", encoding="utf-8")
+    plan.write_text("existing plan", encoding="utf-8")
+    checker = tmp_path / "scripts" / "check_plan_governance.py"
+    checker.parent.mkdir(parents=True)
+    checker.write_text("old checker", encoding="utf-8")
+
+    result = init_plan_governance.main(["--root", str(tmp_path), "--upgrade-existing"])
+
+    assert result == 0
+    assert plan_map.read_text(encoding="utf-8") == "existing map"
+    assert plan.read_text(encoding="utf-8") == "existing plan"
+    assert "old checker" not in checker.read_text(encoding="utf-8")
+    assert (tmp_path / "CLAUDE.md").exists()
+    output = capsys.readouterr().out
+    assert "已有项目升级完成" in output
+    assert "WARNING" not in output
+
+
+def test_upgrade_existing_reports_missing_docs(tmp_path, capsys):
+    result = init_plan_governance.main(["--root", str(tmp_path), "--upgrade-existing"])
+
+    output = capsys.readouterr().out
+    assert result == 0
+    assert "WARNING: 缺少 docs/PLAN_MAP.md" in output
+    assert "WARNING: 缺少 docs/plans/*.md" in output
+
+
+def test_normal_init_still_requires_plan(tmp_path):
+    with pytest.raises(SystemExit):
+        init_plan_governance.main(["--root", str(tmp_path)])
+
+
+def test_update_claude_md_appends_to_existing_file(tmp_path):
+    claude_md = tmp_path / "CLAUDE.md"
+    claude_md.write_text("# 项目规则\n\n已有内容。\n", encoding="utf-8")
+
+    init_plan_governance.update_claude_md(tmp_path)
+
+    text = claude_md.read_text(encoding="utf-8")
+    assert text.startswith("# 项目规则\n\n已有内容。")
+    assert text.count("## 计划治理") == 1
+
+
+def test_update_claude_md_replaces_existing_managed_section(tmp_path):
+    claude_md = tmp_path / "CLAUDE.md"
+    claude_md.write_text(
+        "# 项目规则\n\n"
+        f"{init_plan_governance.CLAUDE_SECTION_BEGIN}\n"
+        "旧规则\n"
+        f"{init_plan_governance.CLAUDE_SECTION_END}\n\n"
+        "后续内容。\n",
+        encoding="utf-8",
+    )
+
+    init_plan_governance.update_claude_md(tmp_path)
+
+    text = claude_md.read_text(encoding="utf-8")
+    assert "旧规则" not in text
+    assert "后续内容。" in text
+    assert text.count(init_plan_governance.CLAUDE_SECTION_BEGIN) == 1
+    assert text.count("## 计划治理") == 1
+
+
 def test_copy_checker_refuses_existing_target_without_force(tmp_path):
     checker = tmp_path / "scripts" / "check_plan_governance.py"
     checker.parent.mkdir(parents=True)
