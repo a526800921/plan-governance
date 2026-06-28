@@ -90,6 +90,9 @@ def test_main_can_create_claude_md(tmp_path):
     assert result == 0
     assert "## 计划治理" in text
     assert "docs/PLAN_MAP.md" in text
+    assert "事实源规则" in text
+    assert "不复制字段级方案" in text
+    assert "rg` 搜索同名计划" in text
     assert "python3 scripts/check_plan_governance.py ." in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
     assert init_plan_governance.CLAUDE_SECTION_END in text
