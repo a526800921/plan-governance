@@ -92,6 +92,9 @@ def test_main_can_create_claude_md(tmp_path):
     assert "docs/PLAN_MAP.md" in text
     assert "事实源规则" in text
     assert "不复制字段级方案" in text
+    assert "草案和历史文档规则" in text
+    assert "不再作为规范事实源" in text
+    assert "草案为准|以草案为事实源|详见草案" in text
     assert "rg` 搜索同名计划" in text
     assert "python3 scripts/check_plan_governance.py ." in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
@@ -107,6 +110,16 @@ def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, cap
     assert (tmp_path / "CLAUDE.md").exists()
     assert not (tmp_path / "docs").exists()
     assert "未修改 docs" in capsys.readouterr().out
+
+
+def test_generated_plan_map_documents_draft_source_switch(tmp_path):
+    result = init_plan_governance.main(["--root", str(tmp_path), "--plan", "demo"])
+
+    plan_map = tmp_path / "docs" / "PLAN_MAP.md"
+    text = plan_map.read_text(encoding="utf-8")
+    assert result == 0
+    assert "不再作为规范事实源" in text
+    assert "后续新规范默认进入" in text
 
 
 def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, capsys):
