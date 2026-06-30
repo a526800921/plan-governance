@@ -86,11 +86,14 @@ python3 scripts/init_plan_governance.py \
 这会创建：
 
 ```text
+.git/
 docs/PLAN_MAP.md
 docs/plans/api-compat-migration.md
 scripts/check_plan_governance.py
 CLAUDE.md
 ```
+
+如果目标目录还不是 Git 仓库，初始化流程会先执行 `git init`；已有 `.git/` 时会跳过，不重复初始化。
 
 `--update-claude-md` 会创建或更新 `CLAUDE.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
 

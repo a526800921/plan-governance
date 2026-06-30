@@ -2,6 +2,7 @@
 import argparse
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,6 +37,15 @@ def write_file(path, content, force):
         raise FileExistsError(f"{path} 已存在；如需覆盖请加 --force")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def init_git(root):
+    if (root / ".git").exists():
+        return None
+
+    root.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init"], cwd=root, check=True)
+    return root / ".git"
 
 
 def claude_md_section():
@@ -320,6 +330,10 @@ def main(argv=None):
     plan_file = docs / "plans" / f"{plan_slug}.md"
 
     created = []
+    git_dir = init_git(root)
+    if git_dir is not None:
+        created.append(git_dir)
+
     write_file(plan_map, plan_map_content(plan_slug, title, args.status, args.phase), args.force)
     created.append(plan_map)
     write_file(plan_file, plan_content(plan_slug, title, args.status, args.phase, args.goal), args.force)

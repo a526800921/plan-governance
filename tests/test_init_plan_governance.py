@@ -43,6 +43,7 @@ def test_main_creates_plan_files(tmp_path, capsys):
     )
 
     assert result == 0
+    assert (tmp_path / ".git").exists()
     assert (tmp_path / "docs" / "PLAN_MAP.md").exists()
     plan = tmp_path / "docs" / "plans" / "api-migration.md"
     assert plan.exists()
@@ -108,8 +109,21 @@ def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, cap
 
     assert result == 0
     assert (tmp_path / "CLAUDE.md").exists()
+    assert not (tmp_path / ".git").exists()
     assert not (tmp_path / "docs").exists()
     assert "未修改 docs" in capsys.readouterr().out
+
+
+def test_init_git_skips_existing_git_dir(tmp_path, monkeypatch):
+    git_dir = tmp_path / ".git"
+    git_dir.mkdir()
+
+    def fail_run(*args, **kwargs):
+        raise AssertionError("不应重复执行 git init")
+
+    monkeypatch.setattr(init_plan_governance.subprocess, "run", fail_run)
+
+    assert init_plan_governance.init_git(tmp_path) is None
 
 
 def test_generated_plan_map_documents_draft_source_switch(tmp_path):
