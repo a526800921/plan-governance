@@ -298,6 +298,9 @@ def plan_content(plan_slug, title, status, phase, goal):
 def copy_checker(root, force):
     source = Path(__file__).with_name("check_plan_governance.py")
     target = root / "scripts" / "check_plan_governance.py"
+    if source.resolve() == target.resolve():
+        target.chmod(0o755)
+        return target
     if target.exists() and not force:
         raise FileExistsError(f"{target} 已存在；如需覆盖请加 --force")
     target.parent.mkdir(parents=True, exist_ok=True)

@@ -299,3 +299,12 @@ def test_copy_checker_refuses_existing_target_without_force(tmp_path):
 
     with pytest.raises(FileExistsError, match="已存在"):
         init_plan_governance.copy_checker(tmp_path, force=False)
+
+
+def test_copy_checker_allows_source_repo_itself():
+    root = Path(__file__).resolve().parents[1]
+    target = init_plan_governance.copy_checker(root, force=True)
+
+    assert target == root / "scripts" / "check_plan_governance.py"
+    assert target.exists()
+    assert target.stat().st_mode & 0o111
