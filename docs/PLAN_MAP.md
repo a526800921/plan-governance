@@ -21,6 +21,7 @@
 | [codex-skill-rollout](plans/codex-skill-rollout.md) | 已完成 | 阶段 2 | - | [验证方式](plans/codex-skill-rollout.md#验证方式) |
 | [multi-doc-sync-rules](plans/multi-doc-sync-rules.md) | 已完成 | 阶段 1 | codex-skill-rollout | [验证方式](plans/multi-doc-sync-rules.md#验证方式) |
 | [draft-history-source-switch](plans/draft-history-source-switch.md) | 已完成 | 阶段 1 | multi-doc-sync-rules | [验证方式](plans/draft-history-source-switch.md#验证方式) |
+| [independent-acceptance-rules](plans/independent-acceptance-rules.md) | 已完成 | 阶段 1 | draft-history-source-switch | [验证方式](plans/independent-acceptance-rules.md#验证方式) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -29,6 +30,7 @@
 1. `codex-skill-rollout`
 2. `multi-doc-sync-rules`
 3. `draft-history-source-switch`
+4. `independent-acceptance-rules`
 
 ## 依赖关系
 
@@ -37,6 +39,7 @@
 | codex-skill-rollout | - | - |
 | multi-doc-sync-rules | codex-skill-rollout | 依赖已落地的 skill、初始化脚本和治理文档结构 |
 | draft-history-source-switch | multi-doc-sync-rules | 依赖既有事实源和多文档同步规则 |
+| independent-acceptance-rules | draft-history-source-switch | 依赖既有事实源切换和多文档同步规则 |
 
 ## 替代、合并和废弃
 
@@ -57,3 +60,4 @@
 | codex-skill-rollout | 阶段 2 | skill 校验、仓库治理检查和临时目录初始化验证通过 |
 | multi-doc-sync-rules | 阶段 1 | `python3 -m pytest` 通过，覆盖率 98.54%；反向引用搜索通过；治理检查通过 |
 | draft-history-source-switch | 阶段 1 | 反向引用搜索通过；`python3 -m pytest` 通过，覆盖率 98.54%；`python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。` |
+| independent-acceptance-rules | 阶段 1 | `python3 -m pytest` 通过，覆盖率 98.75%；反向引用搜索通过；`python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。` |

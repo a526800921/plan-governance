@@ -80,7 +80,7 @@ python3 scripts/init_plan_governance.py \
   --title "API 兼容性迁移" \
   --goal "分阶段完成 API 兼容性迁移" \
   --copy-checker \
-  --update-claude-md
+  --update-agent-rules
 ```
 
 这会创建：
@@ -91,11 +91,19 @@ docs/PLAN_MAP.md
 docs/plans/api-compat-migration.md
 scripts/check_plan_governance.py
 CLAUDE.md
+AGENTS.md
 ```
 
 如果目标目录还不是 Git 仓库，初始化流程会先执行 `git init`；已有 `.git/` 时会跳过，不重复初始化。
 
-`--update-claude-md` 会创建或更新 `CLAUDE.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
+`--update-agent-rules` 会创建或更新 `CLAUDE.md` 和 `AGENTS.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
+
+如果只需要更新单个入口，也可以使用：
+
+```bash
+--update-claude-md
+--update-agents-md
+```
 
 默认不会覆盖已有文件。需要覆盖时显式加：
 
@@ -105,15 +113,17 @@ CLAUDE.md
 
 ## 更新已有项目
 
-如果项目已经有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`，不要重新初始化计划文档。只让 Claude Code 遵循最新执行规则时运行：
+如果项目已经有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`，不要重新初始化计划文档。只更新代理执行规则时运行：
 
 ```bash
 python3 scripts/init_plan_governance.py \
   --root . \
-  --update-claude-md-only
+  --update-agent-rules-only
 ```
 
-如果要升级已有项目的辅助文件，刷新检查脚本并更新 `CLAUDE.md`，但不覆盖 `docs/`，运行：
+如果只更新单个入口，可以使用 `--update-claude-md-only` 或 `--update-agents-md-only`。
+
+如果要升级已有项目的辅助文件，刷新检查脚本并更新代理规则，但不覆盖 `docs/`，运行：
 
 ```bash
 python3 scripts/init_plan_governance.py \
@@ -124,7 +134,7 @@ python3 scripts/init_plan_governance.py \
 `--upgrade-existing` 会：
 
 - 覆盖更新 `scripts/check_plan_governance.py`
-- 创建或更新 `CLAUDE.md` 中带标记的计划治理章节
+- 创建或更新 `CLAUDE.md` 和 `AGENTS.md` 中带标记的计划治理章节
 - 保留已有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`
 - 提示缺失的治理文档
 
@@ -206,6 +216,7 @@ skill 只负责让 Codex 按流程工作；真实计划状态仍然保存在项�
 - 决策、计划、契约和证据各有权威位置，不重复定义同一事实。
 - 路线图和优先级计划只保留排序、状态摘要和链接，不复制专项计划细节。
 - 验收治理文档时必须做反向引用检查。
+- 验收者不得仅依据计划状态、完成证据文字或文档格式判定完成；必须基于当前仓库内容、可复现验证命令和反向引用检查独立确认。
 - 启用治理后，旧草案停止承载新规范；后续需求默认进入治理文档。
 - 如果新信息改变计划顺序、公共契约、兼容承诺或完成条件，先更新治理文档，再继续实施。
 

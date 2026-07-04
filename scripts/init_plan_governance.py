@@ -20,6 +20,8 @@ VALID_STATUSES = {
 
 CLAUDE_SECTION_BEGIN = "<!-- plan-governance:start -->"
 CLAUDE_SECTION_END = "<!-- plan-governance:end -->"
+AGENTS_SECTION_BEGIN = "<!-- plan-governance:start -->"
+AGENTS_SECTION_END = "<!-- plan-governance:end -->"
 
 
 def slugify(value):
@@ -48,9 +50,8 @@ def init_git(root):
     return root / ".git"
 
 
-def claude_md_section():
-    return f"""{CLAUDE_SECTION_BEGIN}
-## 计划治理
+def agent_rules_body():
+    return """## 计划治理
 
 本项目使用轻量计划治理。处理跨阶段、架构、公共 API、Schema、迁移、兼容性或长期任务时，必须遵循以下规则。
 
@@ -92,20 +93,37 @@ def claude_md_section():
    ```
 
 9. 普通小范围 bugfix 或一次性修改不需要强制新建治理文档，除非已有计划覆盖它。
-{CLAUDE_SECTION_END}
+
+验收独立性：
+
+- 实施者可以更新计划状态、填写验证证据和同步治理文档，但这些内容只代表实施声明，不是验收结论。
+- 验收者不得仅依据计划状态、完成证据文字或文档格式判定完成；必须基于当前仓库内容、可复现验证命令和反向引用检查独立确认。
+- 验收时应逐条核对计划的完成条件、实际代码或文档变更、测试或 CI 输出、覆盖率证据，以及是否存在计划外行为变化。
+- 如果实现偏离计划，必须更新相关计划、ADR、migration 或 spec 后再判定完成。
 """
 
 
-def update_claude_md(root):
-    target = root / "CLAUDE.md"
-    section = claude_md_section()
+def managed_section(begin, end):
+    return f"{begin}\n{agent_rules_body()}{end}\n"
+
+
+def claude_md_section():
+    return managed_section(CLAUDE_SECTION_BEGIN, CLAUDE_SECTION_END)
+
+
+def agents_md_section():
+    return managed_section(AGENTS_SECTION_BEGIN, AGENTS_SECTION_END)
+
+
+def update_managed_file(root, filename, section, begin, end):
+    target = root / filename
     if not target.exists():
         write_file(target, section, force=False)
         return target
 
     current = target.read_text(encoding="utf-8")
     pattern = re.compile(
-        rf"{re.escape(CLAUDE_SECTION_BEGIN)}.*?{re.escape(CLAUDE_SECTION_END)}",
+        rf"{re.escape(begin)}.*?{re.escape(end)}",
         re.DOTALL,
     )
     if pattern.search(current):
@@ -115,6 +133,30 @@ def update_claude_md(root):
         updated = f"{current.rstrip()}{separator}{section}"
     target.write_text(updated, encoding="utf-8")
     return target
+
+
+def update_claude_md(root):
+    return update_managed_file(
+        root,
+        "CLAUDE.md",
+        claude_md_section(),
+        CLAUDE_SECTION_BEGIN,
+        CLAUDE_SECTION_END,
+    )
+
+
+def update_agents_md(root):
+    return update_managed_file(
+        root,
+        "AGENTS.md",
+        agents_md_section(),
+        AGENTS_SECTION_BEGIN,
+        AGENTS_SECTION_END,
+    )
+
+
+def update_agent_rules(root):
+    return [update_claude_md(root), update_agents_md(root)]
 
 
 def plan_map_content(plan_slug, title, status, phase):
@@ -277,7 +319,7 @@ def docs_warnings(root):
 def upgrade_existing(root):
     written = [
         copy_checker(root, force=True),
-        update_claude_md(root),
+        *update_agent_rules(root),
     ]
     return written, docs_warnings(root)
 
@@ -292,14 +334,24 @@ def parse_args(argv):
     parser.add_argument("--phase", default="阶段 0", help="当前阶段名称。")
     parser.add_argument("--copy-checker", action="store_true", help="复制检查脚本到目标仓库 scripts/。")
     parser.add_argument("--update-claude-md", action="store_true", help="创建或更新目标仓库 CLAUDE.md 中的计划治理规则。")
+    parser.add_argument("--update-agents-md", action="store_true", help="创建或更新目标仓库 AGENTS.md 中的计划治理规则。")
+    parser.add_argument("--update-agent-rules", action="store_true", help="同时创建或更新 CLAUDE.md 和 AGENTS.md 中的计划治理规则。")
     parser.add_argument("--update-claude-md-only", action="store_true", help="只创建或更新 CLAUDE.md，不初始化或覆盖 docs/。")
-    parser.add_argument("--upgrade-existing", action="store_true", help="升级已有项目的辅助文件：刷新检查脚本和 CLAUDE.md，不覆盖 docs/。")
+    parser.add_argument("--update-agents-md-only", action="store_true", help="只创建或更新 AGENTS.md，不初始化或覆盖 docs/。")
+    parser.add_argument("--update-agent-rules-only", action="store_true", help="只创建或更新 CLAUDE.md 和 AGENTS.md，不初始化或覆盖 docs/。")
+    parser.add_argument("--upgrade-existing", action="store_true", help="升级已有项目的辅助文件：刷新检查脚本和代理规则，不覆盖 docs/。")
     parser.add_argument("--force", action="store_true", help="允许覆盖已存在的治理文件。")
     args = parser.parse_args(argv)
-    if args.update_claude_md_only and args.upgrade_existing:
-        parser.error("--update-claude-md-only 和 --upgrade-existing 不能同时使用")
-    if not args.update_claude_md_only and not args.upgrade_existing and not args.plan:
-        parser.error("正常初始化必须提供 --plan；已有项目可使用 --update-claude-md-only 或 --upgrade-existing")
+    only_modes = [
+        args.update_claude_md_only,
+        args.update_agents_md_only,
+        args.update_agent_rules_only,
+        args.upgrade_existing,
+    ]
+    if sum(bool(mode) for mode in only_modes) > 1:
+        parser.error("--update-*-only 和 --upgrade-existing 不能同时使用")
+    if not any(only_modes) and not args.plan:
+        parser.error("正常初始化必须提供 --plan；已有项目可使用 --update-*-only 或 --upgrade-existing")
     return args
 
 
@@ -311,6 +363,18 @@ def main(argv=None):
         target = update_claude_md(root)
         print(f"已写入：{target}")
         print("CLAUDE.md 已更新；未修改 docs/。")
+        return 0
+
+    if args.update_agents_md_only:
+        target = update_agents_md(root)
+        print(f"已写入：{target}")
+        print("AGENTS.md 已更新；未修改 docs/。")
+        return 0
+
+    if args.update_agent_rules_only:
+        for target in update_agent_rules(root):
+            print(f"已写入：{target}")
+        print("代理规则已更新；未修改 docs/。")
         return 0
 
     if args.upgrade_existing:
@@ -341,8 +405,13 @@ def main(argv=None):
 
     if args.copy_checker:
         created.append(copy_checker(root, args.force))
-    if args.update_claude_md:
-        created.append(update_claude_md(root))
+    if args.update_agent_rules:
+        created.extend(update_agent_rules(root))
+    else:
+        if args.update_claude_md:
+            created.append(update_claude_md(root))
+        if args.update_agents_md:
+            created.append(update_agents_md(root))
 
     for path in created:
         print(f"已写入：{path}")
