@@ -92,6 +92,7 @@ def test_main_can_create_claude_md(tmp_path):
     assert "## 计划治理" in text
     assert "docs/PLAN_MAP.md" in text
     assert "事实源规则" in text
+    assert "最后更新" in text
     assert "不复制字段级方案" in text
     assert "草案和历史文档规则" in text
     assert "不再作为规范事实源" in text
@@ -101,6 +102,8 @@ def test_main_can_create_claude_md(tmp_path):
     assert "验收独立性" in text
     assert "不得仅依据计划状态、完成证据文字或文档格式判定完成" in text
     assert "python3 scripts/check_plan_governance.py ." in text
+    assert "python3 scripts/check_plan_governance.py . --stale-days" in text
+    assert "--migrate-plan-map-last-updated" in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
     assert init_plan_governance.CLAUDE_SECTION_END in text
 
@@ -117,6 +120,8 @@ def test_main_can_create_agents_md(tmp_path):
     assert "验收独立性" in text
     assert "不得仅依据计划状态、完成证据文字或文档格式判定完成" in text
     assert "python3 scripts/check_plan_governance.py ." in text
+    assert "python3 scripts/check_plan_governance.py . --stale-days" in text
+    assert "--migrate-plan-map-last-updated" in text
     assert init_plan_governance.AGENTS_SECTION_BEGIN in text
     assert init_plan_governance.AGENTS_SECTION_END in text
 
