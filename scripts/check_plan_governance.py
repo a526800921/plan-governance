@@ -3,6 +3,7 @@ import argparse
 import re
 import subprocess
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 VALID_STATUSES = {
@@ -97,6 +98,10 @@ def extract_plan_link(cell):
 
 def extract_declared_dependencies(depends_cell):
     return [d.strip("` ") for d in re.split(r",|<br>|、", depends_cell) if d.strip("` -")]
+
+
+def parse_plan_date(value):
+    return datetime.strptime(value.strip(), "%Y-%m-%d").date()
 
 
 def extract_affected_targets(plan_text):
@@ -259,6 +264,19 @@ def warn_uncovered_changes(warnings, mode, files, active_plan_targets):
         warn(warnings, f"{mode}: 变更文件未被活跃计划影响范围覆盖：{changed_file}")
 
 
+def warn_stale_plans(warnings, plans, stale_days, today=None):
+    today = today or date.today()
+    for name, data in plans.items():
+        if data["status"] not in WARNING_ACTIVE:
+            continue
+        age = (today - data["last_updated_date"]).days
+        if age > stale_days:
+            warn(
+                warnings,
+                f"{name}: 活跃计划已 {age} 天未更新，超过 --stale-days {stale_days} 阈值",
+            )
+
+
 def detect_dependency_cycles(edges):
     visited = set()
     stack = set()
@@ -286,6 +304,14 @@ def parse_args(argv):
     parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
     parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
     parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
+    parser.add_argument(
+        "--stale-days",
+        nargs="?",
+        const=90,
+        type=int,
+        default=None,
+        help="检查活跃计划是否超过 N 天未更新；省略 N 时默认 90 天。",
+    )
     return parser.parse_args(argv)
 
 
@@ -310,16 +336,30 @@ def main(argv=None):
     for row in plan_rows:
         if len(row) < 2:
             continue
+        if len(row) < 6:
+            fail(errors, "docs/PLAN_MAP.md: 计划索引表必须包含 `最后更新` 列")
+            continue
         link = extract_plan_link(row[0])
         name = Path(link).stem if link else row[0].strip("` ")
         status = row[1].strip("` ")
+        last_updated = row[3].strip("` ")
         if status not in VALID_STATUSES:
             fail(errors, f"docs/PLAN_MAP.md: {name} 的状态不合法：{status}")
+        try:
+            last_updated_date = parse_plan_date(last_updated)
+        except ValueError:
+            fail(errors, f"docs/PLAN_MAP.md: {name} 的最后更新日期不合法：{last_updated}")
+            last_updated_date = date.min
         if link:
             path = docs / link
             if not path.exists():
                 fail(errors, f"docs/PLAN_MAP.md: 引用的计划文件不存在：{link}")
-            plans[name] = {"path": path, "status": status, "depends": row[3] if len(row) > 3 else ""}
+            plans[name] = {
+                "path": path,
+                "status": status,
+                "last_updated_date": last_updated_date,
+                "depends": row[4],
+            }
         else:
             fail(errors, f"docs/PLAN_MAP.md: 计划行缺少 docs/plans 链接：{row[0]}")
 
@@ -374,6 +414,12 @@ def main(argv=None):
             warn_uncovered_changes(warnings, "--pre-commit", changed_files(root, staged=True), active_plan_targets)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         warn(warnings, f"Git 变更检查不可用：{exc}")
+
+    if args.stale_days is not None:
+        if args.stale_days < 0:
+            fail(errors, f"--stale-days 必须是非负整数：{args.stale_days}")
+        else:
+            warn_stale_plans(warnings, plans, args.stale_days)
 
     for warning in warnings:
         print(f"WARNING: {warning}")

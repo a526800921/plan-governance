@@ -68,7 +68,7 @@ python3 scripts/check_plan_governance.py . --stale-days 90
 
 | 阶段 | 目标 | 进入条件 | 验证方向 | 状态 |
 |---|---|---|---|---|
-| 阶段 1 | 增加 `最后更新` 字段和 `--stale-days` warning 检查 | `plan-drift-check-enhancements` 阶段 3 已完成 | pytest、治理检查、反向引用检查通过 | 待实施 |
+| 阶段 1 | 增加 `最后更新` 字段和 `--stale-days` warning 检查 | `plan-drift-check-enhancements` 阶段 3 已完成 | pytest、治理检查、反向引用检查通过 | 已完成 |
 
 ## 当前阶段
 
@@ -109,7 +109,7 @@ python3 scripts/check_plan_governance.py . --stale-days 90
 
 ### 测试覆盖率
 
-阶段 1 完成时必须运行 `python3 -m pytest`，并记录 pytest-cov 总覆盖率。覆盖率不得低于当前项目既有门禁。
+`python3 -m pytest` 通过，pytest-cov 总覆盖率 96.29%，高于 85% 门禁。
 
 ### 完成条件
 
@@ -123,13 +123,26 @@ python3 scripts/check_plan_governance.py . --stale-days 90
 - `python3 -m pytest`、基础治理检查和 `--stale-days` 检查通过。
 - `docs/PLAN_MAP.md` 状态和证据同步。
 
+### 完成证据
+
+- `docs/PLAN_MAP.md` 计划索引已迁移为 `计划`、`状态`、`当前阶段`、`最后更新`、`依赖`、`证据` 六列，现有计划均填写 `2026-07-05`。
+- `scripts/check_plan_governance.py` 已解析 `最后更新`，校验 `YYYY-MM-DD` 日期格式，并新增 `--stale-days` 参数；省略数值时默认 90 天。
+- `scripts/init_plan_governance.py` 已更新新项目 `PLAN_MAP.md` 模板，默认写入当天日期。
+- `tests/test_check_plan_governance.py` 已覆盖旧五列表报错、非法日期、过期活跃计划 warning、非活跃计划忽略和负数阈值报错。
+- `tests/test_init_plan_governance.py` 已覆盖新模板包含 `最后更新` 列。
+- README 和 `plan-governance-design.md` 已同步 `最后更新` 与 `--stale-days` 规则。
+- `python3 -m pytest` 通过，61 项测试全部通过，pytest-cov 总覆盖率 96.29%。
+- `python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。`
+- `python3 scripts/check_plan_governance.py . --stale-days 90` 输出 `计划治理检查通过。`
+- `python3 scripts/check_plan_governance.py . --stale-days` 输出 `计划治理检查通过。`
+
 ## 未决问题
 
 | 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|
-| 旧五列表 `PLAN_MAP.md` 是报错还是兼容？ | 阶段 1 实施时用测试固定；倾向输出清晰 `ERROR`，避免静默跳过停滞检测。 | 否 | 待确认 |
-| `最后更新` 对已完成计划是否必填？ | 本仓库迁移时全部填写；停滞 warning 只作用于活跃状态。 | 否 | 待确认 |
-| 默认阈值是否固定 90 天？ | 先采用 90 天；可通过 `--stale-days` 覆盖。 | 否 | 待确认 |
+| 旧五列表 `PLAN_MAP.md` 是报错还是兼容？ | 阶段 1 已实现为清晰 `ERROR`，避免静默跳过停滞检测。 | 否 | 已决定 |
+| `最后更新` 对已完成计划是否必填？ | 本仓库迁移时全部填写；停滞 warning 只作用于活跃状态。 | 否 | 已决定 |
+| 默认阈值是否固定 90 天？ | 阶段 1 已实现为 `--stale-days` 省略数值时默认 90 天，也可显式传入 N。 | 否 | 已决定 |
 
 ## 风险和回滚
 

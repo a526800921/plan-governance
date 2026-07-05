@@ -188,6 +188,7 @@ def test_generated_plan_map_documents_draft_source_switch(tmp_path):
     plan_map = tmp_path / "docs" / "PLAN_MAP.md"
     text = plan_map.read_text(encoding="utf-8")
     assert result == 0
+    assert "| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |" in text
     assert "不再作为规范事实源" in text
     assert "后续新规范默认进入" in text
 

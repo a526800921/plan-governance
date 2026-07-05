@@ -20,13 +20,19 @@ def write(path, text):
 
 
 def plan_map(row):
+    rows = []
+    for line in row.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 5:
+            cells.insert(3, "2026-07-05")
+        rows.append("| " + " | ".join(cells) + " |")
     return f"""# PLAN_MAP
 
 ## 计划索引
 
-| 计划 | 状态 | 当前阶段 | 依赖 | 证据 |
-|---|---|---|---|---|
-{row}
+| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
+|---|---|---|---|---|---|
+{chr(10).join(rows)}
 """
 
 
@@ -130,6 +136,37 @@ def test_plan_row_without_link_fails(tmp_path, monkeypatch, capsys):
 
     assert check_plan_governance.main() == 1
     assert "计划行缺少 docs/plans 链接" in capsys.readouterr().out
+
+
+def test_legacy_plan_index_without_last_updated_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        """# PLAN_MAP
+
+## 计划索引
+
+| 计划 | 状态 | 当前阶段 | 依赖 | 证据 |
+|---|---|---|---|---|
+| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |
+""",
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 1
+    assert "必须包含 `最后更新` 列" in capsys.readouterr().out
+
+
+def test_invalid_last_updated_date_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2026/07/05 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 1
+    assert "最后更新日期不合法" in capsys.readouterr().out
 
 
 def test_plain_plan_link_is_supported(tmp_path, monkeypatch, capsys):
@@ -459,6 +496,44 @@ def test_optional_git_change_check_warns_when_git_is_unavailable(tmp_path, monke
     output = capsys.readouterr().out
     assert "Git 变更检查不可用" in output
     assert "检查通过" in output
+
+
+def test_stale_days_warns_for_old_active_plan(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2000-01-01 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "90"])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "超过 --stale-days 90 阈值" in output
+
+
+def test_stale_days_ignores_inactive_plan(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已废弃 | 阶段 1 | 2000-01-01 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "90"])
+
+    assert check_plan_governance.main() == 0
+    assert "超过 --stale-days" not in capsys.readouterr().out
+
+
+def test_negative_stale_days_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2026-07-05 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "-1"])
+
+    assert check_plan_governance.main() == 1
+    assert "--stale-days 必须是非负整数" in capsys.readouterr().out
 
 
 def test_non_completed_plan_without_coverage_ok(tmp_path, monkeypatch, capsys):

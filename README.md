@@ -151,9 +151,12 @@ python3 scripts/check_plan_governance.py .
 ```bash
 python3 scripts/check_plan_governance.py . --drift
 python3 scripts/check_plan_governance.py . --pre-commit
+python3 scripts/check_plan_governance.py . --stale-days 90
 ```
 
 `--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
+
+`--stale-days` 会检查活跃计划的 `最后更新` 日期是否超过阈值；省略数值时默认 90 天。停滞检测只输出 `WARNING`，不自动改变计划状态。
 
 当前检查项包括：
 
@@ -167,9 +170,10 @@ python3 scripts/check_plan_governance.py . --pre-commit
 - 实施中计划是否依赖已替代、已合并或已废弃计划。
 - 待实施或实施中计划是否仍有未解决的当前阶段阻塞项。
 - 已完成计划是否有测试覆盖率证据。
+- 计划索引是否包含合法的 `最后更新` 日期。
 - `ERROR` 会导致检查失败；`WARNING` 用于提示需要人工复核但不改变退出码的风险。
 
-计划停滞检测需要计划索引提供 `最后更新` 或等价元数据；当前版本不推断文件修改时间，也不改变 `PLAN_MAP.md` 表结构。
+计划停滞检测使用计划索引中的 `最后更新`，不推断文件修改时间。
 
 已完成计划修改检测需要完成快照或 hash 等独立元数据；当前版本不锁定已完成计划文件，避免修正文档错误时产生误报。公共契约变化关联验证需要计划文档提供结构化目标文件声明；当前版本不做 spec diff 强校验。
 

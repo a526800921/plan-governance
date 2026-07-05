@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 
@@ -160,6 +161,7 @@ def update_agent_rules(root):
 
 
 def plan_map_content(plan_slug, title, status, phase):
+    today = date.today().isoformat()
     return f"""# PLAN_MAP
 
 ## 治理范围
@@ -177,9 +179,9 @@ def plan_map_content(plan_slug, title, status, phase):
 
 ## 计划索引
 
-| 计划 | 状态 | 当前阶段 | 依赖 | 证据 |
-|---|---|---|---|---|
-| [{title}](plans/{plan_slug}.md) | {status} | {phase} | - | - |
+| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
+|---|---|---|---|---|---|
+| [{title}](plans/{plan_slug}.md) | {status} | {phase} | {today} | - | - |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
