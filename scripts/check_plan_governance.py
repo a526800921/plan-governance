@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -15,12 +17,18 @@ VALID_STATUSES = {
 }
 
 COMPLETED = {"已完成"}
+ACTIVE = {"待实施", "实施中"}
+WARNING_ACTIVE = {"候选", "设计中", "待实施", "实施中"}
 IMPLEMENTING = {"实施中"}
 INACTIVE = {"已替代", "已合并", "已废弃"}
 
 
 def fail(errors, message):
     errors.append(message)
+
+
+def warn(warnings, message):
+    warnings.append(message)
 
 
 def read_utf8(path, errors):
@@ -52,6 +60,32 @@ def table_rows(text, heading):
     return rows
 
 
+def markdown_section(text, heading_names):
+    heading_pattern = "|".join(re.escape(name) for name in heading_names)
+    pattern = re.compile(rf"^#+\s+({heading_pattern})\b.*$", re.MULTILINE)
+    match = pattern.search(text)
+    if not match:
+        return None
+    tail = text[match.end():]
+    next_heading = re.search(r"^#+\s+", tail, re.MULTILINE)
+    return tail[: next_heading.start()] if next_heading else tail
+
+
+def markdown_list_items(section):
+    if section is None:
+        return []
+    items = []
+    for line in section.splitlines():
+        match = re.match(r"\s*[-*]\s+(.+?)\s*$", line)
+        if not match:
+            continue
+        item = match.group(1).strip()
+        item = item.strip("` ")
+        if item and item not in {"-", "待补充", "待确认", "无", "N/A"}:
+            items.append(item)
+    return items
+
+
 def extract_plan_link(cell):
     match = re.search(r"\((plans/[^)]+\.md)\)", cell)
     if match:
@@ -61,25 +95,72 @@ def extract_plan_link(cell):
     return None
 
 
+def extract_declared_dependencies(depends_cell):
+    return [d.strip("` ") for d in re.split(r",|<br>|、", depends_cell) if d.strip("` -")]
+
+
+def extract_affected_targets(plan_text):
+    section = markdown_section(plan_text, ["影响模块或文件"])
+    return markdown_list_items(section)
+
+
+def extract_plan_references(plan_text, known_plans, current_name):
+    references = set()
+    for match in re.finditer(r"\[\[([^\]]+)\]\]", plan_text):
+        name = Path(match.group(1).strip()).stem
+        if name in known_plans and name != current_name:
+            references.add(name)
+
+    for match in re.finditer(r"(?:docs/)?plans/([A-Za-z0-9\u4e00-\u9fff._-]+)\.md", plan_text):
+        name = Path(match.group(1).strip()).stem
+        if name in known_plans and name != current_name:
+            references.add(name)
+
+    for match in re.finditer(r"\]\(([A-Za-z0-9\u4e00-\u9fff._-]+)\.md(?:#[^)]+)?\)", plan_text):
+        name = Path(match.group(1).strip()).stem
+        if name in known_plans and name != current_name:
+            references.add(name)
+
+    return references
+
+
+def has_substantive_evidence(content):
+    if content is None:
+        return False
+
+    stripped = content.strip()
+    if not stripped:
+        return False
+    if re.search(r"^(待补充|TODO|TBD|待确认)[。.\s]*$", stripped, re.IGNORECASE):
+        return False
+
+    evidence_patterns = [
+        r"```",
+        r"\b(python3|python|pytest|bash|sh|rg|npm|make|curl|git)\b",
+        r"[\w./-]+/(?:[\w./-]+)",
+        r"\b(?:commit|hash)\s+[0-9a-f]{6,40}\b",
+        r"\bv?\d+\.\d+(?:\.\d+)?\b",
+        r"\d+(?:\.\d+)?%",
+        r"(基线|复现|样本|fixture|测试|验证|运行|失败案例|现状|快照|报告|覆盖率|命令|搜索)",
+    ]
+    if any(re.search(pattern, stripped, re.IGNORECASE) for pattern in evidence_patterns):
+        return True
+
+    normalized = re.sub(r"\s+", "", stripped)
+    return len(normalized) >= 40
+
+
 def has_completion_evidence(plan_text):
-    evidence_match = re.search(r"^#+\s+(Step 0 Evidence|Step 0 证据|完成证据|验证证据)\b", plan_text, re.MULTILINE)
-    validation_match = re.search(r"^#+\s+(验证方式|验证)\b", plan_text, re.MULTILINE)
-    return bool(evidence_match and validation_match)
+    evidence = markdown_section(plan_text, ["Step 0 Evidence", "Step 0 证据", "完成证据", "验证证据"])
+    validation = markdown_section(plan_text, ["验证方式", "验证"])
+    return has_substantive_evidence(evidence) and has_substantive_evidence(validation)
 
 
 def has_coverage_evidence(plan_text):
     """已完成计划是否包含非占位的测试覆盖率证据章节。"""
-    match = re.search(
-        r"^#+\s+(测试覆盖率|测试覆盖|覆盖率报告|Coverage|Test Coverage)\b.*$",
-        plan_text,
-        re.MULTILINE,
-    )
-    if not match:
+    section = markdown_section(plan_text, ["测试覆盖率", "测试覆盖", "覆盖率报告", "Coverage", "Test Coverage"])
+    if section is None:
         return False
-
-    tail = plan_text[match.end():]
-    next_heading = re.search(r"^#+\s+", tail, re.MULTILINE)
-    section = tail[: next_heading.start()] if next_heading else tail
     content = section.strip()
     if not content or re.search(r"^(待补充|TODO|TBD)[。.\s]*$", content, re.IGNORECASE):
         return False
@@ -90,9 +171,92 @@ def has_coverage_evidence(plan_text):
 def has_current_blocker(plan_text):
     for row in table_rows(plan_text, "未决问题"):
         joined = "|".join(row)
-        if re.search(r"\b(Yes|是)\b", joined) and re.search(r"(Open|待确认|未解决)", joined):
+        if re.search(r"\b(Yes|是)\b", joined) and re.search(r"(Open|待确认|未解决|待处理|未决定)", joined, re.IGNORECASE):
             return True
     return False
+
+
+def find_orphan_plans(docs, plans):
+    plans_dir = docs / "plans"
+    if not plans_dir.exists():
+        return []
+    indexed_paths = {data["path"].resolve() for data in plans.values()}
+    return sorted(
+        plan_file
+        for plan_file in plans_dir.glob("*.md")
+        if plan_file.resolve() not in indexed_paths
+    )
+
+
+def detect_overlapping_targets(active_plan_targets):
+    target_to_plans = {}
+    for plan_name, targets in active_plan_targets.items():
+        for target in targets:
+            target_to_plans.setdefault(target, []).append(plan_name)
+    return {
+        target: sorted(plan_names)
+        for target, plan_names in target_to_plans.items()
+        if len(plan_names) > 1
+    }
+
+
+def target_matches_path(target, changed_file):
+    normalized_target = target.strip().strip("`").strip("/")
+    normalized_file = changed_file.strip().strip("/")
+    if not normalized_target or not normalized_file:
+        return False
+    if normalized_target == normalized_file:
+        return True
+    return normalized_file.startswith(f"{normalized_target}/")
+
+
+def uncovered_changed_files(changed_files, active_plan_targets):
+    targets = [
+        target
+        for targets_for_plan in active_plan_targets.values()
+        for target in targets_for_plan
+    ]
+    return sorted(
+        changed_file
+        for changed_file in changed_files
+        if not any(target_matches_path(target, changed_file) for target in targets)
+    )
+
+
+def git_name_only(root, git_args):
+    result = subprocess.run(
+        ["git", *git_args],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return {
+        line.strip()
+        for line in result.stdout.splitlines()
+        if line.strip()
+    }
+
+
+def changed_files(root, staged=False):
+    if staged:
+        return git_name_only(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
+
+    files = set()
+    files.update(git_name_only(root, ["diff", "--name-only", "--diff-filter=ACMR"]))
+    files.update(git_name_only(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]))
+    files.update(git_name_only(root, ["ls-files", "--others", "--exclude-standard"]))
+    return files
+
+
+def warn_uncovered_changes(warnings, mode, files, active_plan_targets):
+    if not files:
+        return
+    if not active_plan_targets:
+        warn(warnings, f"{mode}: 存在变更文件，但没有活跃计划声明影响范围")
+        return
+    for changed_file in uncovered_changed_files(files, active_plan_targets):
+        warn(warnings, f"{mode}: 变更文件未被活跃计划影响范围覆盖：{changed_file}")
 
 
 def detect_dependency_cycles(edges):
@@ -117,11 +281,21 @@ def detect_dependency_cycles(edges):
     return cycles
 
 
-def main():
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd()
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description="检查计划治理文档的一致性。")
+    parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
+    parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
+    parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(sys.argv[1:] if argv is None else argv)
+    root = Path(args.root)
     docs = root / "docs"
     plan_map = docs / "PLAN_MAP.md"
     errors = []
+    warnings = []
 
     if not plan_map.exists():
         print("未找到 docs/PLAN_MAP.md；当前仓库尚未初始化计划治理。")
@@ -152,7 +326,7 @@ def main():
     edges = {}
     inactive = {name for name, data in plans.items() if data["status"] in INACTIVE}
     for name, data in plans.items():
-        deps = [d.strip("` ") for d in re.split(r",|<br>|、", data["depends"]) if d.strip("` -")]
+        deps = extract_declared_dependencies(data["depends"])
         edges[name] = [dep for dep in deps if dep in plans]
         if data["status"] in IMPLEMENTING:
             for dep in edges[name]:
@@ -162,14 +336,47 @@ def main():
     for cycle in detect_dependency_cycles(edges):
         fail(errors, f"计划依赖存在环：{cycle}")
 
+    for orphan in find_orphan_plans(docs, plans):
+        warn(warnings, f"{orphan}: docs/plans 中存在未登记到 PLAN_MAP.md 的孤立计划")
+
+    active_plan_targets = {}
+    plan_texts = {}
     for name, data in plans.items():
         plan_text = read_utf8(data["path"], errors)
+        plan_texts[name] = plan_text
         if data["status"] in COMPLETED and not has_completion_evidence(plan_text):
-            fail(errors, f"{data['path']}: 已完成计划缺少 Step 0 证据或验证方式章节")
+            fail(errors, f"{data['path']}: 已完成计划缺少有效 Step 0 证据或验证方式")
         if data["status"] in COMPLETED and not has_coverage_evidence(plan_text):
             fail(errors, f"{data['path']}: 已完成计划缺少测试覆盖率证据")
-        if data["status"] in IMPLEMENTING and has_current_blocker(plan_text):
-            fail(errors, f"{data['path']}: 实施中计划仍有未解决的当前阶段阻塞项")
+        if data["status"] in ACTIVE and has_current_blocker(plan_text):
+            fail(errors, f"{data['path']}: 活跃计划仍有未解决的当前阶段阻塞项")
+        if data["status"] in WARNING_ACTIVE:
+            active_plan_targets[name] = extract_affected_targets(plan_text)
+
+    for target, plan_names in detect_overlapping_targets(active_plan_targets).items():
+        warn(warnings, f"{target}: 多个活跃计划声明相同影响目标：{', '.join(plan_names)}")
+
+    known_plans = set(plans)
+    for name, data in plans.items():
+        if data["status"] not in WARNING_ACTIVE:
+            continue
+        declared = set(edges.get(name, []))
+        referenced = extract_plan_references(plan_texts.get(name, ""), known_plans, name)
+        for missing in sorted(referenced - declared):
+            warn(warnings, f"{name}: 正文引用了计划 {missing}，但 PLAN_MAP.md 依赖列未声明")
+        for unreferenced in sorted(declared - referenced):
+            warn(warnings, f"{name}: PLAN_MAP.md 声明依赖 {unreferenced}，但计划正文未引用")
+
+    try:
+        if args.drift:
+            warn_uncovered_changes(warnings, "--drift", changed_files(root), active_plan_targets)
+        if args.pre_commit:
+            warn_uncovered_changes(warnings, "--pre-commit", changed_files(root, staged=True), active_plan_targets)
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        warn(warnings, f"Git 变更检查不可用：{exc}")
+
+    for warning in warnings:
+        print(f"WARNING: {warning}")
 
     if errors:
         for error in errors:

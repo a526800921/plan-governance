@@ -1,4 +1,5 @@
 import importlib.util
+import subprocess
 from pathlib import Path
 
 
@@ -52,6 +53,31 @@ def plan_text(status="待实施", unresolved_blocker=False, with_coverage=False)
 ## 当前状态
 
 {status}
+"""
+
+
+def plan_text_with_target(target, extra_text=""):
+    return f"""# 计划：demo
+
+## 影响模块或文件
+
+- `{target}`
+
+## Step 0 证据
+
+已有基线。
+
+## 验证方式
+
+运行检查脚本。
+
+## 未决问题
+
+| 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
+|---|---|---|---|
+| - | - | 否 | 已延后 |
+
+{extra_text}
 """
 
 
@@ -168,7 +194,19 @@ def test_implementing_plan_with_open_blocker_fails(tmp_path, monkeypatch, capsys
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+
+
+def test_ready_plan_with_open_blocker_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(unresolved_blocker=True))
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 1
+    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
 
 
 def test_completed_plan_without_evidence_fails(tmp_path, monkeypatch, capsys):
@@ -180,7 +218,24 @@ def test_completed_plan_without_evidence_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "缺少 Step 0 证据或验证方式章节" in capsys.readouterr().out
+    assert "缺少有效 Step 0 证据或验证方式" in capsys.readouterr().out
+
+
+def test_completed_plan_with_placeholder_evidence_fails(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        plan_text(with_coverage=True)
+        .replace("已有基线。", "待补充。")
+        .replace("运行检查脚本。", "TODO"),
+    )
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 1
+    assert "缺少有效 Step 0 证据或验证方式" in capsys.readouterr().out
 
 
 def test_completed_plan_without_coverage_fails(tmp_path, monkeypatch, capsys):
@@ -225,6 +280,187 @@ def test_completed_plan_with_coverage_passes(tmp_path, monkeypatch, capsys):
     assert "检查通过" in capsys.readouterr().out
 
 
+def test_orphan_plan_warns_without_failing(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+    write(tmp_path / "docs" / "plans" / "orphan.md", plan_text())
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "孤立计划" in output
+    assert "检查通过" in output
+
+
+def test_overlapping_active_plan_targets_warn_without_failing(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "| [a](plans/a.md) | 待实施 | 阶段 1 | - | - |\n"
+            "| [b](plans/b.md) | 设计中 | 阶段 1 | - | - |"
+        ),
+    )
+    write(tmp_path / "docs" / "plans" / "a.md", plan_text_with_target("src/api.py"))
+    write(tmp_path / "docs" / "plans" / "b.md", plan_text_with_target("src/api.py"))
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "多个活跃计划声明相同影响目标" in output
+    assert "src/api.py" in output
+    assert "检查通过" in output
+
+
+def test_plan_reference_missing_from_declared_dependencies_warns(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "| [a](plans/a.md) | 待实施 | 阶段 1 | - | - |\n"
+            "| [b](plans/b.md) | 已完成 | 阶段 1 | - | - |"
+        ),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "a.md",
+        plan_text_with_target("src/a.py", "参考 [b](plans/b.md)。"),
+    )
+    write(tmp_path / "docs" / "plans" / "b.md", plan_text(with_coverage=True))
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "正文引用了计划 b" in output
+    assert "依赖列未声明" in output
+
+
+def test_relative_markdown_plan_reference_matches_declared_dependency(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "| [a](plans/a.md) | 待实施 | 阶段 1 | b | - |\n"
+            "| [b](plans/b.md) | 已完成 | 阶段 1 | - | - |"
+        ),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "a.md",
+        plan_text_with_target("src/a.py", "依赖 [b](b.md)。"),
+    )
+    write(tmp_path / "docs" / "plans" / "b.md", plan_text(with_coverage=True))
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "正文引用了计划" not in output
+    assert "正文未引用" not in output
+
+
+def test_declared_dependency_without_plan_reference_warns(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "| [a](plans/a.md) | 待实施 | 阶段 1 | b | - |\n"
+            "| [b](plans/b.md) | 已完成 | 阶段 1 | - | - |"
+        ),
+    )
+    write(tmp_path / "docs" / "plans" / "a.md", plan_text_with_target("src/a.py"))
+    write(tmp_path / "docs" / "plans" / "b.md", plan_text(with_coverage=True))
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "声明依赖 b" in output
+    assert "正文未引用" in output
+
+
+def test_self_plan_reference_is_ignored(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        plan_text_with_target("src/demo.py", "自引用 [demo](plans/demo.md) 不应视为依赖。"),
+    )
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
+
+    assert check_plan_governance.main() == 0
+    output = capsys.readouterr().out
+    assert "正文引用了计划" not in output
+    assert "正文未引用" not in output
+
+
+def test_target_matches_exact_file_or_directory_prefix():
+    assert check_plan_governance.target_matches_path("src/api.py", "src/api.py") is True
+    assert check_plan_governance.target_matches_path("src", "src/api.py") is True
+    assert check_plan_governance.target_matches_path("src/api.py", "src/api_extra.py") is False
+
+
+def test_drift_warns_for_changed_file_outside_active_plan_targets(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text_with_target("src/covered.py"))
+
+    def fake_run(cmd, **kwargs):
+        class Result:
+            stdout = "src/uncovered.py\n" if cmd[1:3] == ["diff", "--name-only"] else ""
+
+        return Result()
+
+    monkeypatch.setattr(check_plan_governance.subprocess, "run", fake_run)
+
+    assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "--drift" in output
+    assert "src/uncovered.py" in output
+    assert "检查通过" in output
+
+
+def test_pre_commit_covered_changed_file_does_not_warn(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text_with_target("src"))
+
+    def fake_run(cmd, **kwargs):
+        class Result:
+            stdout = "src/covered.py\n"
+
+        return Result()
+
+    monkeypatch.setattr(check_plan_governance.subprocess, "run", fake_run)
+
+    assert check_plan_governance.main([str(tmp_path), "--pre-commit"]) == 0
+    output = capsys.readouterr().out
+    assert "变更文件未被活跃计划影响范围覆盖" not in output
+    assert "检查通过" in output
+
+
+def test_optional_git_change_check_warns_when_git_is_unavailable(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text_with_target("src"))
+
+    def fail_run(*args, **kwargs):
+        raise subprocess.CalledProcessError(128, args[0])
+
+    monkeypatch.setattr(check_plan_governance.subprocess, "run", fail_run)
+
+    assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
+    output = capsys.readouterr().out
+    assert "Git 变更检查不可用" in output
+    assert "检查通过" in output
+
+
 def test_non_completed_plan_without_coverage_ok(tmp_path, monkeypatch, capsys):
     write(
         tmp_path / "docs" / "PLAN_MAP.md",
@@ -251,3 +487,18 @@ def test_has_coverage_evidence_rejects_placeholder():
 
 def test_has_coverage_evidence_rejects_unrelated():
     assert check_plan_governance.has_coverage_evidence("本计划覆盖 API 迁移范围。") is False
+
+
+def test_has_completion_evidence_rejects_empty_or_placeholder_sections():
+    assert check_plan_governance.has_completion_evidence("### Step 0 证据\n\n### 验证方式\n\n") is False
+    assert check_plan_governance.has_completion_evidence("### Step 0 证据\n\n待补充。\n\n### 验证方式\n\nTODO") is False
+
+
+def test_has_completion_evidence_accepts_commands_paths_and_baselines():
+    assert (
+        check_plan_governance.has_completion_evidence(
+            "### Step 0 证据\n\n现状基线见 `tests/fixtures/demo.json`。\n\n"
+            "### 验证方式\n\n运行 `python3 -m pytest`。"
+        )
+        is True
+    )

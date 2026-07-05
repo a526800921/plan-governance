@@ -146,15 +146,32 @@ python3 scripts/init_plan_governance.py \
 python3 scripts/check_plan_governance.py .
 ```
 
+可选检查：
+
+```bash
+python3 scripts/check_plan_governance.py . --drift
+python3 scripts/check_plan_governance.py . --pre-commit
+```
+
+`--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
+
 当前检查项包括：
 
 - `PLAN_MAP.md` 引用的计划文件是否存在。
+- `docs/plans/*.md` 是否存在未登记到 `PLAN_MAP.md` 的孤立计划；孤立计划以 `WARNING` 提示，不阻断检查。
 - 计划状态是否合法。
 - 计划依赖是否存在环。
-- 已完成计划是否有 Step 0 证据和验证方式。
+- 活跃计划正文中的计划引用是否与 `PLAN_MAP.md` 依赖列一致；不一致以 `WARNING` 提示。
+- 多个活跃计划是否声明了相同的影响模块或文件；重叠以 `WARNING` 提示。
+- 已完成计划是否有有效 Step 0 证据和验证方式；空章节或纯占位符不视为有效证据。
 - 实施中计划是否依赖已替代、已合并或已废弃计划。
-- 实施中计划是否仍有未解决的当前阶段阻塞项。
+- 待实施或实施中计划是否仍有未解决的当前阶段阻塞项。
 - 已完成计划是否有测试覆盖率证据。
+- `ERROR` 会导致检查失败；`WARNING` 用于提示需要人工复核但不改变退出码的风险。
+
+计划停滞检测需要计划索引提供 `最后更新` 或等价元数据；当前版本不推断文件修改时间，也不改变 `PLAN_MAP.md` 表结构。
+
+已完成计划修改检测需要完成快照或 hash 等独立元数据；当前版本不锁定已完成计划文件，避免修正文档错误时产生误报。公共契约变化关联验证需要计划文档提供结构化目标文件声明；当前版本不做 spec diff 强校验。
 
 ## 测试覆盖率
 
