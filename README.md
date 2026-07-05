@@ -151,12 +151,20 @@ python3 scripts/check_plan_governance.py .
 ```bash
 python3 scripts/check_plan_governance.py . --drift
 python3 scripts/check_plan_governance.py . --pre-commit
-python3 scripts/check_plan_governance.py . --stale-days 90
+python3 scripts/check_plan_governance.py . --stale-days 10
 ```
 
 `--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
 
-`--stale-days` 会检查活跃计划的 `最后更新` 日期是否超过阈值；省略数值时默认 90 天。停滞检测只输出 `WARNING`，不自动改变计划状态。
+`--stale-days` 会检查活跃计划的 `最后更新` 日期是否超过阈值；省略数值时默认 10 天。停滞检测只输出 `WARNING`，不自动改变计划状态。
+
+旧项目如果仍使用五列 `PLAN_MAP.md`，先显式迁移：
+
+```bash
+python3 scripts/init_plan_governance.py --root . --migrate-plan-map-last-updated --last-updated-date 2026-07-05
+```
+
+不传 `--last-updated-date` 时使用当天日期。该迁移只修改 `docs/PLAN_MAP.md` 的计划索引表，不会自动改变计划状态。
 
 当前检查项包括：
 

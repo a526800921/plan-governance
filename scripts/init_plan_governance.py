@@ -321,6 +321,48 @@ def docs_warnings(root):
     return warnings
 
 
+def migrate_plan_map_last_updated(root, last_updated):
+    plan_map = root / "docs" / "PLAN_MAP.md"
+    if not plan_map.exists():
+        raise FileNotFoundError("缺少 docs/PLAN_MAP.md")
+
+    text = plan_map.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    migrated = []
+    in_plan_index = False
+    changed = False
+
+    for line in lines:
+        if re.match(r"^##\s+计划索引\s*$", line):
+            in_plan_index = True
+            migrated.append(line)
+            continue
+        if in_plan_index and re.match(r"^##\s+", line):
+            in_plan_index = False
+
+        if in_plan_index and line.strip().startswith("|"):
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if cells == ["计划", "状态", "当前阶段", "依赖", "证据"]:
+                migrated.append("| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |")
+                changed = True
+                continue
+            if len(cells) == 5 and set(cells) == {"---"}:
+                migrated.append("|---|---|---|---|---|---|")
+                changed = True
+                continue
+            if len(cells) == 5:
+                cells.insert(3, last_updated)
+                migrated.append("| " + " | ".join(cells) + " |")
+                changed = True
+                continue
+
+        migrated.append(line)
+
+    if changed:
+        plan_map.write_text("\n".join(migrated) + ("\n" if text.endswith("\n") else ""), encoding="utf-8")
+    return plan_map, changed
+
+
 def upgrade_existing(root):
     written = [
         copy_checker(root, force=True),
@@ -345,6 +387,8 @@ def parse_args(argv):
     parser.add_argument("--update-agents-md-only", action="store_true", help="只创建或更新 AGENTS.md，不初始化或覆盖 docs/。")
     parser.add_argument("--update-agent-rules-only", action="store_true", help="只创建或更新 CLAUDE.md 和 AGENTS.md，不初始化或覆盖 docs/。")
     parser.add_argument("--upgrade-existing", action="store_true", help="升级已有项目的辅助文件：刷新检查脚本和代理规则，不覆盖 docs/。")
+    parser.add_argument("--migrate-plan-map-last-updated", action="store_true", help="将旧五列表 PLAN_MAP.md 迁移为包含最后更新的六列表。")
+    parser.add_argument("--last-updated-date", default=date.today().isoformat(), help="迁移 PLAN_MAP.md 时填入的最后更新日期，默认今天。")
     parser.add_argument("--force", action="store_true", help="允许覆盖已存在的治理文件。")
     args = parser.parse_args(argv)
     only_modes = [
@@ -352,11 +396,12 @@ def parse_args(argv):
         args.update_agents_md_only,
         args.update_agent_rules_only,
         args.upgrade_existing,
+        args.migrate_plan_map_last_updated,
     ]
     if sum(bool(mode) for mode in only_modes) > 1:
-        parser.error("--update-*-only 和 --upgrade-existing 不能同时使用")
+        parser.error("--update-*-only、--upgrade-existing 和 --migrate-plan-map-last-updated 不能同时使用")
     if not any(only_modes) and not args.plan:
-        parser.error("正常初始化必须提供 --plan；已有项目可使用 --update-*-only 或 --upgrade-existing")
+        parser.error("正常初始化必须提供 --plan；已有项目可使用 --update-*-only、--upgrade-existing 或 --migrate-plan-map-last-updated")
     return args
 
 
@@ -389,6 +434,16 @@ def main(argv=None):
         for warning in warnings:
             print(f"WARNING: {warning}")
         print("已有项目升级完成；未覆盖 docs/。下一步请运行 python3 scripts/check_plan_governance.py .")
+        return 0
+
+    if args.migrate_plan_map_last_updated:
+        parse_date = date.fromisoformat(args.last_updated_date)
+        target, changed = migrate_plan_map_last_updated(root, parse_date.isoformat())
+        print(f"已检查：{target}")
+        if changed:
+            print("PLAN_MAP.md 已迁移为包含最后更新的六列表。")
+        else:
+            print("PLAN_MAP.md 已是六列表；无需迁移。")
         return 0
 
     plan_slug = slugify(args.plan)
@@ -427,6 +482,6 @@ def main(argv=None):
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (FileExistsError, ValueError) as exc:
+    except (FileExistsError, FileNotFoundError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)

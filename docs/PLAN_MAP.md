@@ -23,7 +23,7 @@
 | [draft-history-source-switch](plans/draft-history-source-switch.md) | 已完成 | 阶段 1 | 2026-07-05 | multi-doc-sync-rules | [验证方式](plans/draft-history-source-switch.md#验证方式) |
 | [independent-acceptance-rules](plans/independent-acceptance-rules.md) | 已完成 | 阶段 1 | 2026-07-05 | draft-history-source-switch | [验证方式](plans/independent-acceptance-rules.md#验证方式) |
 | [plan-drift-check-enhancements](plans/plan-drift-check-enhancements.md) | 已完成 | 阶段 3 | 2026-07-05 | independent-acceptance-rules | [验证方式](plans/plan-drift-check-enhancements.md#验证方式) |
-| [stale-plan-detection](plans/stale-plan-detection.md) | 已完成 | 阶段 1 | 2026-07-05 | plan-drift-check-enhancements | [验证方式](plans/stale-plan-detection.md#验证方式) |
+| [stale-plan-detection](plans/stale-plan-detection.md) | 已完成 | 阶段 2 | 2026-07-05 | plan-drift-check-enhancements | [验证方式](plans/stale-plan-detection.md#验证方式) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -70,4 +70,5 @@
 | plan-drift-check-enhancements | 阶段 1 | `python3 -m pytest` 通过，覆盖率 98.23%；反向引用搜索通过；`python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。` |
 | plan-drift-check-enhancements | 阶段 2 | `python3 -m pytest` 通过，覆盖率 97.07%；反向引用搜索通过；`python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。` |
 | plan-drift-check-enhancements | 阶段 3 | `python3 -m pytest` 通过，覆盖率 96.22%；`--drift` 和 `--pre-commit` 小样本验证通过；治理检查通过；反向引用搜索通过 |
-| stale-plan-detection | 阶段 1 | `python3 -m pytest` 通过，覆盖率 96.29%；`--stale-days 90` 和默认阈值验证通过；治理检查通过；反向引用搜索通过 |
+| stale-plan-detection | 阶段 1 | `python3 -m pytest` 通过，覆盖率 96.29%；`--stale-days 10` 和默认阈值验证通过；治理检查通过；反向引用搜索通过 |
+| stale-plan-detection | 阶段 2 | `python3 -m pytest` 通过，覆盖率 96.64%；旧五列表迁移辅助测试通过；治理检查和 `--stale-days 10` 通过；反向引用搜索通过 |

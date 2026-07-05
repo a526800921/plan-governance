@@ -307,10 +307,10 @@ def parse_args(argv):
     parser.add_argument(
         "--stale-days",
         nargs="?",
-        const=90,
+        const=10,
         type=int,
         default=None,
-        help="检查活跃计划是否超过 N 天未更新；省略 N 时默认 90 天。",
+        help="检查活跃计划是否超过 N 天未更新；省略 N 时默认 10 天。",
     )
     return parser.parse_args(argv)
 

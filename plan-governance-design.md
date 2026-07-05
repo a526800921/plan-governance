@@ -366,11 +366,19 @@ Step 0 的作用是防止计划只有意图，没有可观察基线。
 
 计划停滞检测使用 `PLAN_MAP` 的 `最后更新` 元数据；不从文件修改时间推断计划状态。
 
+旧五列表 `PLAN_MAP` 迁移应由显式命令完成：
+
+```bash
+python3 scripts/init_plan_governance.py --root . --migrate-plan-map-last-updated --last-updated-date 2026-07-05
+```
+
+迁移只补充 `最后更新` 列，不自动改变计划状态。
+
 可选命令模式：
 
 - `--drift` 检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖。
 - `--pre-commit` 检查 staged 变更是否被活跃计划的 `影响模块或文件` 覆盖，可由用户手动接入 Git hook。
-- `--stale-days N` 检查活跃计划是否超过 N 天未更新；省略 N 时默认 90 天。
+- `--stale-days N` 检查活跃计划是否超过 N 天未更新；省略 N 时默认 10 天。
 - 这些模式只输出 `WARNING`，不改变退出码。
 
 暂不自动化的检查：

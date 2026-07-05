@@ -225,6 +225,76 @@ def test_upgrade_existing_reports_missing_docs(tmp_path, capsys):
     assert "WARNING: 缺少 docs/plans/*.md" in output
 
 
+def test_migrate_plan_map_last_updated_converts_legacy_table(tmp_path, capsys):
+    plan_map = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_map.parent.mkdir(parents=True)
+    plan_map.write_text(
+        """# PLAN_MAP
+
+## 计划索引
+
+| 计划 | 状态 | 当前阶段 | 依赖 | 证据 |
+|---|---|---|---|---|
+| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |
+""",
+        encoding="utf-8",
+    )
+
+    result = init_plan_governance.main(
+        [
+            "--root",
+            str(tmp_path),
+            "--migrate-plan-map-last-updated",
+            "--last-updated-date",
+            "2026-07-05",
+        ]
+    )
+
+    text = plan_map.read_text(encoding="utf-8")
+    assert result == 0
+    assert "| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |" in text
+    assert "| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2026-07-05 | - | - |" in text
+    assert "已迁移" in capsys.readouterr().out
+
+
+def test_migrate_plan_map_last_updated_is_idempotent(tmp_path, capsys):
+    init_plan_governance.main(["--root", str(tmp_path), "--plan", "demo"])
+    plan_map = tmp_path / "docs" / "PLAN_MAP.md"
+    before = plan_map.read_text(encoding="utf-8")
+
+    result = init_plan_governance.main(
+        ["--root", str(tmp_path), "--migrate-plan-map-last-updated"]
+    )
+
+    assert result == 0
+    assert plan_map.read_text(encoding="utf-8") == before
+    assert "无需迁移" in capsys.readouterr().out
+
+
+def test_migrate_plan_map_last_updated_requires_plan_map(tmp_path):
+    with pytest.raises(FileNotFoundError, match="缺少 docs/PLAN_MAP.md"):
+        init_plan_governance.main(
+            ["--root", str(tmp_path), "--migrate-plan-map-last-updated"]
+        )
+
+
+def test_migrate_plan_map_last_updated_rejects_invalid_date(tmp_path):
+    plan_map = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_map.parent.mkdir(parents=True)
+    plan_map.write_text("# PLAN_MAP\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid isoformat"):
+        init_plan_governance.main(
+            [
+                "--root",
+                str(tmp_path),
+                "--migrate-plan-map-last-updated",
+                "--last-updated-date",
+                "2026/07/05",
+            ]
+        )
+
+
 def test_normal_init_still_requires_plan(tmp_path):
     with pytest.raises(SystemExit):
         init_plan_governance.main(["--root", str(tmp_path)])

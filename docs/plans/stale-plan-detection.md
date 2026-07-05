@@ -14,7 +14,7 @@
 
 - 为 `docs/PLAN_MAP.md` 计划索引增加 `最后更新` 列。
 - 约定日期格式为 `YYYY-MM-DD`。
-- 为检查脚本增加 `--stale-days N` 参数，默认阈值为 90 天。
+- 为检查脚本增加 `--stale-days N` 参数，默认阈值为 10 天。
 - 对超过阈值的活跃计划输出 `WARNING`，不改变退出码。
 - 不自动改变计划状态。
 
@@ -56,7 +56,7 @@
 检查脚本新增参数：
 
 ```bash
-python3 scripts/check_plan_governance.py . --stale-days 90
+python3 scripts/check_plan_governance.py . --stale-days 10
 ```
 
 兼容策略：
@@ -69,55 +69,57 @@ python3 scripts/check_plan_governance.py . --stale-days 90
 | 阶段 | 目标 | 进入条件 | 验证方向 | 状态 |
 |---|---|---|---|---|
 | 阶段 1 | 增加 `最后更新` 字段和 `--stale-days` warning 检查 | `plan-drift-check-enhancements` 阶段 3 已完成 | pytest、治理检查、反向引用检查通过 | 已完成 |
+| 阶段 2 | 提供旧五列表 `PLAN_MAP.md` 的显式迁移辅助命令 | 阶段 1 已完成，旧五列表会被检查脚本报错 | pytest、迁移样本验证、治理检查通过 | 已完成 |
 
 ## 当前阶段
 
 ### 范围
 
-1. 迁移 `docs/PLAN_MAP.md` 计划索引，加入 `最后更新` 列。
-2. 更新初始化模板，让新项目默认生成 `最后更新`。
-3. 检查脚本解析 `最后更新`，校验日期格式。
-4. `--stale-days N` 对活跃计划做停滞 warning。
-5. 补充测试覆盖新列解析、非法日期、过期 warning、非活跃计划忽略和模板生成。
-6. 更新 README 和设计文档说明。
+阶段 2 只增加显式迁移辅助，不改变检查脚本的五列表报错策略：
+
+1. 在初始化脚本中新增迁移命令，把旧五列表 `PLAN_MAP.md` 转换为六列表。
+2. 迁移命令为每条计划索引行填入指定日期；未指定时使用当天日期。
+3. 已经是六列表的 `PLAN_MAP.md` 不重复修改。
+4. 更新 README 和设计文档说明迁移方式。
+5. 补充测试覆盖旧五列表迁移、已迁移文件幂等和缺失 `PLAN_MAP.md` 报错。
 
 ### 实施步骤
 
-1. 先迁移本仓库 `PLAN_MAP.md`，为现有计划填写明确日期。
-2. 更新 `scripts/check_plan_governance.py` 的计划索引解析逻辑。
-3. 增加日期解析与阈值判断。
-4. 更新 `scripts/init_plan_governance.py` 生成的新 `PLAN_MAP.md` 模板。
-5. 更新测试和说明文档。
+1. 在 `scripts/init_plan_governance.py` 增加 `migrate_plan_map_last_updated()`。
+2. 增加 CLI 参数，例如 `--migrate-plan-map-last-updated` 和可选 `--last-updated-date YYYY-MM-DD`。
+3. 让迁移命令作为 only mode 运行，不初始化新计划。
+4. 增加测试覆盖旧五列表迁移、六列表幂等和缺失文件错误。
+5. 更新 README 和设计文档。
 6. 运行验证命令并记录完成证据。
 
 ### Step 0 证据
 
-当前基线：
+阶段 2 基线：
 
-- `docs/PLAN_MAP.md` 计划索引当前为五列：`计划`、`状态`、`当前阶段`、`依赖`、`证据`。
-- `scripts/check_plan_governance.py` 当前不解析日期，也没有 `--stale-days` 参数。
-- `plan-drift-check-enhancements` 阶段 3 已明确：停滞检测需要 `最后更新` 或等价元数据，不能从文件 mtime 推断。
-- README 和 `plan-governance-design.md` 当前只记录“不推断文件修改时间”，尚未定义实际字段和命令。
+- 阶段 1 已将本仓库 `PLAN_MAP.md` 迁移为六列表。
+- 阶段 1 已让检查脚本对旧五列表输出清晰 `ERROR`。
+- `scripts/init_plan_governance.py --upgrade-existing` 当前刷新辅助文件但不迁移 `docs/PLAN_MAP.md`。
+- 旧项目需要一个显式迁移命令，避免手动编辑表格时破坏列顺序。
 
 ### 验证方式
 
 - 运行 `python3 -m pytest`。
 - 运行 `python3 scripts/check_plan_governance.py .`。
-- 运行 `python3 scripts/check_plan_governance.py . --stale-days 90`。
+- 运行 `python3 scripts/check_plan_governance.py . --stale-days 10`。
+- 在测试 fixture 中验证旧五列表迁移命令。
 - 用 `rg` 搜索 `stale-plan-detection|最后更新|stale-days|计划停滞|WARNING|ERROR`，确认计划、索引、说明文档、脚本和测试同步。
 - 用 `rg` 搜索 `草案为准|以草案为事实源|详见草案|draft is source|source of truth.*draft|以.*draft.*为准`，确认没有旧草案或临时分析文档重新成为事实源。
 
 ### 测试覆盖率
 
-`python3 -m pytest` 通过，pytest-cov 总覆盖率 96.29%，高于 85% 门禁。
+`python3 -m pytest` 通过，pytest-cov 总覆盖率 96.64%，高于 85% 门禁。
 
 ### 完成条件
 
-- `PLAN_MAP.md` 计划索引包含 `最后更新` 列。
-- 初始化模板会生成包含 `最后更新` 的 `PLAN_MAP.md`。
-- 检查脚本能识别非法日期并输出 `ERROR`。
-- `--stale-days` 能对超过阈值的活跃计划输出 `WARNING`。
-- 非活跃计划不会触发停滞 warning。
+- 旧五列表 `PLAN_MAP.md` 可以通过显式迁移命令转换为六列表。
+- 迁移命令支持指定填入的 `最后更新` 日期。
+- 已经是六列表的 `PLAN_MAP.md` 迁移命令保持幂等。
+- 缺失 `docs/PLAN_MAP.md` 时迁移命令输出清晰错误。
 - 新增行为有测试覆盖。
 - README、设计文档和本仓库治理索引没有事实源漂移。
 - `python3 -m pytest`、基础治理检查和 `--stale-days` 检查通过。
@@ -125,15 +127,14 @@ python3 scripts/check_plan_governance.py . --stale-days 90
 
 ### 完成证据
 
-- `docs/PLAN_MAP.md` 计划索引已迁移为 `计划`、`状态`、`当前阶段`、`最后更新`、`依赖`、`证据` 六列，现有计划均填写 `2026-07-05`。
-- `scripts/check_plan_governance.py` 已解析 `最后更新`，校验 `YYYY-MM-DD` 日期格式，并新增 `--stale-days` 参数；省略数值时默认 90 天。
-- `scripts/init_plan_governance.py` 已更新新项目 `PLAN_MAP.md` 模板，默认写入当天日期。
-- `tests/test_check_plan_governance.py` 已覆盖旧五列表报错、非法日期、过期活跃计划 warning、非活跃计划忽略和负数阈值报错。
-- `tests/test_init_plan_governance.py` 已覆盖新模板包含 `最后更新` 列。
-- README 和 `plan-governance-design.md` 已同步 `最后更新` 与 `--stale-days` 规则。
-- `python3 -m pytest` 通过，61 项测试全部通过，pytest-cov 总覆盖率 96.29%。
+- `scripts/init_plan_governance.py` 已新增 `--migrate-plan-map-last-updated` 和 `--last-updated-date YYYY-MM-DD`，可将旧五列表 `PLAN_MAP.md` 显式迁移为包含 `最后更新` 的六列表。
+- 迁移命令对已是六列表的 `PLAN_MAP.md` 保持幂等，缺失 `docs/PLAN_MAP.md` 或非法日期时会给出明确错误。
+- `tests/test_init_plan_governance.py` 已覆盖旧五列表迁移、六列表幂等、缺失文件和非法日期场景。
+- README 和 `plan-governance-design.md` 已同步迁移命令说明。
+- 阶段 1 的默认阈值已根据反馈调整为 10 天，测试和文档均已同步。
+- `python3 -m pytest` 通过，65 项测试全部通过，pytest-cov 总覆盖率 96.64%。
 - `python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。`
-- `python3 scripts/check_plan_governance.py . --stale-days 90` 输出 `计划治理检查通过。`
+- `python3 scripts/check_plan_governance.py . --stale-days 10` 输出 `计划治理检查通过。`
 - `python3 scripts/check_plan_governance.py . --stale-days` 输出 `计划治理检查通过。`
 
 ## 未决问题
@@ -142,7 +143,7 @@ python3 scripts/check_plan_governance.py . --stale-days 90
 |---|---|---|---|
 | 旧五列表 `PLAN_MAP.md` 是报错还是兼容？ | 阶段 1 已实现为清晰 `ERROR`，避免静默跳过停滞检测。 | 否 | 已决定 |
 | `最后更新` 对已完成计划是否必填？ | 本仓库迁移时全部填写；停滞 warning 只作用于活跃状态。 | 否 | 已决定 |
-| 默认阈值是否固定 90 天？ | 阶段 1 已实现为 `--stale-days` 省略数值时默认 90 天，也可显式传入 N。 | 否 | 已决定 |
+| 默认阈值是否固定 10 天？ | 阶段 1 已调整为 `--stale-days` 省略数值时默认 10 天，也可显式传入 N。 | 否 | 已决定 |
 
 ## 风险和回滚
 

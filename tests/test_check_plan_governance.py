@@ -504,12 +504,12 @@ def test_stale_days_warns_for_old_active_plan(tmp_path, monkeypatch, capsys):
         plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2000-01-01 | - | - |"),
     )
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
-    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "90"])
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "10"])
 
     assert check_plan_governance.main() == 0
     output = capsys.readouterr().out
     assert "WARNING" in output
-    assert "超过 --stale-days 90 阈值" in output
+    assert "超过 --stale-days 10 阈值" in output
 
 
 def test_stale_days_ignores_inactive_plan(tmp_path, monkeypatch, capsys):
@@ -518,7 +518,7 @@ def test_stale_days_ignores_inactive_plan(tmp_path, monkeypatch, capsys):
         plan_map("| [demo](plans/demo.md) | 已废弃 | 阶段 1 | 2000-01-01 | - | - |"),
     )
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
-    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "90"])
+    monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "10"])
 
     assert check_plan_governance.main() == 0
     assert "超过 --stale-days" not in capsys.readouterr().out
