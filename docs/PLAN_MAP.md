@@ -24,7 +24,7 @@
 | [independent-acceptance-rules](plans/independent-acceptance-rules.md) | 已完成 | 阶段 1 | 2026-07-05 | draft-history-source-switch | [验证方式](plans/independent-acceptance-rules.md#验证方式) |
 | [plan-drift-check-enhancements](plans/plan-drift-check-enhancements.md) | 已完成 | 阶段 3 | 2026-07-05 | independent-acceptance-rules | [验证方式](plans/plan-drift-check-enhancements.md#验证方式) |
 | [stale-plan-detection](plans/stale-plan-detection.md) | 已完成 | 阶段 2 | 2026-07-05 | plan-drift-check-enhancements | [验证方式](plans/stale-plan-detection.md#验证方式) |
-| [agent-runtime-integration](plans/agent-runtime-integration.md) | 已完成 | 阶段 2 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/agent-runtime-integration.md#验证方式) |
+| [agent-runtime-integration](plans/agent-runtime-integration.md) | 待实施 | 阶段 3 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [Step 0 证据](plans/agent-runtime-integration.md#step-0-证据) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 

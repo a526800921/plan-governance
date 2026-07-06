@@ -137,7 +137,7 @@ docs/attestations/<plan-name>.json
 | 阶段 0 | 固定运行时集成的最小值得做范围 | `planning-with-files` 分析和本仓库现状已确认 | 计划登记、治理检查和反向引用检查通过 | 已完成 |
 | 阶段 1 | 增加最小 hooks runtime 脚本入口 | 阶段 0 完成，确认不自动修改全局配置 | hook 脚本测试、治理检查通过 | 已完成 |
 | 阶段 2 | 增加完成快照和 hash 认证 | 阶段 1 完成，完成快照元数据结构确定 | hash 变化 warning 测试、治理检查通过 | 已完成 |
-| 阶段 3 | 增强作用域匹配 | 阶段 2 完成，真实 hooks 使用暴露噪声点 | drift/hook 路径匹配测试、文档同步通过 | 候选 |
+| 阶段 3 | 增强作用域匹配 | 阶段 2 完成，真实 hooks 使用暴露噪声点 | drift/hook 路径匹配测试、文档同步通过 | 待实施 |
 
 ## 阶段 1 设计补充
 
@@ -227,65 +227,68 @@ Fixture 内容要求：
 
 ### 范围
 
-阶段 2 增加完成快照和 hash 认证，用于检测已完成计划在完成后是否发生未复核修改。
+阶段 3 增强作用域匹配，让 `--drift`、`--pre-commit` 和 `plan_governance_hook.py --event pre-write` 使用一致的影响范围解析和路径匹配规则。
 
-当前阶段只实现显式命令和 warning 级检查。它不自动锁定所有已完成计划，不阻断基础治理检查，不把正常文档修正直接判定为错误。
+当前阶段不新增 `PLAN_MAP.md` 列，不引入 glob 语法，不把自然语言范围解析成路径规则。只增强并统一现有 `影响模块或文件` 列表项的机械解析。
 
-阶段 2 固定以下契约：
+阶段 3 固定以下契约：
 
-- attestation 文件位置：`docs/attestations/<plan-name>.json`。
-- hash 覆盖范围：对应 `docs/plans/<plan-name>.md` 和 `docs/PLAN_MAP.md`。
-- 创建命令：`python3 scripts/check_plan_governance.py . --attest <plan-name>`。
-- 检查命令：`python3 scripts/check_plan_governance.py . --check-attestations`。
-- `--check-attestations` 对 hash 变化、引用缺失或 JSON 损坏输出 `WARNING`，不改变退出码。
-- `--attest` 只对已登记到 `PLAN_MAP.md` 的计划创建或覆盖快照；未登记计划返回 `ERROR`。
-- 重新验收并确认文档修正合理后，可以再次运行 `--attest <plan-name>` 重建快照。
+- `影响模块或文件` 是阶段 3 的唯一作用域事实源。
+- 支持列表项中的反引号、前后空白、前导 `./` 和尾随 `/` 归一化。
+- 支持精确文件匹配和目录前缀匹配。
+- 支持同一列表项中带说明文本时提取第一个反引号路径，例如 ``- `scripts/`: 检查脚本``。
+- 不支持 `*`、`**`、正则表达式或否定规则；出现这些表达时按普通字符串处理或输出 warning。
+- `check_plan_governance.py` 和 `plan_governance_hook.py` 应复用同一套路径归一化和匹配语义；可以通过提取共享 helper 或保持同名同逻辑函数并用测试固定。
 
 ### 实施步骤
 
-1. 在 `tests/test_check_plan_governance.py` 增加 attestation fixture。
-2. 增加 SHA-256 计算函数，使用文件字节内容计算 hash。
-3. 在 `scripts/check_plan_governance.py` 增加 `--attest <plan-name>`。
-4. `--attest` 读取 `PLAN_MAP.md` 中登记的计划路径，创建 `docs/attestations/<plan-name>.json`。
-5. 在 `scripts/check_plan_governance.py` 增加 `--check-attestations`。
-6. `--check-attestations` 读取 `docs/attestations/*.json`，对比当前文件 hash。
-7. 更新 README、已安装 skill 和本计划完成证据。
-8. 运行测试、治理检查、attestation 小样本验证和反向引用搜索。
+1. 为 `scripts/check_plan_governance.py` 增加作用域解析测试，覆盖反引号路径、带说明文本、前导 `./`、尾随 `/`、文件精确匹配和目录前缀匹配。
+2. 为 `scripts/plan_governance_hook.py` 增加对应 pre-write 测试，确认 hook 与 drift 使用一致规则。
+3. 统一路径归一化函数，必要时提取到脚本内同名 helper，避免两套实现继续漂移。
+4. 调整 `extract_affected_targets()` 或 `markdown_list_items()`，只提取明确路径 token，避免把说明文字整体当成路径。
+5. 调整 `target_matches_path()`，固定前导 `./`、尾随 `/` 和重复斜杠归一化。
+6. 更新 README、已安装 skill 和本计划完成证据。
+7. 运行测试、治理检查、drift/pre-write 小样本验证和反向引用搜索。
 
 ### Step 0 证据
 
-阶段 2 的 Step 0 fixture：
+阶段 3 的 Step 0 fixture：
 
 ```text
 tmp/
   docs/
     PLAN_MAP.md
     plans/
-      completed-plan.md
-    attestations/
-      completed-plan.json
+      scoped-plan.md
+  scripts/
+    check_plan_governance.py
 ```
 
 Fixture 内容要求：
 
-- `PLAN_MAP.md` 登记 `completed-plan`，状态为 `已完成`。
-- `completed-plan.md` 包含有效 Step 0 证据、验证方式和测试覆盖率证据。
-- `--attest completed-plan` 生成 `docs/attestations/completed-plan.json`。
-- 修改 `completed-plan.md` 后，`--check-attestations` 输出 hash 变化 `WARNING`，但返回码仍为 0。
-- 修改 `docs/PLAN_MAP.md` 后，`--check-attestations` 输出 `PLAN_MAP.md` hash 变化 `WARNING`，但返回码仍为 0。
-- JSON 损坏、计划文件缺失、attestation 指向未登记计划时，`--check-attestations` 输出 `WARNING`，不改变基础检查退出码。
+- `PLAN_MAP.md` 登记 1 个 `实施中` 计划 `scoped-plan`。
+- `scoped-plan.md` 的 `影响模块或文件` 包含：
+  - ``- `./scripts/`: 检查脚本和 hook runtime``
+  - ``- `tests/test_check_plan_governance.py` ``
+  - `- README.md`
+- `--drift` 对 `scripts/check_plan_governance.py` 应匹配 `./scripts/`，不输出未覆盖 warning。
+- `--drift` 对 `tests/test_check_plan_governance.py` 应精确匹配，不输出未覆盖 warning。
+- `--drift` 对 `docs/other.md` 应输出未覆盖 warning。
+- `pre-write --paths scripts/plan_governance_hook.py` 应匹配 `scoped-plan`。
+- `pre-write --paths docs/other.md` 应输出未匹配相关活跃计划。
 
-这些 fixture 固定了阶段 2 的核心边界：快照用于提示复核，不用于自动阻断或自动判定文档修正非法。
+这些 fixture 固定阶段 3 的核心边界：作用域匹配只做路径级机械判断，不引入 glob、正则或自然语言推断。
 
 ### 验证方式
 
-阶段 2 验证命令：
+阶段 3 验证命令：
 
 ```bash
 python3 -m pytest
 python3 scripts/check_plan_governance.py .
-python3 scripts/check_plan_governance.py . --check-attestations
-rg -n "agent-runtime-integration|attestation|attest|check-attestations|完成快照|hash|sha256" docs README.md plan-governance-design.md scripts tests
+python3 scripts/check_plan_governance.py . --drift
+python3 scripts/plan_governance_hook.py --event pre-write --paths scripts/check_plan_governance.py
+rg -n "agent-runtime-integration|影响模块或文件|作用域匹配|target_matches_path|extract_affected_targets|pre-write|--drift" docs README.md plan-governance-design.md scripts tests
 rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of truth.*draft|以.*draft.*为准" .
 ```
 
@@ -293,26 +296,25 @@ rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of
 
 - pytest 通过且覆盖率高于 85%。
 - 治理检查通过。
-- attestation 相关事实同步到计划、README、脚本、测试和已安装 skill。
-- `--check-attestations` 无快照时可安静通过；存在快照漂移时输出 `WARNING` 且返回码为 0。
+- `--drift` 和 `pre-write` 作用域匹配相关事实同步到计划、README、脚本、测试和已安装 skill。
+- 路径归一化和匹配行为由测试固定。
 - 未发现旧草案或临时分析文档重新成为事实源。
 
 ### 测试覆盖率
 
-`python3 -m pytest` 通过，77 项测试全部通过，pytest-cov 总覆盖率 92.46%，高于 85% 门禁。
+阶段 3 修改检查脚本、hook 脚本和测试，完成时必须记录 `python3 -m pytest` 的覆盖率结果。
 
 ### 完成条件
 
-- `scripts/check_plan_governance.py` 支持 `--attest <plan-name>`。
-- `scripts/check_plan_governance.py` 支持 `--check-attestations`。
-- `docs/attestations/<plan-name>.json` 的字段结构稳定并有测试覆盖。
-- hash 覆盖对应计划文件和 `docs/PLAN_MAP.md`。
-- hash 变化、文件缺失、JSON 损坏和未登记计划均输出 `WARNING`，不改变检查退出码。
-- 未登记计划执行 `--attest` 返回 `ERROR`。
-- README 和已安装 skill 记录命令和 warning 语义。
+- `check_plan_governance.py` 和 `plan_governance_hook.py` 的路径匹配语义一致。
+- `影响模块或文件` 支持第一个反引号路径提取和纯文本路径提取。
+- 前导 `./`、尾随 `/` 和重复斜杠被归一化。
+- 文件精确匹配和目录前缀匹配有测试覆盖。
+- 带说明文字的列表项不会被整体误当作路径。
+- README 和已安装 skill 记录作用域匹配规则。
 - `python3 -m pytest` 通过并记录覆盖率。
 - `python3 scripts/check_plan_governance.py .` 通过。
-- `python3 scripts/check_plan_governance.py . --check-attestations` 通过。
+- `python3 scripts/check_plan_governance.py . --drift` 行为符合当前活跃计划状态。
 - 反向引用和草案事实源搜索通过。
 
 ### 完成证据
