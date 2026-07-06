@@ -158,6 +158,24 @@ python3 scripts/check_plan_governance.py . --stale-days 10
 
 `--stale-days` 会检查活跃计划的 `最后更新` 日期是否超过阈值；省略数值时默认 10 天。停滞检测只输出 `WARNING`，不自动改变计划状态。
 
+## Hook runtime
+
+本仓库提供只读 hook runtime，供 Codex、Claude Code 或其他 Agent 的项目级 hooks 手动接入。脚本只输出短提示和检查结果，不修改治理文档，不更新 `最后更新`，不安装或修改全局配置。
+
+```bash
+python3 scripts/plan_governance_hook.py --event session-start
+python3 scripts/plan_governance_hook.py --event pre-write --paths scripts/check_plan_governance.py
+python3 scripts/plan_governance_hook.py --event post-write --paths docs/PLAN_MAP.md
+python3 scripts/plan_governance_hook.py --event stop
+```
+
+事件语义：
+
+- `session-start`：摘要活跃计划、当前阶段、最后更新、阻塞项和证据链接。
+- `pre-write`：按活跃计划的 `影响模块或文件` 匹配路径，提示当前阶段门禁。
+- `post-write`：写入 `PLAN_MAP.md` 或计划文档后，提示同步状态、证据、覆盖率和反向引用检查。
+- `stop`：运行 `python3 scripts/check_plan_governance.py .` 并转发结果；该事件是非阻塞提示，不实现强制 gate。
+
 旧项目如果仍使用五列 `PLAN_MAP.md`，先显式迁移：
 
 ```bash
