@@ -136,7 +136,7 @@ docs/attestations/<plan-name>.json
 |---|---|---|---|---|
 | 阶段 0 | 固定运行时集成的最小值得做范围 | `planning-with-files` 分析和本仓库现状已确认 | 计划登记、治理检查和反向引用检查通过 | 已完成 |
 | 阶段 1 | 增加最小 hooks runtime 脚本入口 | 阶段 0 完成，确认不自动修改全局配置 | hook 脚本测试、治理检查通过 | 已完成 |
-| 阶段 2 | 增加完成快照和 hash 认证 | 阶段 1 完成，完成快照元数据结构确定 | hash 变化 warning 测试、治理检查通过 | 待实施 |
+| 阶段 2 | 增加完成快照和 hash 认证 | 阶段 1 完成，完成快照元数据结构确定 | hash 变化 warning 测试、治理检查通过 | 已完成 |
 | 阶段 3 | 增强作用域匹配 | 阶段 2 完成，真实 hooks 使用暴露噪声点 | drift/hook 路径匹配测试、文档同步通过 | 候选 |
 
 ## 阶段 1 设计补充
@@ -299,7 +299,7 @@ rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 测试覆盖率
 
-阶段 2 修改检查脚本和测试，完成时必须记录 `python3 -m pytest` 的覆盖率结果。
+`python3 -m pytest` 通过，77 项测试全部通过，pytest-cov 总覆盖率 92.46%，高于 85% 门禁。
 
 ### 完成条件
 
@@ -317,14 +317,16 @@ rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 完成证据
 
-- 新增 `scripts/plan_governance_hook.py`，支持 `session-start`、`pre-write`、`post-write` 和 `stop` 四个事件。
-- 新增 `tests/test_plan_governance_hooks.py`，覆盖四个事件、路径匹配、未匹配提示、post-write 同步提醒、stop 非阻塞检查和 fixture 只读边界。
-- README 已记录 hook runtime 的手动接入方式，明确不自动安装 hooks、不修改全局配置、`stop` 事件不做强制 gate。
-- 已安装 skill `/Users/jafish/.codex/skills/plan-governance/SKILL.md` 已同步 hook runtime 说明。
-- `python3 -m pytest` 通过，71 项测试全部通过，pytest-cov 总覆盖率 92.95%。
+- `scripts/check_plan_governance.py` 已支持 `--attest <plan-name>`，为已登记计划创建或覆盖 `docs/attestations/<plan-name>.json`。
+- `scripts/check_plan_governance.py` 已支持 `--check-attestations`，检查计划文件和 `docs/PLAN_MAP.md` 的 hash 漂移。
+- `tests/test_check_plan_governance.py` 已覆盖快照创建、未登记计划 attest 失败、hash 匹配、计划文件 hash 变化、`PLAN_MAP.md` hash 变化、坏 JSON 和未登记快照 warning。
+- README 已记录完成快照命令和 warning 语义。
+- 已安装 skill `/Users/jafish/.codex/skills/plan-governance/SKILL.md` 已同步 attestation 命令说明。
+- 真实仓库小样本验证：`python3 scripts/check_plan_governance.py . --attest agent-runtime-integration` 创建快照后，`python3 scripts/check_plan_governance.py . --check-attestations` 通过；临时快照已删除，避免提交验收产物。
+- `python3 -m pytest` 通过，77 项测试全部通过，pytest-cov 总覆盖率 92.46%。
 - `python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。`
-- `python3 scripts/check_plan_governance.py . --stale-days 10` 输出 `计划治理检查通过。`
-- `rg -n "agent-runtime-integration|plan_governance_hook|session-start|pre-write|post-write|只读边界|hooks runtime" docs README.md plan-governance-design.md scripts tests` 已确认计划、README、脚本、测试和 `PLAN_MAP.md` 同步。
+- `python3 scripts/check_plan_governance.py . --check-attestations` 输出 `计划治理检查通过。`
+- `rg -n "agent-runtime-integration|attestation|attest|check-attestations|完成快照|hash|sha256" docs README.md plan-governance-design.md scripts tests` 已确认计划、README、脚本、测试和 `PLAN_MAP.md` 同步。
 - `rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of truth.*draft|以.*draft.*为准" .` 未发现旧草案重新成为事实源；命中均为规则文本、历史计划或本计划验证命令。
 
 ## 未决问题

@@ -24,7 +24,7 @@
 | [independent-acceptance-rules](plans/independent-acceptance-rules.md) | 已完成 | 阶段 1 | 2026-07-05 | draft-history-source-switch | [验证方式](plans/independent-acceptance-rules.md#验证方式) |
 | [plan-drift-check-enhancements](plans/plan-drift-check-enhancements.md) | 已完成 | 阶段 3 | 2026-07-05 | independent-acceptance-rules | [验证方式](plans/plan-drift-check-enhancements.md#验证方式) |
 | [stale-plan-detection](plans/stale-plan-detection.md) | 已完成 | 阶段 2 | 2026-07-05 | plan-drift-check-enhancements | [验证方式](plans/stale-plan-detection.md#验证方式) |
-| [agent-runtime-integration](plans/agent-runtime-integration.md) | 待实施 | 阶段 2 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [Step 0 证据](plans/agent-runtime-integration.md#step-0-证据) |
+| [agent-runtime-integration](plans/agent-runtime-integration.md) | 已完成 | 阶段 2 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/agent-runtime-integration.md#验证方式) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -76,3 +76,4 @@
 | stale-plan-detection | 阶段 1 | `python3 -m pytest` 通过，覆盖率 96.29%；`--stale-days 10` 和默认阈值验证通过；治理检查通过；反向引用搜索通过 |
 | stale-plan-detection | 阶段 2 | `python3 -m pytest` 通过，覆盖率 96.64%；旧五列表迁移辅助测试通过；治理检查和 `--stale-days 10` 通过；反向引用搜索通过 |
 | agent-runtime-integration | 阶段 1 | `python3 -m pytest` 通过，覆盖率 92.95%；治理检查和 `--stale-days 10` 通过；反向引用搜索通过 |
+| agent-runtime-integration | 阶段 2 | `python3 -m pytest` 通过，覆盖率 92.46%；`--attest` 和 `--check-attestations` 小样本验证通过；治理检查通过；反向引用搜索通过 |

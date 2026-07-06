@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
+import json
 import re
 import subprocess
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 VALID_STATUSES = {
@@ -277,6 +279,77 @@ def warn_stale_plans(warnings, plans, stale_days, today=None):
             )
 
 
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def relative_to_root(path, root):
+    return path.relative_to(root).as_posix()
+
+
+def create_attestation(root, plan_map, plans, plan_name, errors):
+    data = plans.get(plan_name)
+    if data is None:
+        fail(errors, f"{plan_name}: 未登记计划，无法创建完成快照")
+        return None
+    if not data["path"].exists():
+        fail(errors, f"{plan_name}: 计划文件不存在，无法创建完成快照")
+        return None
+
+    attestation = {
+        "plan": plan_name,
+        "phase": data["phase"],
+        "status": data["status"],
+        "plan_path": relative_to_root(data["path"], root),
+        "plan_map_path": relative_to_root(plan_map, root),
+        "plan_sha256": sha256_file(data["path"]),
+        "plan_map_sha256": sha256_file(plan_map),
+        "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "created_by": "plan-governance",
+        "reason": "阶段完成快照",
+    }
+    target = root / "docs" / "attestations" / f"{plan_name}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(attestation, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return target
+
+
+def warn_attestation_drift(warnings, root, plans):
+    attestations_dir = root / "docs" / "attestations"
+    if not attestations_dir.exists():
+        return
+
+    for path in sorted(attestations_dir.glob("*.json")):
+        try:
+            attestation = json.loads(path.read_text(encoding="utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            warn(warnings, f"{path}: attestation JSON 无法解析：{exc}")
+            continue
+
+        plan_name = str(attestation.get("plan", "")).strip()
+        if not plan_name or plan_name not in plans:
+            warn(warnings, f"{path}: 快照引用了未登记计划：{plan_name or '<missing>'}")
+            continue
+
+        plan_path = root / str(attestation.get("plan_path", ""))
+        plan_map_path = root / str(attestation.get("plan_map_path", "docs/PLAN_MAP.md"))
+        if not plan_path.exists():
+            warn(warnings, f"{path}: 快照引用的计划文件不存在：{plan_path}")
+            continue
+        if not plan_map_path.exists():
+            warn(warnings, f"{path}: 快照引用的 PLAN_MAP.md 不存在：{plan_map_path}")
+            continue
+
+        if sha256_file(plan_path) != attestation.get("plan_sha256"):
+            warn(warnings, f"{path}: {plan_name} 计划文件 hash 已变化，需要人工复核")
+        if sha256_file(plan_map_path) != attestation.get("plan_map_sha256"):
+            warn(warnings, f"{path}: PLAN_MAP.md hash 已变化，需要人工复核")
+
+
 def detect_dependency_cycles(edges):
     visited = set()
     stack = set()
@@ -304,6 +377,8 @@ def parse_args(argv):
     parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
     parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
     parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
+    parser.add_argument("--attest", metavar="PLAN", help="为已登记计划创建或覆盖完成快照。")
+    parser.add_argument("--check-attestations", action="store_true", help="检查完成快照 hash 是否漂移。")
     parser.add_argument(
         "--stale-days",
         nargs="?",
@@ -357,6 +432,7 @@ def main(argv=None):
             plans[name] = {
                 "path": path,
                 "status": status,
+                "phase": row[2].strip("` "),
                 "last_updated_date": last_updated_date,
                 "depends": row[4],
             }
@@ -421,6 +497,13 @@ def main(argv=None):
         else:
             warn_stale_plans(warnings, plans, args.stale_days)
 
+    if args.check_attestations:
+        warn_attestation_drift(warnings, root, plans)
+
+    attested_path = None
+    if args.attest:
+        attested_path = create_attestation(root, plan_map, plans, args.attest, errors)
+
     for warning in warnings:
         print(f"WARNING: {warning}")
 
@@ -428,6 +511,9 @@ def main(argv=None):
         for error in errors:
             print(f"ERROR: {error}")
         return 1
+
+    if attested_path is not None:
+        print(f"已创建完成快照：{attested_path}")
 
     print("计划治理检查通过。")
     return 0

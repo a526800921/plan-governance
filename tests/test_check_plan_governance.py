@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import subprocess
 from pathlib import Path
 
@@ -577,3 +578,121 @@ def test_has_completion_evidence_accepts_commands_paths_and_baselines():
         )
         is True
     )
+
+
+def test_attest_creates_snapshot_for_indexed_plan(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo"]) == 0
+    output = capsys.readouterr().out
+    attestation = tmp_path / "docs" / "attestations" / "demo.json"
+    data = json.loads(attestation.read_text(encoding="utf-8"))
+
+    assert "已创建完成快照" in output
+    assert data["plan"] == "demo"
+    assert data["phase"] == "阶段 1"
+    assert data["status"] == "已完成"
+    assert len(data["plan_sha256"]) == 64
+    assert len(data["plan_map_sha256"]) == 64
+    assert data["plan_path"] == "docs/plans/demo.md"
+    assert data["plan_map_path"] == "docs/PLAN_MAP.md"
+    assert data["reason"] == "阶段完成快照"
+
+
+def test_attest_unknown_plan_fails(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+
+    assert check_plan_governance.main([str(tmp_path), "--attest", "missing"]) == 1
+    assert "未登记计划，无法创建完成快照" in capsys.readouterr().out
+
+
+def test_check_attestations_passes_when_hashes_match(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo"]) == 0
+    capsys.readouterr()
+
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "WARNING" not in output
+    assert "检查通过" in output
+
+
+def test_check_attestations_warns_when_plan_hash_changes(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    write(plan, plan_text(with_coverage=True))
+
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo"]) == 0
+    capsys.readouterr()
+    plan.write_text(plan.read_text(encoding="utf-8") + "\n补充说明。\n", encoding="utf-8")
+
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "计划文件 hash 已变化" in output
+    assert "检查通过" in output
+
+
+def test_check_attestations_warns_when_plan_map_hash_changes(tmp_path, capsys):
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    write(
+        plan_map_path,
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo"]) == 0
+    capsys.readouterr()
+    plan_map_path.write_text(plan_map_path.read_text(encoding="utf-8") + "\n<!-- changed -->\n", encoding="utf-8")
+
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "PLAN_MAP.md hash 已变化" in output
+    assert "检查通过" in output
+
+
+def test_check_attestations_warns_for_bad_json_and_missing_plan(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+    write(tmp_path / "docs" / "attestations" / "bad.json", "{")
+    write(
+        tmp_path / "docs" / "attestations" / "missing.json",
+        json.dumps(
+            {
+                "plan": "missing",
+                "phase": "阶段 1",
+                "status": "已完成",
+                "plan_path": "docs/plans/missing.md",
+                "plan_map_path": "docs/PLAN_MAP.md",
+                "plan_sha256": "0" * 64,
+                "plan_map_sha256": "0" * 64,
+            }
+        ),
+    )
+
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert "attestation JSON 无法解析" in output
+    assert "快照引用了未登记计划" in output
+    assert "检查通过" in output

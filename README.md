@@ -203,6 +203,17 @@ python3 scripts/init_plan_governance.py --root . --migrate-plan-map-last-updated
 
 已完成计划修改检测需要完成快照或 hash 等独立元数据；当前版本不锁定已完成计划文件，避免修正文档错误时产生误报。公共契约变化关联验证需要计划文档提供结构化目标文件声明；当前版本不做 spec diff 强校验。
 
+## 完成快照
+
+已完成计划可以显式创建完成快照，用于后续发现未复核修改。快照文件写入 `docs/attestations/<plan-name>.json`，包含计划文件和 `docs/PLAN_MAP.md` 的 SHA-256。
+
+```bash
+python3 scripts/check_plan_governance.py . --attest agent-runtime-integration
+python3 scripts/check_plan_governance.py . --check-attestations
+```
+
+`--attest <plan-name>` 只接受已登记到 `docs/PLAN_MAP.md` 的计划。`--check-attestations` 对计划文件 hash 变化、`PLAN_MAP.md` hash 变化、JSON 损坏、文件缺失或快照引用未登记计划输出 `WARNING`，不改变退出码。人工确认文档修正合理后，可以重新运行 `--attest <plan-name>` 覆盖快照。
+
 ## 测试覆盖率
 
 本项目使用 `pytest` 和 `pytest-cov` 作为测试与覆盖率门禁。首次运行前安装开发依赖：
