@@ -136,7 +136,7 @@ docs/attestations/<plan-name>.json
 |---|---|---|---|---|
 | 阶段 0 | 固定运行时集成的最小值得做范围 | `planning-with-files` 分析和本仓库现状已确认 | 计划登记、治理检查和反向引用检查通过 | 已完成 |
 | 阶段 1 | 增加最小 hooks runtime 脚本入口 | 阶段 0 完成，确认不自动修改全局配置 | hook 脚本测试、治理检查通过 | 已完成 |
-| 阶段 2 | 增加完成快照和 hash 认证 | 阶段 1 完成，完成快照元数据结构确定 | hash 变化 warning 测试、治理检查通过 | 候选 |
+| 阶段 2 | 增加完成快照和 hash 认证 | 阶段 1 完成，完成快照元数据结构确定 | hash 变化 warning 测试、治理检查通过 | 待实施 |
 | 阶段 3 | 增强作用域匹配 | 阶段 2 完成，真实 hooks 使用暴露噪声点 | drift/hook 路径匹配测试、文档同步通过 | 候选 |
 
 ## 阶段 1 设计补充
@@ -227,39 +227,65 @@ Fixture 内容要求：
 
 ### 范围
 
-阶段 1 增加最小 hooks runtime 脚本入口，让 Agent 或手动命令在会话开始、写入前、写入后和停止前读取治理文档并输出短提示。
+阶段 2 增加完成快照和 hash 认证，用于检测已完成计划在完成后是否发生未复核修改。
 
-当前阶段只实现项目内脚本和测试，不安装真实 hooks，不修改全局配置，不自动写治理文档。
+当前阶段只实现显式命令和 warning 级检查。它不自动锁定所有已完成计划，不阻断基础治理检查，不把正常文档修正直接判定为错误。
+
+阶段 2 固定以下契约：
+
+- attestation 文件位置：`docs/attestations/<plan-name>.json`。
+- hash 覆盖范围：对应 `docs/plans/<plan-name>.md` 和 `docs/PLAN_MAP.md`。
+- 创建命令：`python3 scripts/check_plan_governance.py . --attest <plan-name>`。
+- 检查命令：`python3 scripts/check_plan_governance.py . --check-attestations`。
+- `--check-attestations` 对 hash 变化、引用缺失或 JSON 损坏输出 `WARNING`，不改变退出码。
+- `--attest` 只对已登记到 `PLAN_MAP.md` 的计划创建或覆盖快照；未登记计划返回 `ERROR`。
+- 重新验收并确认文档修正合理后，可以再次运行 `--attest <plan-name>` 重建快照。
 
 ### 实施步骤
 
-1. 新增 `tests/test_plan_governance_hooks.py`，用 fixture 固定四个事件的输出和只读边界。
-2. 新增 `scripts/plan_governance_hook.py`。
-3. 支持 `session-start`、`pre-write`、`post-write`、`stop` 四个事件。
-4. `pre-write` 按活跃计划的 `影响模块或文件` 匹配路径。
-5. `post-write` 对 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 输出同步提醒。
-6. `stop` 运行 `python3 scripts/check_plan_governance.py .` 并转发摘要，但不实现强阻塞 gate。
-7. 运行测试、治理检查和反向引用搜索。
+1. 在 `tests/test_check_plan_governance.py` 增加 attestation fixture。
+2. 增加 SHA-256 计算函数，使用文件字节内容计算 hash。
+3. 在 `scripts/check_plan_governance.py` 增加 `--attest <plan-name>`。
+4. `--attest` 读取 `PLAN_MAP.md` 中登记的计划路径，创建 `docs/attestations/<plan-name>.json`。
+5. 在 `scripts/check_plan_governance.py` 增加 `--check-attestations`。
+6. `--check-attestations` 读取 `docs/attestations/*.json`，对比当前文件 hash。
+7. 更新 README、已安装 skill 和本计划完成证据。
+8. 运行测试、治理检查、attestation 小样本验证和反向引用搜索。
 
 ### Step 0 证据
 
-阶段 1 的 Step 0 fixture 已在“阶段 1 设计补充”中固定：
+阶段 2 的 Step 0 fixture：
 
-- `PLAN_MAP.md` 包含 1 个 `实施中` 计划和 1 个 `已完成` 计划。
-- 活跃计划的 `影响模块或文件` 包含 `scripts/` 和 `tests/`。
-- 已完成计划用于确认 `pre-write` 不会把完成计划当作活跃计划提示。
-- `scripts/check_plan_governance.py` 用最小 stub 固定 `stop` 事件调用和输出。
+```text
+tmp/
+  docs/
+    PLAN_MAP.md
+    plans/
+      completed-plan.md
+    attestations/
+      completed-plan.json
+```
 
-这些 fixture 先于实现定义了最小可观察行为，覆盖路径匹配、未匹配提示、同步提醒、stop 检查转发和只读边界。
+Fixture 内容要求：
+
+- `PLAN_MAP.md` 登记 `completed-plan`，状态为 `已完成`。
+- `completed-plan.md` 包含有效 Step 0 证据、验证方式和测试覆盖率证据。
+- `--attest completed-plan` 生成 `docs/attestations/completed-plan.json`。
+- 修改 `completed-plan.md` 后，`--check-attestations` 输出 hash 变化 `WARNING`，但返回码仍为 0。
+- 修改 `docs/PLAN_MAP.md` 后，`--check-attestations` 输出 `PLAN_MAP.md` hash 变化 `WARNING`，但返回码仍为 0。
+- JSON 损坏、计划文件缺失、attestation 指向未登记计划时，`--check-attestations` 输出 `WARNING`，不改变基础检查退出码。
+
+这些 fixture 固定了阶段 2 的核心边界：快照用于提示复核，不用于自动阻断或自动判定文档修正非法。
 
 ### 验证方式
 
-阶段 1 验证命令：
+阶段 2 验证命令：
 
 ```bash
 python3 -m pytest
 python3 scripts/check_plan_governance.py .
-rg -n "agent-runtime-integration|plan_governance_hook|session-start|pre-write|post-write|只读边界|hooks runtime" docs README.md plan-governance-design.md scripts tests
+python3 scripts/check_plan_governance.py . --check-attestations
+rg -n "agent-runtime-integration|attestation|attest|check-attestations|完成快照|hash|sha256" docs README.md plan-governance-design.md scripts tests
 rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of truth.*draft|以.*draft.*为准" .
 ```
 
@@ -267,22 +293,26 @@ rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of
 
 - pytest 通过且覆盖率高于 85%。
 - 治理检查通过。
-- hook runtime 相关事实同步到计划、脚本和测试。
+- attestation 相关事实同步到计划、README、脚本、测试和已安装 skill。
+- `--check-attestations` 无快照时可安静通过；存在快照漂移时输出 `WARNING` 且返回码为 0。
 - 未发现旧草案或临时分析文档重新成为事实源。
 
 ### 测试覆盖率
 
-`python3 -m pytest` 通过，71 项测试全部通过，pytest-cov 总覆盖率 92.95%，高于 85% 门禁。
+阶段 2 修改检查脚本和测试，完成时必须记录 `python3 -m pytest` 的覆盖率结果。
 
 ### 完成条件
 
-- `scripts/plan_governance_hook.py` 存在并支持四个事件。
-- `tests/test_plan_governance_hooks.py` 覆盖四个事件和只读边界。
-- hook 输出保持短摘要，不反复注入完整计划正文。
-- `stop` 事件运行治理检查但不实现强阻塞 gate。
-- README、已安装 skill 或代理规则只说明手动接入方式，不自动安装 hooks。
+- `scripts/check_plan_governance.py` 支持 `--attest <plan-name>`。
+- `scripts/check_plan_governance.py` 支持 `--check-attestations`。
+- `docs/attestations/<plan-name>.json` 的字段结构稳定并有测试覆盖。
+- hash 覆盖对应计划文件和 `docs/PLAN_MAP.md`。
+- hash 变化、文件缺失、JSON 损坏和未登记计划均输出 `WARNING`，不改变检查退出码。
+- 未登记计划执行 `--attest` 返回 `ERROR`。
+- README 和已安装 skill 记录命令和 warning 语义。
 - `python3 -m pytest` 通过并记录覆盖率。
 - `python3 scripts/check_plan_governance.py .` 通过。
+- `python3 scripts/check_plan_governance.py . --check-attestations` 通过。
 - 反向引用和草案事实源搜索通过。
 
 ### 完成证据
@@ -303,7 +333,7 @@ rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of
 |---|---|---|---|
 | 第一阶段是否生成真实 `.codex/hooks.json`？ | 阶段 1 先生成项目内脚本和文档说明；真实 hook 配置作为可选输出，避免误改用户全局配置。 | 否 | 待决定 |
 | Stop hook 是否应阻塞？ | 当前不做；除非后续有明确 gate 收益和防循环边界。 | 否 | 待决定 |
-| attestation 元数据是否进入 `docs/attestations/`？ | 阶段 2 用测试 fixture 决定；当前只固定不能写入计划正文自身。 | 否 | 待决定 |
+| attestation 元数据是否进入 `docs/attestations/`？ | 阶段 2 已决定使用 `docs/attestations/<plan-name>.json`，且不写入计划正文自身。 | 否 | 已决定 |
 
 ## 风险和回滚
 
