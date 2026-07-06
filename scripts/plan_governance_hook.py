@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 ACTIVE_STATUSES = {"候选", "设计中", "待实施", "实施中"}
+PLACEHOLDER_VALUES = {"-", "待补充", "待补充。", "待确认", "无", "N/A"}
 
 
 def read_text(path):
@@ -71,9 +72,26 @@ def markdown_list_items(section):
         if not match:
             continue
         item = match.group(1).strip().strip("` ")
-        if item and item not in {"-", "待补充", "待确认", "无", "N/A"}:
+        if item and item not in PLACEHOLDER_VALUES:
             items.append(item)
     return items
+
+
+def normalize_scope_path(value):
+    normalized = value.strip().strip("`").strip()
+    normalized = re.sub(r"/+", "/", normalized)
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = normalized.strip("/")
+    return normalized
+
+
+def extract_scope_token(item):
+    backtick = re.search(r"`([^`]+)`", item)
+    if backtick:
+        return normalize_scope_path(backtick.group(1))
+    token = item.strip().split(None, 1)[0] if item.strip() else ""
+    return normalize_scope_path(token.rstrip(":："))
 
 
 def load_plans(root):
@@ -102,7 +120,12 @@ def load_plans(root):
             continue
         plan_text = read_text(plan["path"])
         section = markdown_section(plan_text, ["影响模块或文件"])
-        plan["targets"] = markdown_list_items(section)
+        plan["targets"] = [
+            target
+            for item in markdown_list_items(section)
+            if (target := extract_scope_token(item))
+            and target not in PLACEHOLDER_VALUES
+        ]
     return plans, table_rows(text, "当前阻塞项")
 
 
@@ -111,13 +134,9 @@ def active_plans(root):
     return [plan for plan in plans if plan["status"] in ACTIVE_STATUSES], blockers
 
 
-def normalize_path(value):
-    return value.strip().strip("`").strip("/")
-
-
 def target_matches_path(target, path):
-    normalized_target = normalize_path(target)
-    normalized_path = normalize_path(path)
+    normalized_target = normalize_scope_path(target)
+    normalized_path = normalize_scope_path(path)
     if not normalized_target or not normalized_path:
         return False
     if normalized_target == normalized_path:
@@ -176,11 +195,11 @@ def print_pre_write(root, paths):
 
 
 def is_plan_map(path):
-    return normalize_path(path) == "docs/PLAN_MAP.md"
+    return normalize_scope_path(path) == "docs/PLAN_MAP.md"
 
 
 def is_plan_doc(path):
-    normalized = normalize_path(path)
+    normalized = normalize_scope_path(path)
     return normalized.startswith("docs/plans/") and normalized.endswith(".md")
 
 

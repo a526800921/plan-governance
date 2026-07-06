@@ -156,6 +156,14 @@ python3 scripts/check_plan_governance.py . --stale-days 10
 
 `--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
 
+作用域匹配规则同样用于 `plan_governance_hook.py --event pre-write`：
+
+- 优先提取列表项中的第一个反引号路径，例如 ``- `./scripts/`: 检查脚本``。
+- 没有反引号时提取列表项的第一个纯文本 token，例如 `- README.md`。
+- 匹配前会归一化前导 `./`、尾随 `/` 和重复斜杠。
+- 支持文件精确匹配和目录前缀匹配。
+- 不支持 glob、正则、否定规则或自然语言推断。
+
 `--stale-days` 会检查活跃计划的 `最后更新` 日期是否超过阈值；省略数值时默认 10 天。停滞检测只输出 `WARNING`，不自动改变计划状态。
 
 ## Hook runtime

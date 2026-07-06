@@ -434,7 +434,51 @@ def test_self_plan_reference_is_ignored(tmp_path, monkeypatch, capsys):
 def test_target_matches_exact_file_or_directory_prefix():
     assert check_plan_governance.target_matches_path("src/api.py", "src/api.py") is True
     assert check_plan_governance.target_matches_path("src", "src/api.py") is True
+    assert check_plan_governance.target_matches_path("./src/", "src/api.py") is True
+    assert check_plan_governance.target_matches_path("src//nested/", "./src/nested/file.py") is True
     assert check_plan_governance.target_matches_path("src/api.py", "src/api_extra.py") is False
+
+
+def test_extract_affected_targets_prefers_backticked_path_and_normalizes_text_path():
+    plan_text = """# 计划：demo
+
+## 影响模块或文件
+
+- `./scripts/`: 检查脚本和 hook runtime
+- `tests/test_check_plan_governance.py`
+- README.md
+- 待补充。
+"""
+
+    assert check_plan_governance.extract_affected_targets(plan_text) == [
+        "scripts",
+        "tests/test_check_plan_governance.py",
+        "README.md",
+    ]
+
+
+def test_drift_uses_normalized_scope_targets(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        plan_text_with_target("./scripts/: 检查脚本"),
+    )
+
+    def fake_run(cmd, **kwargs):
+        class Result:
+            stdout = "scripts/check_plan_governance.py\n"
+
+        return Result()
+
+    monkeypatch.setattr(check_plan_governance.subprocess, "run", fake_run)
+
+    assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
+    output = capsys.readouterr().out
+    assert "变更文件未被活跃计划影响范围覆盖" not in output
+    assert "检查通过" in output
 
 
 def test_drift_warns_for_changed_file_outside_active_plan_targets(tmp_path, monkeypatch, capsys):

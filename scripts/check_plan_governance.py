@@ -19,6 +19,8 @@ VALID_STATUSES = {
     "已废弃",
 }
 
+PLACEHOLDER_VALUES = {"-", "待补充", "待补充。", "待确认", "无", "N/A"}
+
 COMPLETED = {"已完成"}
 ACTIVE = {"待实施", "实施中"}
 WARNING_ACTIVE = {"候选", "设计中", "待实施", "实施中"}
@@ -84,9 +86,26 @@ def markdown_list_items(section):
             continue
         item = match.group(1).strip()
         item = item.strip("` ")
-        if item and item not in {"-", "待补充", "待确认", "无", "N/A"}:
+        if item and item not in PLACEHOLDER_VALUES:
             items.append(item)
     return items
+
+
+def normalize_scope_path(value):
+    normalized = value.strip().strip("`").strip()
+    normalized = re.sub(r"/+", "/", normalized)
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = normalized.strip("/")
+    return normalized
+
+
+def extract_scope_token(item):
+    backtick = re.search(r"`([^`]+)`", item)
+    if backtick:
+        return normalize_scope_path(backtick.group(1))
+    token = item.strip().split(None, 1)[0] if item.strip() else ""
+    return normalize_scope_path(token.rstrip(":："))
 
 
 def extract_plan_link(cell):
@@ -108,7 +127,12 @@ def parse_plan_date(value):
 
 def extract_affected_targets(plan_text):
     section = markdown_section(plan_text, ["影响模块或文件"])
-    return markdown_list_items(section)
+    targets = []
+    for item in markdown_list_items(section):
+        target = extract_scope_token(item)
+        if target and target not in PLACEHOLDER_VALUES:
+            targets.append(target)
+    return targets
 
 
 def extract_plan_references(plan_text, known_plans, current_name):
@@ -208,8 +232,8 @@ def detect_overlapping_targets(active_plan_targets):
 
 
 def target_matches_path(target, changed_file):
-    normalized_target = target.strip().strip("`").strip("/")
-    normalized_file = changed_file.strip().strip("/")
+    normalized_target = normalize_scope_path(target)
+    normalized_file = normalize_scope_path(changed_file)
     if not normalized_target or not normalized_file:
         return False
     if normalized_target == normalized_file:

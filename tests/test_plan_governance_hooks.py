@@ -139,6 +139,27 @@ def test_pre_write_matches_active_plan_by_directory_target(tmp_path, capsys):
     assert "completed-plan" not in output
 
 
+def test_pre_write_matches_normalized_backticked_scope_with_description(tmp_path, capsys):
+    setup_runtime_fixture(tmp_path)
+    plan = tmp_path / "docs" / "plans" / "active-runtime-plan.md"
+    text = plan.read_text(encoding="utf-8")
+    text = text.replace("- `scripts/`", "- `./scripts/`: 检查脚本和 hook runtime")
+    plan.write_text(text, encoding="utf-8")
+
+    result, output = run_hook(
+        tmp_path,
+        "--event",
+        "pre-write",
+        "--paths",
+        "scripts/plan_governance_hook.py",
+        capsys=capsys,
+    )
+
+    assert result == 0
+    assert "active-runtime-plan" in output
+    assert "未匹配到相关活跃计划" not in output
+
+
 def test_pre_write_reports_no_matching_active_plan(tmp_path, capsys):
     setup_runtime_fixture(tmp_path)
 
