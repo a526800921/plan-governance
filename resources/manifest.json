@@ -1,0 +1,23 @@
+{
+  "manifestVersion": 1,
+  "skill": {
+    "targets": {
+      "codex": "~/.codex/skills/plan-governance",
+      "claude": "~/.claude/skills/plan-governance"
+    },
+    "files": [
+      "resources/skill/SKILL.md",
+      "resources/skill/agents/openai.yaml",
+      "resources/skill/assets/PLAN_MAP.template.md",
+      "resources/skill/assets/adr.template.md",
+      "resources/skill/assets/migration.template.md",
+      "resources/skill/assets/plan.template.md"
+    ]
+  },
+  "runtime": [
+    "scripts/check_plan_governance.py",
+    "scripts/init_plan_governance.py",
+    "scripts/plan_governance_hook.py"
+  ],
+  "hooks": []
+}

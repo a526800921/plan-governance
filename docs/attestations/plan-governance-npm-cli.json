@@ -5,8 +5,8 @@
   "plan_path": "docs/plans/plan-governance-npm-cli.md",
   "plan_map_path": "docs/PLAN_MAP.md",
   "plan_sha256": "107edea8eaeabdcd4da3934b0854254fbf46dfbb240f7090f1b517c45178c112",
-  "plan_map_sha256": "49c7f7474d1e5ffb7024c2e806a76e2dbfba9a69990eb9474f0344d8141566dc",
-  "created_at": "2026-07-13T14:06:31Z",
+  "plan_map_sha256": "fab400bf54487f551340ab5bcaff4aa4f8b3bb71c057e0b093a043b11e757cbe",
+  "created_at": "2026-07-13T14:35:49Z",
   "created_by": "plan-governance",
   "reason": "阶段完成快照"
 }

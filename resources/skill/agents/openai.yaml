@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Governance"
+  short_description: "用计划、证据和检查管理分阶段工作"
+  default_prompt: "使用 $plan-governance 管理这个跨阶段变更，维护计划文档、Step 0 证据和完成检查。"

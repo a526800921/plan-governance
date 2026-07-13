@@ -1,6 +1,6 @@
 {
   "name": "plan-governance-cli",
-  "version": "0.1.1",
+  "version": "0.2.2",
   "description": "统一入口的计划治理检查 CLI",
   "private": false,
   "type": "module",
@@ -9,7 +9,11 @@
   },
   "files": [
     "bin/plan-governance-cli.mjs",
-    "scripts/check_plan_governance.py"
+    "resources/manifest.json",
+    "resources/skill",
+    "scripts/check_plan_governance.py",
+    "scripts/init_plan_governance.py",
+    "scripts/plan_governance_hook.py"
   ],
   "engines": {
     "node": ">=20"

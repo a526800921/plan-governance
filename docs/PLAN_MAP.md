@@ -27,6 +27,7 @@
 | [agent-runtime-integration](plans/agent-runtime-integration.md) | 已完成 | 阶段 3 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/agent-runtime-integration.md#验证方式) |
 | [phase-entry-gate-hardening](plans/phase-entry-gate-hardening.md) | 已完成 | 阶段 3 | 2026-07-13 | agent-runtime-integration, independent-acceptance-rules | [验证方式](plans/phase-entry-gate-hardening.md#验证方式) |
 | [plan-governance-npm-cli](plans/plan-governance-npm-cli.md) | 已完成 | 阶段 2 | 2026-07-13 | phase-entry-gate-hardening | [阶段 2 完成证据](plans/plan-governance-npm-cli.md#阶段-2-完成证据) |
+| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-07-13 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -41,6 +42,7 @@
 7. `agent-runtime-integration`
 8. `phase-entry-gate-hardening`
 9. `plan-governance-npm-cli`
+10. `plan-governance-distribution-setup`
 
 ## 依赖关系
 
@@ -55,6 +57,7 @@
 | agent-runtime-integration | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | 依赖已落地的 `PLAN_MAP.md` 元数据、drift/pre-commit/stale 检查、warning 语义和独立验收边界 |
 | phase-entry-gate-hardening | agent-runtime-integration, independent-acceptance-rules | 依赖既有计划状态、阶段索引、独立验收规则、完成快照和 warning 检查能力，补齐阶段准入闭环 |
 | plan-governance-npm-cli | phase-entry-gate-hardening | 依赖已冻结的阶段准入、严格检查、完成快照和独立验收边界，将检查器收敛为可安装 CLI |
+| plan-governance-distribution-setup | plan-governance-npm-cli | 依赖已发布的 npm 全局入口，将版本化资源、skill 同步和后续 hook 接入收敛到同一分发包 |
 
 ## 替代、合并和废弃
 
@@ -90,3 +93,6 @@
 | phase-entry-gate-hardening | 阶段 3 | 阶段路线图和计划状态已完成；最终独立验收、全量测试、严格治理、停滞、drift/pre-commit、反向引用和事实源扫描通过；按最终验收顺序创建完成快照并执行 `--check-attestations` |
 | plan-governance-npm-cli | 阶段 1 | npm 包、Node 启动器、参数透传、Python 87 项基线、npm 3 项测试和临时安装 smoke test 通过 |
 | plan-governance-npm-cli | 阶段 2 | `plan-governance-cli@0.1.1` 已发布；全局安装和 npx 通过；MinerU、Motorcycle 已切换全局入口并删除本地检查器；项目原有治理基线已记录 |
+| plan-governance-distribution-setup | 阶段 1 | 13 个 npm 资源、临时安装、npm 5 项测试、Python 87 项测试和严格治理通过 |
+| plan-governance-distribution-setup | 阶段 2 | `plan-governance-cli@0.2.2` 已发布；全局 setup/init/check/hook、npx、Codex/Claude skill 同步和二次 dry-run 通过 |
+| plan-governance-distribution-setup | 阶段 3 | hook runtime 可分发和手动调用；无稳定目标 Schema，未自动写入 hook 配置；最终验收和事实源扫描通过 |

@@ -166,7 +166,7 @@ plan-governance-cli . --strict-readiness
 也可以不全局安装，直接使用锁定版本：
 
 ```bash
-npx --yes --package plan-governance-cli@0.1.1 plan-governance-cli . --strict-readiness
+npx --yes --package plan-governance-cli@0.2.2 plan-governance-cli . --strict-readiness
 ```
 
 npm CLI 只是统一入口，实际检查逻辑仍由包内版本化的 Python 检查器执行；迁移期间项目原有 Python 命令仍可作为回滚路径。
@@ -180,6 +180,24 @@ npm CLI 只是统一入口，实际检查逻辑仍由包内版本化的 Python �
 - 不支持 glob、正则、否定规则或自然语言推断。
 
 `--stale-days` 会检查活跃计划的 `最后更新` 日期是否超过阈值；省略数值时默认 10 天。停滞检测只输出 `WARNING`，不自动改变计划状态。
+
+安装后的资源管理：
+
+```bash
+plan-governance-cli setup --target codex --dry-run
+plan-governance-cli setup --target claude --dry-run
+plan-governance-cli setup --target all
+```
+
+`setup` 只同步 npm 包 manifest 指定的 skill、代理元数据和模板文件；默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录。当前版本不自动安装 hook 配置。
+
+初始化项目时使用包内初始化器：
+
+```bash
+plan-governance-cli init --root . --plan api-compat-migration --title "API 兼容性迁移" --goal "分阶段完成 API 兼容性迁移"
+```
+
+`init` 默认不复制项目本地 `scripts/check_plan_governance.py`；如确有兼容需要，才显式传递底层 `--copy-checker` 参数。
 
 ## Hook runtime
 
