@@ -110,11 +110,11 @@ def agent_rules_body():
 8. 完成后运行：
 
    ```bash
-   python3 scripts/check_plan_governance.py .
+   plan-governance-cli check .
    ```
 
-9. 如需检查活跃计划停滞，运行 `python3 scripts/check_plan_governance.py . --stale-days`；默认阈值为 10 天。
-10. 旧项目如果 `PLAN_MAP.md` 仍是五列表，先运行 `python3 scripts/init_plan_governance.py --root . --migrate-plan-map-last-updated` 显式迁移。
+9. 如需检查活跃计划停滞，运行 `plan-governance-cli check . --stale-days`；默认阈值为 10 天。
+10. 旧项目如果 `PLAN_MAP.md` 仍是五列表，先运行 `plan-governance-cli init --root . --migrate-plan-map-last-updated` 显式迁移。
 11. 普通小范围 bugfix 或一次性修改不需要强制新建治理文档，除非已有计划覆盖它。
 
 验收独立性：
@@ -487,7 +487,7 @@ def main(argv=None):
             print(f"已写入：{path}")
         for warning in warnings:
             print(f"WARNING: {warning}")
-        print("已有项目升级完成；未覆盖 docs/。下一步请运行 python3 scripts/check_plan_governance.py .")
+        print("已有项目升级完成；未覆盖 docs/。下一步请运行 plan-governance-cli check .")
         return 0
 
     if args.migrate_plan_map_last_updated:

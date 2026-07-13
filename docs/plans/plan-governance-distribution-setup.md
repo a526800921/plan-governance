@@ -356,10 +356,14 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 ## 完成证据
 
-- `plan-governance-cli@0.2.2` 已发布到公共 npm registry，并完成全局安装。
+- `plan-governance-cli@0.2.3` 已发布到公共 npm registry，并完成全局安装；该版本同步修正了 README、代理规则和 `init` 模板中的统一 CLI 入口。
 - Codex/Claude skill 已通过 `setup --target all --force` 同步；二次 `--dry-run` 显示全部资源最新，且 skill 不再包含开发机绝对路径。
 - `init` 默认创建治理文档但不复制 `scripts/check_plan_governance.py`；`hook` runtime 可显式运行，未安装未知 hook 配置。
 - 计划、路线图、测试、发布版本、实际目标同步和独立验收记录已完成同步。
+
+## 完成后的维护修正
+
+2026-07-13 发现 `0.2.2` 的初始化器模板仍会在 `AGENTS.md` 和 `CLAUDE.md` 中写入旧的 Python 检查命令，形成 skill 与代理规则入口不一致。已将 README、当前代理规则和初始化器模板统一为 `plan-governance-cli check/init`，保留包内 Python 脚本作为运行资源和显式兼容模式，并发布 `0.2.3`。
 
 ## 独立复核记录
 
@@ -372,6 +376,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 | 2026-07-13 | 阶段验收复核 | 阶段 2 | 通过 | `plan-governance-cli@0.2.2` 发布、全局 setup/init/check/hook、npx、Codex/Claude 同步和全量测试通过 | Codex 独立复核 |
 | 2026-07-13 | 阶段验收复核 | 阶段 3 | 通过 | hook runtime 可分发和手动调用；无稳定目标 Schema，因此 manifest 不安装 hook 配置 | Codex 独立复核 |
 | 2026-07-13 | 最终验收复核 | 整个计划 | 通过 | npm 资源分发、skill 同步、init、检查、hook 边界、测试、registry 和反向引用检查通过 | Codex 独立复核 |
+| 2026-07-13 | 完成后维护复核 | 整个计划 | 通过 | `0.2.3` 已发布；初始化器生成的代理规则、README 和当前项目入口均改用 npm CLI；生成器测试和治理检查通过 | Codex 独立复核 |
 | - | - | - | - | - | - |
 
 ## 未决问题

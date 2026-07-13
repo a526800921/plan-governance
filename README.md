@@ -74,14 +74,15 @@ docs/
 在目标项目根目录运行：
 
 ```bash
-python3 scripts/init_plan_governance.py \
+plan-governance-cli init \
   --root . \
   --plan api-compat-migration \
   --title "API 兼容性迁移" \
   --goal "分阶段完成 API 兼容性迁移" \
-  --copy-checker \
   --update-agent-rules
 ```
+
+如尚未安装 CLI，先运行 `npm install -g plan-governance-cli`。初始化默认只创建治理文档和代理规则，不复制项目本地检查器。
 
 这会创建：
 
@@ -89,10 +90,11 @@ python3 scripts/init_plan_governance.py \
 .git/
 docs/PLAN_MAP.md
 docs/plans/api-compat-migration.md
-scripts/check_plan_governance.py
 CLAUDE.md
 AGENTS.md
 ```
+
+其中检查器是 npm 包的内部运行资源；正常使用不需要在目标项目中创建 `scripts/check_plan_governance.py`。
 
 如果目标目录还不是 Git 仓库，初始化流程会先执行 `git init`；已有 `.git/` 时会跳过，不重复初始化。
 
@@ -116,7 +118,7 @@ AGENTS.md
 如果项目已经有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`，不要重新初始化计划文档。只更新代理执行规则时运行：
 
 ```bash
-python3 scripts/init_plan_governance.py \
+plan-governance-cli init \
   --root . \
   --update-agent-rules-only
 ```
@@ -126,52 +128,54 @@ python3 scripts/init_plan_governance.py \
 如果要升级已有项目的辅助文件，刷新检查脚本并更新代理规则，但不覆盖 `docs/`，运行：
 
 ```bash
-python3 scripts/init_plan_governance.py \
+plan-governance-cli init \
   --root . \
   --upgrade-existing
 ```
 
 `--upgrade-existing` 会：
 
-- 覆盖更新 `scripts/check_plan_governance.py`
+- 按兼容模式覆盖更新项目中的 `scripts/check_plan_governance.py`
 - 创建或更新 `CLAUDE.md` 和 `AGENTS.md` 中带标记的计划治理章节
 - 保留已有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`
 - 提示缺失的治理文档
+
+新项目和日常升级不需要使用该兼容模式；优先使用全局 npm CLI。
 
 ## 检查
 
 在仓库根目录运行：
 
 ```bash
-python3 scripts/check_plan_governance.py .
+plan-governance-cli check .
 ```
 
 可选检查：
 
 ```bash
-python3 scripts/check_plan_governance.py . --drift
-python3 scripts/check_plan_governance.py . --pre-commit
-python3 scripts/check_plan_governance.py . --stale-days 10
+plan-governance-cli check . --drift
+plan-governance-cli check . --pre-commit
+plan-governance-cli check . --stale-days 10
 ```
 
 `--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
 
-如果已安装统一 npm CLI，可用全局入口运行同一套检查器：
+全局 CLI 是推荐入口：
 
 ```bash
 npm install -g plan-governance-cli
-plan-governance-cli . --strict-readiness
+plan-governance-cli check . --strict-readiness
 ```
 
 也可以不全局安装，直接使用锁定版本：
 
 ```bash
-npx --yes --package plan-governance-cli@0.2.2 plan-governance-cli . --strict-readiness
+npx --yes --package plan-governance-cli@0.2.3 plan-governance-cli check . --strict-readiness
 ```
 
-npm CLI 只是统一入口，实际检查逻辑仍由包内版本化的 Python 检查器执行；迁移期间项目原有 Python 命令仍可作为回滚路径。
+npm 包内部仍使用版本化的 Python 检查器，但用户不需要直接调用或复制该脚本。旧项目已有本地脚本时仍可保留作为兼容或回滚路径。
 
-作用域匹配规则同样用于 `plan_governance_hook.py --event pre-write`：
+作用域匹配规则同样用于 `plan-governance-cli hook --event pre-write`：
 
 - 优先提取列表项中的第一个反引号路径，例如 ``- `./scripts/`: 检查脚本``。
 - 没有反引号时提取列表项的第一个纯文本 token，例如 `- README.md`。
@@ -204,10 +208,10 @@ plan-governance-cli init --root . --plan api-compat-migration --title "API 兼�
 本仓库提供只读 hook runtime，供 Codex、Claude Code 或其他 Agent 的项目级 hooks 手动接入。脚本只输出短提示和检查结果，不修改治理文档，不更新 `最后更新`，不安装或修改全局配置。
 
 ```bash
-python3 scripts/plan_governance_hook.py --event session-start
-python3 scripts/plan_governance_hook.py --event pre-write --paths scripts/check_plan_governance.py
-python3 scripts/plan_governance_hook.py --event post-write --paths docs/PLAN_MAP.md
-python3 scripts/plan_governance_hook.py --event stop
+plan-governance-cli hook --event session-start
+plan-governance-cli hook --event pre-write --paths scripts/check_plan_governance.py
+plan-governance-cli hook --event post-write --paths docs/PLAN_MAP.md
+plan-governance-cli hook --event stop
 ```
 
 事件语义：
@@ -215,12 +219,12 @@ python3 scripts/plan_governance_hook.py --event stop
 - `session-start`：摘要活跃计划、当前阶段、最后更新、阻塞项和证据链接。
 - `pre-write`：按活跃计划的 `影响模块或文件` 匹配路径，提示当前阶段门禁。
 - `post-write`：写入 `PLAN_MAP.md` 或计划文档后，提示同步状态、证据、覆盖率和反向引用检查。
-- `stop`：运行 `python3 scripts/check_plan_governance.py .` 并转发结果；该事件是非阻塞提示，不实现强制 gate。
+- `stop`：运行 `plan-governance-cli check .` 并转发结果；该事件是非阻塞提示，不实现强制 gate。
 
 旧项目如果仍使用五列 `PLAN_MAP.md`，先显式迁移：
 
 ```bash
-python3 scripts/init_plan_governance.py --root . --migrate-plan-map-last-updated --last-updated-date 2026-07-05
+plan-governance-cli init --root . --migrate-plan-map-last-updated --last-updated-date 2026-07-05
 ```
 
 不传 `--last-updated-date` 时使用当天日期。该迁移只修改 `docs/PLAN_MAP.md` 的计划索引表，不会自动改变计划状态。
@@ -249,8 +253,8 @@ python3 scripts/init_plan_governance.py --root . --migrate-plan-map-last-updated
 已完成计划可以显式创建完成快照，用于后续发现未复核修改。快照文件写入 `docs/attestations/<plan-name>.json`，包含计划文件和 `docs/PLAN_MAP.md` 的 SHA-256。
 
 ```bash
-python3 scripts/check_plan_governance.py . --attest agent-runtime-integration
-python3 scripts/check_plan_governance.py . --check-attestations
+plan-governance-cli check . --attest agent-runtime-integration
+plan-governance-cli check . --check-attestations
 ```
 
 `--attest <plan-name>` 只接受已登记到 `docs/PLAN_MAP.md` 的计划。`--check-attestations` 对计划文件 hash 变化、`PLAN_MAP.md` hash 变化、JSON 损坏、文件缺失或快照引用未登记计划输出 `WARNING`，不改变退出码。人工确认文档修正合理后，可以重新运行 `--attest <plan-name>` 覆盖快照。

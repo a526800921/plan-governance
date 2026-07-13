@@ -94,5 +94,5 @@
 | plan-governance-npm-cli | 阶段 1 | npm 包、Node 启动器、参数透传、Python 87 项基线、npm 3 项测试和临时安装 smoke test 通过 |
 | plan-governance-npm-cli | 阶段 2 | `plan-governance-cli@0.1.1` 已发布；全局安装和 npx 通过；MinerU、Motorcycle 已切换全局入口并删除本地检查器；项目原有治理基线已记录 |
 | plan-governance-distribution-setup | 阶段 1 | 13 个 npm 资源、临时安装、npm 5 项测试、Python 87 项测试和严格治理通过 |
-| plan-governance-distribution-setup | 阶段 2 | `plan-governance-cli@0.2.2` 已发布；全局 setup/init/check/hook、npx、Codex/Claude skill 同步和二次 dry-run 通过 |
+| plan-governance-distribution-setup | 阶段 2 | `plan-governance-cli@0.2.3` 已发布；统一 CLI 入口已同步到 README、代理规则和 init 模板；全局 setup/init/check/hook、npx、Codex/Claude skill 同步和二次 dry-run 通过 |
 | plan-governance-distribution-setup | 阶段 3 | hook runtime 可分发和手动调用；无稳定目标 Schema，未自动写入 hook 配置；最终验收和事实源扫描通过 |

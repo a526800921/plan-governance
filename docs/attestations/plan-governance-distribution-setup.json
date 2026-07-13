@@ -4,9 +4,9 @@
   "status": "已完成",
   "plan_path": "docs/plans/plan-governance-distribution-setup.md",
   "plan_map_path": "docs/PLAN_MAP.md",
-  "plan_sha256": "ff21154bac2e693c6f62dcfee38899b5676639179b109be9df9267f89dcfd0d7",
-  "plan_map_sha256": "fab400bf54487f551340ab5bcaff4aa4f8b3bb71c057e0b093a043b11e757cbe",
-  "created_at": "2026-07-13T14:35:49Z",
+  "plan_sha256": "841fa30b8074c9563fce33911ebd7fe152e69b73f0079ed9143743062bed90c3",
+  "plan_map_sha256": "cae3a832c0c6dc237c683b20dd5dc8a5891d450796c71f17d2232da73b995002",
+  "created_at": "2026-07-13T15:05:51Z",
   "created_by": "plan-governance",
   "reason": "阶段完成快照"
 }

@@ -103,8 +103,9 @@ def test_main_can_create_claude_md(tmp_path):
     assert "## 计划治理" in text
     assert "验收独立性" in text
     assert "不得仅依据计划状态、完成证据文字或文档格式判定完成" in text
-    assert "python3 scripts/check_plan_governance.py ." in text
-    assert "python3 scripts/check_plan_governance.py . --stale-days" in text
+    assert "plan-governance-cli check ." in text
+    assert "plan-governance-cli check . --stale-days" in text
+    assert "python3 scripts/check_plan_governance.py" not in text
     assert "--migrate-plan-map-last-updated" in text
     assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
@@ -124,8 +125,9 @@ def test_main_can_create_agents_md(tmp_path):
     assert "## 计划治理" in text
     assert "验收独立性" in text
     assert "不得仅依据计划状态、完成证据文字或文档格式判定完成" in text
-    assert "python3 scripts/check_plan_governance.py ." in text
-    assert "python3 scripts/check_plan_governance.py . --stale-days" in text
+    assert "plan-governance-cli check ." in text
+    assert "plan-governance-cli check . --stale-days" in text
+    assert "python3 scripts/check_plan_governance.py" not in text
     assert "--migrate-plan-map-last-updated" in text
     assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
@@ -225,6 +227,7 @@ def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, cap
     assert (tmp_path / "AGENTS.md").exists()
     output = capsys.readouterr().out
     assert "已有项目升级完成" in output
+    assert "plan-governance-cli check ." in output
     assert "WARNING" not in output
 
 
