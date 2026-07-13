@@ -156,6 +156,21 @@ python3 scripts/check_plan_governance.py . --stale-days 10
 
 `--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
 
+如果已安装统一 npm CLI，可用全局入口运行同一套检查器：
+
+```bash
+npm install -g plan-governance-cli
+plan-governance-cli . --strict-readiness
+```
+
+也可以不全局安装，直接使用锁定版本：
+
+```bash
+npx --yes --package plan-governance-cli@0.1.1 plan-governance-cli . --strict-readiness
+```
+
+npm CLI 只是统一入口，实际检查逻辑仍由包内版本化的 Python 检查器执行；迁移期间项目原有 Python 命令仍可作为回滚路径。
+
 作用域匹配规则同样用于 `plan_governance_hook.py --event pre-write`：
 
 - 优先提取列表项中的第一个反引号路径，例如 ``- `./scripts/`: 检查脚本``。

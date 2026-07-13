@@ -1,0 +1,23 @@
+{
+  "name": "plan-governance-cli",
+  "version": "0.1.1",
+  "description": "统一入口的计划治理检查 CLI",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "plan-governance-cli": "bin/plan-governance-cli.mjs"
+  },
+  "files": [
+    "bin/plan-governance-cli.mjs",
+    "scripts/check_plan_governance.py"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test tests/npm_cli.test.mjs"
+  }
+}
