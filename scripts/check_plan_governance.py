@@ -65,15 +65,201 @@ def table_rows(text, heading):
     return rows
 
 
+def mask_fenced_code(text):
+    """用等长空格屏蔽 fenced code 中的伪 Markdown 标题，保留偏移量。"""
+    masked = []
+    in_fence = False
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            masked.append("".join("\n" if char == "\n" else "\r" if char == "\r" else " " for char in line))
+            continue
+        if in_fence:
+            masked.append("".join("\n" if char == "\n" else "\r" if char == "\r" else " " for char in line))
+        else:
+            masked.append(line)
+    return "".join(masked)
+
+
 def markdown_section(text, heading_names):
     heading_pattern = "|".join(re.escape(name) for name in heading_names)
     pattern = re.compile(rf"^#+\s+({heading_pattern})\b.*$", re.MULTILINE)
-    match = pattern.search(text)
+    match = pattern.search(mask_fenced_code(text))
     if not match:
         return None
     tail = text[match.end():]
     next_heading = re.search(r"^#+\s+", tail, re.MULTILINE)
     return tail[: next_heading.start()] if next_heading else tail
+
+
+def markdown_table_rows(section):
+    if section is None:
+        return []
+    rows = []
+    for line in section.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or "---" in stripped:
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if cells:
+            rows.append(cells)
+    return rows
+
+
+def key_value_table(section):
+    values = {}
+    for row in markdown_table_rows(section):
+        if len(row) < 2 or row[0] in {"字段", "问题"}:
+            continue
+        values[row[0]] = row[1]
+    return values
+
+
+def phase_roadmap_rows(plan_text):
+    section = markdown_section(plan_text, ["阶段路线图"])
+    return [row for row in markdown_table_rows(section) if row and row[0] != "阶段"]
+
+
+def review_history_rows(plan_text):
+    section = markdown_section(plan_text, ["独立复核记录"])
+    return [row for row in markdown_table_rows(section) if row and row[0] != "日期"]
+
+
+def is_placeholder(value, allow_empty=False):
+    normalized = re.sub(r"\s+", "", value or "")
+    if not normalized:
+        return allow_empty
+    return normalized in {re.sub(r"\s+", "", item) for item in PLACEHOLDER_VALUES}
+
+
+READINESS_FIELDS = {
+    "准入状态",
+    "Step 0",
+    "样本矩阵",
+    "验证方式",
+    "失败/回滚边界",
+    "当前阻塞项",
+    "最新独立准入复核",
+}
+
+
+def readiness_issue(warnings, errors, strict, message):
+    if strict:
+        fail(errors, message)
+    else:
+        warn(warnings, message)
+
+
+def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, warnings, errors):
+    """检查待实施/实施中计划的阶段准入结构，不判断业务证据真实性。"""
+    if data["status"] not in ACTIVE:
+        return
+
+    current_phase = data["phase"]
+    roadmap = phase_roadmap_rows(plan_text)
+    matching_rows = [row for row in roadmap if row and row[0] == current_phase]
+    if not matching_rows:
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: PLAN_MAP 当前阶段 {current_phase} 未在计划阶段路线图中找到",
+        )
+    else:
+        roadmap_status = matching_rows[-1][4] if len(matching_rows[-1]) > 4 else ""
+        if roadmap_status and roadmap_status != data["status"]:
+            readiness_issue(
+                warnings,
+                errors,
+                strict,
+                f"{plan_name}: 当前阶段 {current_phase} 的路线图状态 {roadmap_status} 与 PLAN_MAP 状态 {data['status']} 不一致",
+            )
+
+    if markdown_section(plan_text, ["当前阶段"]) is None:
+        readiness_issue(warnings, errors, strict, f"{plan_name}: 缺少 `## 当前阶段` 章节")
+
+    summary = key_value_table(markdown_section(plan_text, ["阶段准入摘要"]))
+    missing_fields = sorted(READINESS_FIELDS - set(summary))
+    if missing_fields:
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 阶段准入摘要缺少字段：{', '.join(missing_fields)}",
+        )
+    for field in sorted(READINESS_FIELDS - {"当前阻塞项"}):
+        if field in summary and is_placeholder(summary[field]):
+            readiness_issue(
+                warnings,
+                errors,
+                strict,
+                f"{plan_name}: 阶段准入摘要字段 {field} 仍是占位内容",
+            )
+    if summary.get("当前阻塞项") and is_placeholder(summary["当前阻塞项"]) and summary["当前阻塞项"].strip() != "无":
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 阶段准入摘要的当前阻塞项不可使用占位内容",
+        )
+    if summary.get("准入状态") and summary["准入状态"] != data["status"]:
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 阶段准入摘要状态 {summary['准入状态']} 与 PLAN_MAP 状态 {data['status']} 不一致",
+        )
+
+    review = key_value_table(markdown_section(plan_text, ["最新独立准入复核"]))
+    review_fields = {"日期", "阶段", "结论", "证据", "复核者"}
+    missing_review = sorted(review_fields - set(review))
+    if missing_review:
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 最新独立准入复核缺少字段：{', '.join(missing_review)}",
+        )
+    if review.get("日期"):
+        try:
+            parse_plan_date(review["日期"])
+        except ValueError:
+            readiness_issue(warnings, errors, strict, f"{plan_name}: 最新独立准入复核日期不合法：{review['日期']}")
+    if review.get("阶段") and review["阶段"] != current_phase:
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 最新独立准入复核阶段 {review['阶段']} 与 PLAN_MAP 当前阶段 {current_phase} 不一致",
+        )
+    if review.get("结论") and not review["结论"].startswith("通过"):
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 最新独立准入复核结论不是通过：{review['结论']}",
+        )
+
+    history = [row for row in review_history_rows(plan_text) if len(row) >= 4 and row[2] == current_phase]
+    if not history:
+        readiness_issue(warnings, errors, strict, f"{plan_name}: 独立复核记录缺少当前阶段 {current_phase} 的记录")
+    else:
+        latest_history = history[-1]
+        if review.get("日期") and latest_history[0] != review["日期"]:
+            readiness_issue(
+                warnings,
+                errors,
+                strict,
+                f"{plan_name}: 最新独立准入复核日期与历史记录最后一条不一致",
+            )
+        if review.get("结论") and latest_history[3] not in review["结论"]:
+            readiness_issue(
+                warnings,
+                errors,
+                strict,
+                f"{plan_name}: 最新独立准入复核与历史记录最后一条结论冲突",
+            )
 
 
 def markdown_list_items(section):
@@ -401,6 +587,11 @@ def parse_args(argv):
     parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
     parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
     parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
+    parser.add_argument(
+        "--strict-readiness",
+        action="store_true",
+        help="将待实施/实施中计划的阶段准入结构缺陷从 WARNING 提升为 ERROR。",
+    )
     parser.add_argument("--attest", metavar="PLAN", help="为已登记计划创建或覆盖完成快照。")
     parser.add_argument("--check-attestations", action="store_true", help="检查完成快照 hash 是否漂移。")
     parser.add_argument(
@@ -492,6 +683,16 @@ def main(argv=None):
             fail(errors, f"{data['path']}: 活跃计划仍有未解决的当前阶段阻塞项")
         if data["status"] in WARNING_ACTIVE:
             active_plan_targets[name] = extract_affected_targets(plan_text)
+
+        check_phase_readiness(
+            text,
+            name,
+            data,
+            plan_text,
+            args.strict_readiness,
+            warnings,
+            errors,
+        )
 
     for target, plan_names in detect_overlapping_targets(active_plan_targets).items():
         warn(warnings, f"{target}: 多个活跃计划声明相同影响目标：{', '.join(plan_names)}")

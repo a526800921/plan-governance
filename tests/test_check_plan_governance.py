@@ -88,6 +88,176 @@ def plan_text_with_target(target, extra_text=""):
 """
 
 
+def readiness_plan_text(
+    status="待实施",
+    roadmap_phase="阶段 1",
+    review_phase="阶段 1",
+    history_conclusion="通过",
+    include_summary=True,
+    unresolved_blocker=False,
+):
+    blocker_summary = "未解决阻塞" if unresolved_blocker else "无"
+    blocker_row = "| 示例问题 | 暂不处理 | 是 | 未解决 |" if unresolved_blocker else "| - | - | 否 | 已延后 |"
+    summary = f"""### 阶段准入摘要
+
+| 字段 | 内容 |
+|---|---|
+| 准入状态 | 待实施 |
+| Step 0 | [Step 0 证据](#step-0-证据) |
+| 样本矩阵 | `tests/fixtures/readiness.md` |
+| 验证方式 | `python3 -m pytest`，输出见测试报告 |
+| 失败/回滚边界 | 失败返回非零并回滚当前阶段文档 |
+| 当前阻塞项 | {blocker_summary} |
+| 最新独立准入复核 | [最新复核](#最新独立准入复核) |
+""" if include_summary else ""
+    return f"""# 计划：demo
+
+## 阶段路线图
+
+| 阶段 | 目标 | 进入条件 | 验证方向 | 状态 |
+|---|---|---|---|---|
+| {roadmap_phase} | 阶段目标 | Step 0 已有 | pytest | {status} |
+
+## 当前阶段
+
+{summary}
+### 最新独立准入复核
+
+| 字段 | 内容 |
+|---|---|
+| 日期 | 2026-07-13 |
+| 阶段 | {review_phase} |
+| 结论 | 通过 |
+| 证据 | `tests/fixtures/readiness.md` |
+| 复核者 | 独立复核者 |
+
+## 独立复核记录
+
+| 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
+|---|---|---|---|---|---|
+| 2026-07-13 | 阶段准入复核 | {review_phase} | {history_conclusion} | `tests/fixtures/readiness.md` | 独立复核者 |
+
+## Step 0 证据
+
+现状基线见 `tests/fixtures/readiness.md`。
+
+## 验证方式
+
+运行 `python3 -m pytest`。
+
+## 未决问题
+
+| 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
+|---|---|---|---|
+{blocker_row}
+"""
+
+
+def test_design_plan_does_not_trigger_readiness_check(tmp_path, monkeypatch, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "阶段准入摘要" not in output
+    assert "检查通过" in output
+
+
+def test_markdown_section_ignores_fenced_code_headings():
+    text = """```markdown
+### 最新独立准入复核
+
+| 阶段 | 阶段 0 |
+```
+
+### 最新独立准入复核
+
+真实章节内容。
+"""
+
+    section = check_plan_governance.markdown_section(text, ["最新独立准入复核"])
+    assert "真实章节内容" in section
+    assert "阶段 0" not in section
+
+
+def test_complete_readiness_passes_default_and_strict(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", readiness_plan_text())
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    assert "阶段准入" not in capsys.readouterr().out
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
+    assert "检查通过" in capsys.readouterr().out
+
+
+def test_missing_readiness_fields_warns_and_strict_fails(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", readiness_plan_text(include_summary=False))
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "阶段准入摘要缺少字段" in output
+    assert "检查通过" in output
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
+    assert "阶段准入摘要缺少字段" in capsys.readouterr().out
+
+
+def test_conflicting_latest_review_warns_and_strict_fails(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        readiness_plan_text(history_conclusion="未通过"),
+    )
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    assert "结论冲突" in capsys.readouterr().out
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
+    assert "结论冲突" in capsys.readouterr().out
+
+
+def test_phase_pointer_mismatch_warns_and_strict_fails(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 2 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", readiness_plan_text())
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "未在计划阶段路线图中找到" in output
+    assert "最新独立准入复核阶段" in output
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
+    assert "未在计划阶段路线图中找到" in capsys.readouterr().out
+
+
+def test_open_blocker_keeps_existing_error_in_readiness_modes(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        readiness_plan_text(unresolved_blocker=True),
+    )
+
+    assert check_plan_governance.main([str(tmp_path)]) == 1
+    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
+    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+
+
 def test_missing_plan_map_is_not_an_error(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 

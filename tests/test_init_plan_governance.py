@@ -49,6 +49,8 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert plan.exists()
     assert "分阶段迁移 API。" in plan.read_text(encoding="utf-8")
     assert "## 测试覆盖率" in plan.read_text(encoding="utf-8")
+    assert "### 阶段准入摘要" in plan.read_text(encoding="utf-8")
+    assert "## 独立复核记录" in plan.read_text(encoding="utf-8")
     assert "初始化完成" in capsys.readouterr().out
 
 
@@ -104,6 +106,9 @@ def test_main_can_create_claude_md(tmp_path):
     assert "python3 scripts/check_plan_governance.py ." in text
     assert "python3 scripts/check_plan_governance.py . --stale-days" in text
     assert "--migrate-plan-map-last-updated" in text
+    assert "阶段 N 完成只关闭阶段 N" in text
+    assert "--strict-readiness" in text
+    assert "追加式独立复核记录" in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
     assert init_plan_governance.CLAUDE_SECTION_END in text
 
@@ -122,6 +127,8 @@ def test_main_can_create_agents_md(tmp_path):
     assert "python3 scripts/check_plan_governance.py ." in text
     assert "python3 scripts/check_plan_governance.py . --stale-days" in text
     assert "--migrate-plan-map-last-updated" in text
+    assert "阶段 N 完成只关闭阶段 N" in text
+    assert "--strict-readiness" in text
     assert init_plan_governance.AGENTS_SECTION_BEGIN in text
     assert init_plan_governance.AGENTS_SECTION_END in text
 

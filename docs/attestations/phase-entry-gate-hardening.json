@@ -1,0 +1,12 @@
+{
+  "plan": "phase-entry-gate-hardening",
+  "phase": "阶段 3",
+  "status": "已完成",
+  "plan_path": "docs/plans/phase-entry-gate-hardening.md",
+  "plan_map_path": "docs/PLAN_MAP.md",
+  "plan_sha256": "49dd47528902f16b2b2ac732d3a8111fe6752024349ee72754b04581b9d6c336",
+  "plan_map_sha256": "ab110b8e400aa54a0f212e3ed3849b500717643928db4e451a0e4f768521c443",
+  "created_at": "2026-07-13T13:19:54Z",
+  "created_by": "plan-governance",
+  "reason": "阶段完成快照"
+}
