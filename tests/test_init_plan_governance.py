@@ -50,6 +50,9 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert "分阶段迁移 API。" in plan.read_text(encoding="utf-8")
     assert "## 测试覆盖率" in plan.read_text(encoding="utf-8")
     assert "### 阶段准入摘要" in plan.read_text(encoding="utf-8")
+    assert "## 需求探索" in plan.read_text(encoding="utf-8")
+    assert "### 用户确认的探索结论" in plan.read_text(encoding="utf-8")
+    assert "## 最新独立准入复核" in plan.read_text(encoding="utf-8")
     assert "## 独立复核记录" in plan.read_text(encoding="utf-8")
     assert "初始化完成" in capsys.readouterr().out
 
@@ -110,6 +113,9 @@ def test_main_can_create_claude_md(tmp_path):
     assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
     assert "追加式独立复核记录" in text
+    assert "需求探索与 grilling" in text
+    assert "grill-me" in text
+    assert "用户确认结构化总结" in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
     assert init_plan_governance.CLAUDE_SECTION_END in text
 
@@ -131,6 +137,9 @@ def test_main_can_create_agents_md(tmp_path):
     assert "--migrate-plan-map-last-updated" in text
     assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
+    assert "需求探索与 grilling" in text
+    assert "grill-me" in text
+    assert "用户确认结构化总结" in text
     assert init_plan_governance.AGENTS_SECTION_BEGIN in text
     assert init_plan_governance.AGENTS_SECTION_END in text
 
@@ -145,6 +154,8 @@ def test_main_can_create_all_agent_rules(tmp_path):
     assert (tmp_path / "AGENTS.md").exists()
     assert "验收独立性" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
     assert "验收独立性" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "需求探索与 grilling" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "需求探索与 grilling" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
 
 
 def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, capsys):

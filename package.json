@@ -1,6 +1,6 @@
 {
   "name": "plan-governance-cli",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "统一入口的计划治理检查 CLI",
   "private": false,
   "type": "module",

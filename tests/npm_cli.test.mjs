@@ -40,7 +40,15 @@ test("package manifest contains the distributable skill resources", () => {
   for (const resource of manifest.skill.files) {
     accessSync(resolve(root, resource), constants.R_OK);
   }
-  assert.doesNotMatch(readFileSync(resolve(root, "resources", "skill", "SKILL.md"), "utf8"), /\/Users\/jafish\//);
+  const skill = readFileSync(resolve(root, "resources", "skill", "SKILL.md"), "utf8");
+  const planTemplate = readFileSync(resolve(root, "resources", "skill", "assets", "plan.template.md"), "utf8");
+  assert.doesNotMatch(skill, /\/Users\/jafish\//);
+  assert.match(skill, /需求探索与 grilling/);
+  assert.match(skill, /grill-me/);
+  assert.match(planTemplate, /^## 需求探索$/m);
+  assert.match(planTemplate, /^## 最新独立准入复核$/m);
+  assert.match(planTemplate, /^## 独立复核记录$/m);
+  assert.doesNotMatch(planTemplate, /^### 最新独立准入复核$/m);
   assert.deepEqual(manifest.hooks, []);
 });
 
@@ -69,6 +77,54 @@ test("packed package runs from a temporary installation", () => {
     });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /strict-readiness/);
+
+    const projectRoot = join(tempRoot, "project");
+    const initialized = spawnSync(process.execPath, [
+      installedCli,
+      "init",
+      "--root",
+      projectRoot,
+      "--plan",
+      "installed-demo",
+      "--title",
+      "Installed Demo",
+      "--goal",
+      "验证安装后的模板资源",
+    ], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    const plan = readFileSync(join(projectRoot, "docs", "plans", "installed-demo.md"), "utf8");
+    assert.match(plan, /^## 需求探索$/m);
+    assert.match(plan, /^## 最新独立准入复核$/m);
+    assert.match(plan, /验证安装后的模板资源/);
+    assert.doesNotMatch(plan, /\/Users\/jafish\/Documents\/work\/plan-governance/);
+
+    const destination = join(tempRoot, "codex", "skills", "plan-governance");
+    const dryRun = spawnSync(process.execPath, [
+      installedCli,
+      "setup",
+      "--target",
+      "codex",
+      "--destination",
+      destination,
+      "--dry-run",
+    ], { cwd: root, encoding: "utf8" });
+    assert.equal(dryRun.status, 0, dryRun.stderr);
+    assert.equal(existsSync(destination), false);
+
+    const synced = spawnSync(process.execPath, [
+      installedCli,
+      "setup",
+      "--target",
+      "codex",
+      "--destination",
+      destination,
+    ], { cwd: root, encoding: "utf8" });
+    assert.equal(synced.status, 0, synced.stderr);
+    assert.match(readFileSync(join(destination, "SKILL.md"), "utf8"), /需求探索与 grilling/);
+    assert.equal(existsSync(join(destination, "scripts")), false);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -92,7 +148,7 @@ test("setup supports dry-run, sync, and conflict protection", () => {
     });
     assert.equal(synced.status, 0, synced.stderr);
     assert.match(synced.stdout, /已同步/);
-    assert.match(readFileSync(join(destination, "SKILL.md"), "utf8"), /plan-governance/);
+    assert.match(readFileSync(join(destination, "SKILL.md"), "utf8"), /需求探索与 grilling/);
     assert.equal(existsSync(join(destination, "scripts")), false);
 
     const skillPath = join(destination, "SKILL.md");
