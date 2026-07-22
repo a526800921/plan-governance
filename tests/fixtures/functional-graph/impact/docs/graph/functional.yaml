@@ -1,0 +1,41 @@
+schema_version: 1
+project:
+  id: fixture
+  name: Fixture
+nodes:
+  - id: business.one
+    type: business
+    name: Business One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - id: function.one
+    type: function
+    name: Function One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - id: api.one
+    type: api
+    name: API One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+relations:
+  - from: business.one
+    type: contains
+    to: function.one
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: function.one
+    type: exposes
+    to: api.one
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据

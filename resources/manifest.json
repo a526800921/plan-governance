@@ -17,7 +17,8 @@
   "runtime": [
     "scripts/check_plan_governance.py",
     "scripts/init_plan_governance.py",
-    "scripts/plan_governance_hook.py"
+    "scripts/plan_governance_hook.py",
+    "scripts/graph_governance.mjs"
   ],
   "hooks": []
 }

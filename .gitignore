@@ -3,3 +3,4 @@ __pycache__/
 .coverage
 .DS_Store
 .claude
+node_modules

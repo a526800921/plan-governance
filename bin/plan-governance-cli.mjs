@@ -18,6 +18,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const checker = resolve(packageRoot, "scripts", "check_plan_governance.py");
 const initializer = resolve(packageRoot, "scripts", "init_plan_governance.py");
 const hookRuntime = resolve(packageRoot, "scripts", "plan_governance_hook.py");
+const graphRuntime = resolve(packageRoot, "scripts", "graph_governance.mjs");
 const manifestPath = resolve(packageRoot, "resources", "manifest.json");
 
 function fail(message) {
@@ -49,6 +50,24 @@ function runPython(script, args) {
     return 1;
   }
   return result?.status ?? 1;
+}
+
+function runNode(script, args) {
+  try {
+    accessSync(script, constants.R_OK);
+  } catch {
+    return fail(`找不到包内脚本：${script}`);
+  }
+
+  const result = spawnSync(process.execPath, [script, ...args], { stdio: "inherit" });
+  if (result.error) {
+    return fail(`无法启动 Node.js 脚本：${result.error.message}`);
+  }
+  if (result.signal) {
+    console.error(`plan-governance-cli: 脚本被信号 ${result.signal} 终止`);
+    return 1;
+  }
+  return result.status ?? 1;
 }
 
 function loadManifest() {
@@ -168,6 +187,7 @@ function main() {
   if (command === "setup") return setup(args.slice(1));
   if (command === "init") return runPython(initializer, args.slice(1));
   if (command === "hook") return runPython(hookRuntime, args.slice(1));
+  if (command === "graph") return runNode(graphRuntime, args.slice(1));
   if (command === "check") return runPython(checker, args.slice(1));
   return runPython(checker, args);
 }

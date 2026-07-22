@@ -1,0 +1,13 @@
+schema_version: 1
+project:
+  id: fixture
+  name: Fixture
+nodes:
+  - id: function.one
+    type: function
+    name: Function One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 最小功能图谱 fixture 证据
+relations: []

@@ -1,0 +1,27 @@
+schema_version: 1
+project:
+  id: fixture
+  name: Fixture
+nodes:
+  - id: function.one
+    type: function
+    name: Function One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 结构错误图谱 fixture 证据
+  - id: function.one
+    type: function
+    name: Duplicate One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 结构错误图谱 fixture 证据
+relations:
+  - from: function.one
+    type: implements
+    to: missing.node
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 结构错误图谱 fixture 证据

@@ -173,6 +173,16 @@ npm install -g plan-governance-cli
 plan-governance-cli check . --strict-readiness
 ```
 
+功能图谱校验和影响分析：
+
+```bash
+plan-governance-cli graph validate .
+plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --format text .
+plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --format json .
+```
+
+项目图谱固定放在 `docs/graph/functional.yaml`。CLI 只读，不修改 YAML、计划状态、计划正文或业务代码；图谱节点使用稳定 ID，证据使用 `kind/ref/locator`，代码对象使用带文件回退的 `code_refs`。影响分析默认两跳，按 `contains`、`orchestrates`、`exposes`、`implements`、`consumes`、`depends_on` 的契约方向传播，并输出最短路径、直接/间接分类和证据引用。
+
 也可以不全局安装，直接使用锁定版本：
 
 ```bash

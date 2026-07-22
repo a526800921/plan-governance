@@ -1,0 +1,14 @@
+schema_version: 1
+project:
+  id: fixture
+  name: Fixture
+nodes:
+  - id: function.one
+    type: function
+    name: Function One
+    evidence: []
+    code_refs:
+      - kind: gitnexus_uid
+        ref: Function:missing
+        fallback: Sources/Missing.swift
+relations: []
