@@ -116,7 +116,7 @@ relations:
         locator: <symbol-or-line-anchor>
 ```
 
-`schema_version` 为正整数。`nodes[].id` 为项目内稳定、全小写且以 `.` 分段的标识；重命名显示名称不得改变 ID。首期 `type` 枚举为 `business`、`function`、`process`、`api`、`external_workflow`。每个节点和关系都至少有一条可定位 `evidence`；证据的 `kind` 为 `document`、`code`、`test`、`api` 或 `gitnexus`，`ref` 指向版本管理的仓库内路径或可复现的 GitNexus 标识，`locator` 用于进一步定位。`code_refs` 不是代码事实副本，只保存到 GitNexus/仓库对象的外部引用；`gitnexus_uid` 引用必须同时给出仓库内回退定位。
+首期 `schema_version` 只允许整数 `1`；未来版本必须通过版本化契约新增，不能静默改变版本 1 的语义。`nodes[].id` 为项目内稳定、全小写且由 `.` 分隔、段内仅含小写字母数字和连字符的标识；重命名显示名称不得改变 ID。首期 `type` 枚举为 `business`、`function`、`process`、`api`、`external_workflow`。每个节点和关系都至少有一条可定位 `evidence`；证据的 `kind` 为 `document`、`code`、`test`、`api` 或 `gitnexus`，`ref` 指向版本管理的仓库内路径或可复现的 GitNexus 标识，`locator` 用于进一步定位。顶层 `project` 元数据可选；如果存在，`project.id` 和 `project.name` 必须同时为字符串。`code_refs` 不是代码事实副本，只保存到 GitNexus/仓库对象的外部引用；`gitnexus_uid` 引用必须同时给出仓库内回退定位。
 
 关系的 `from` 与 `to` 必须引用已声明节点，禁止重复的 `(type, from, to)` 三元组和自环。首期允许有环的业务语义图，但影响查询必须按已访问节点去重并报告传播路径，不能无限展开。无证据、悬空节点、失配的 GitNexus UID 或回退定位均为校验失败；后两者可以在未索引的项目中标记为“待解析”，但不得被误报为已映射。
 
@@ -133,7 +133,7 @@ relations:
 | `consumes` | 消费方使用外部 workflow 或 API | `to → from` | 外部 workflow 变更影响消费方 |
 | `depends_on` | 依赖方依赖提供方 | `to → from` | 提供方变更影响依赖方 |
 
-首跳命中标为“直接影响”，第二跳及以后标为“间接影响”；默认深度为 2，`--depth` 只能扩大或缩小层数，不能改变关系方向。CLI 输出必须包含入口节点、深度、每个受影响节点的最短传播路径、直接/间接分类、关系序列和相关证据引用；JSON 输出还必须稳定包含这些字段。未建模入口或待解析映射不得产生推测性影响结论。
+首跳命中标为“直接影响”，第二跳及以后标为“间接影响”；默认深度为 2，`--depth` 只能扩大或缩小层数，不能改变关系方向。CLI 输出必须包含入口节点、深度、每个受影响节点的最短传播路径、直接/间接分类、关系序列和每条关系的证据引用；JSON 输出还必须稳定包含这些字段，文本输出也必须展示关系证据。未建模入口或待解析映射不得产生推测性影响结论。
 
 ### LLM 自动维护与人工兜底
 
@@ -162,11 +162,13 @@ graph_depth: 2 # 可省略，默认 2
 | 阶段 2 | 实现影响分析 CLI 与 GitNexus 引用解析 | 阶段 1 完成，传播策略已冻结 | 两跳路径、文本/JSON 输出、代码对象解析 fixture | 已完成 |
 | 阶段 3 | 接入计划前置分析并完成 ModelPad 试点验收 | 阶段 2 完成，ModelPad 已建立代码图谱基线 | 三个真实场景、独立复核和分发验证 | 已完成 |
 
-## 阶段 0-3 完成记录
+## 当前阶段
+
+### 阶段 0-3 完成记录
 
 ### 范围
 
-阶段 0 已固定通用图谱契约、LLM 自动维护边界、ModelPad 试点范围和可观察基线；阶段 1-3 已完成实现、分发和试点验收。
+阶段 0 已固定通用图谱契约、LLM 自动维护边界、ModelPad 试点范围和可观察基线；阶段 1-3 已完成通用校验器、影响分析 CLI、分发和 ModelPad 试点验收。
 
 ### 阶段准入摘要
 
@@ -197,7 +199,7 @@ graph_depth: 2 # 可省略，默认 2
 | 合法最小图谱 | 一个有证据的节点和关系 | 阶段 1 fixture：`graph validate <fixture-root>` | 接受最小版本 1 文档并保留证据 | 缺少必填字段仍通过 | `tests/fixtures/functional-graph/valid-minimal/` |
 | 结构反例 | 重复 ID、悬空端点、自环、重复关系 | 阶段 1 fixture：`graph validate <fixture-root>` | 分别指出精确字段与失败原因 | 静默接受或笼统报错 | `tests/fixtures/functional-graph/invalid-structure/` |
 | 证据与映射反例 | 无证据、失配 UID、缺少回退定位 | 阶段 1 fixture：`graph validate <fixture-root>` | 拒绝无证据；待解析映射与失配分开报告 | 将待解析当作已映射 | `tests/fixtures/functional-graph/invalid-evidence/` |
-| 传播 fixture | 六种核心关系、分支与环 | 阶段 2 fixture：`graph impact --from <id> --depth 2 --format json <fixture-root>` | 输出最短路径、直接/间接分类、去重节点 | 方向错误、重复节点或无限循环 | `tests/fixtures/functional-graph/impact/` |
+| 传播 fixture | 六种核心关系、分支与环 | 阶段 2 fixture：`graph impact --from <id> --depth 2 --format json <fixture-root>` | 输出最短路径、关系证据、直接/间接分类、去重节点 | 方向错误、缺少关系证据、重复节点或无限循环 | `tests/fixtures/functional-graph/impact/` |
 
 ### 实施步骤
 
@@ -232,8 +234,8 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 日期 | 2026-07-22 |
 | 阶段 | 阶段 3 |
 | 结论 | 通过；阶段 0-3 全部达到完成标准 |
-| 证据 | `npm test` 12/12、ModelPad `graph validate`、三个场景 fixture、分发包 dry-run |
-| 复核者 | Codex 独立复核 |
+| 证据 | 阶段 0-2 专属图谱测试 8/8、根仓库全量测试、ModelPad `graph validate`、三个场景 fixture、GitNexus `context --uid` 和分发检查均通过 |
+| 复核者 | 独立复核 |
 
 ## 独立复核记录
 
@@ -245,13 +247,19 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 2026-07-22 | 阶段准入复核 | 阶段 1 | 通过 | `graph_governance.mjs`、正反例测试、节点类型/证据字段/回退映射校验已通过。 | Codex 独立复核 |
 | 2026-07-22 | 阶段准入复核 | 阶段 2 | 通过 | 两跳传播、文本/JSON 输出、环去重和路径证据输出已通过测试。 | Codex 独立复核 |
 | 2026-07-22 | 阶段验收 | 阶段 3 | 通过 | ModelPad 三个场景 fixture、GitNexus 索引、npm 包清单和全量治理检查已通过。 | Codex 独立复核 |
+| 2026-07-22 | 阶段验收复核 | 阶段 3 | 不通过 | 通用 CLI 的 12 个 Node 测试和治理检查通过；但真实 ModelPad `graph validate` 对 9 个 GitNexus UID 报失配，底层 `gitnexus context --uid` 报 Binder 错误，不能确认代码映射已验收。 | 独立复核 |
+| 2026-07-22 | 阶段 0-2 复核 | 阶段 0 | 通过 | 契约细节已与实现对齐：`project` 可选且存在时校验、版本 1 明确、ID 规则收紧；阶段 0 达到完成标准。 | 独立复核 |
+| 2026-07-22 | 阶段 0-2 复核 | 阶段 1 | 通过 | `node --test tests/graph_cli.test.mjs` 8/8；正反例、project、证据、fallback、待解析和 UID 失配校验均通过。 | 独立复核 |
+| 2026-07-22 | 阶段 0-2 复核 | 阶段 2 | 通过 | 六种关系、分支、环、两跳、直接/间接结果、关系级 evidence、文本/JSON 输出和分发清单均通过。 | 独立复核 |
+| 2026-07-22 | 阶段 3 当前状态复核 | 阶段 3 | 不通过 | 阶段 0-2 已通过；ModelPad 真实 GitNexus UID 仍有 9 个失配，阶段 3 保持阻塞。 | 独立复核 |
+| 2026-07-22 | 阶段 3 最终验收 | 阶段 3 | 通过 | 完整 `gitnexus analyze --force` 后索引为 1,866 nodes、4,140 edges；ModelPad `graph validate` 通过，三个场景 fixture 全部通过，影响分析输出关系级证据。 | 独立复核 |
 
 ## 未决问题
 
 | 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|
 | 阶段 1 需使既有原型符合阶段 0 契约 | 已按冻结契约修正节点类型、证据字段、GitNexus 回退映射、环策略、`contains` 与 `orchestrates` 传播方向，并由 fixture 验证 | 否 | 已完成 |
-| GitNexus 符号 ID 在重命名或重载变化后的稳定引用策略 | 已记录 UID、文件/路由回退和失配报告规则，并验证 `code_refs.fallback` | 否 | 已完成 |
+| GitNexus 符号 ID 在重命名或重载变化后的稳定引用策略 | 已记录 UID、文件/路由回退和失配报告规则，并在 ModelPad 完整重建索引后验证 `context --uid` | 否 | 已完成 |
 | 扩展关系的审批方式 | 只在真实项目需要时按 Schema 版本新增，并补充传播 fixture | 否 | 已决定 |
 
 ## 风险和回滚
@@ -275,18 +283,19 @@ plan-governance-cli graph validate /Users/jafish/Documents/work/ModelPad
 plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --format json /Users/jafish/Documents/work/ModelPad
 ```
 
-预期结果：12 个 Node.js 测试通过，分发清单包含图谱脚本和 YAML 依赖，ModelPad 图谱校验及 JSON 影响分析通过。
+预期结果：15 个 Node.js 测试通过，分发清单包含图谱脚本和 YAML 依赖，ModelPad 图谱校验及 JSON 影响分析通过。
 
 ## 完成证据
 
-- `npm test` 通过，12/12 测试通过，覆盖 CLI 转发、YAML 正反例、两跳影响分析、JSON 输出和打包运行。
+- `npm test` 通过，15/15 测试通过，覆盖 CLI 转发、YAML 正反例、GitNexus 待解析/失配、两跳影响分析、关系级 evidence、JSON 输出、打包运行和 setup/init 回归。
 - `npm pack --dry-run --json` 确认 `scripts/graph_governance.mjs` 和 `yaml` 依赖进入分发包。
 - `graph validate` 已按冻结契约校验 `schema_version`、节点类型、证据 `ref`、`code_refs.fallback`、悬空关系、自环和重复关系。
 - `graph impact` 已按六种关系的冻结传播方向输出最短路径、直接/间接结果和证据；环只做访问去重，不无限展开。
+- ModelPad 完整 `gitnexus analyze --force` 后 `graph validate` 通过：20 个节点、23 条关系、9 个 GitNexus 引用；三个真实场景 fixture 全部通过。
 
 ## 测试覆盖率
 
-2026-07-22 执行 `npm test`，12 个 Node.js 测试全部通过；测试覆盖率证据覆盖图谱校验、关系错误、影响传播、JSON 输出、打包清单和临时安装运行路径。
+覆盖率证据：2026-07-22 执行 `npm test`，15 个 Node.js 测试全部通过；阶段 0-2 专属图谱测试为 8/8，ModelPad 图谱校验与三个场景 fixture 全部通过。Node.js 内置测试未配置行覆盖率统计，本条以测试通过数、fixture 覆盖矩阵和分发 smoke test 作为覆盖证据。
 
 ## 关联 ADR、迁移、spec 或 issue
 
@@ -294,3 +303,7 @@ plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --form
 - 依赖计划：[phase-entry-gate-hardening](phase-entry-gate-hardening.md)。
 - 依赖计划：[agent-runtime-integration](agent-runtime-integration.md)。
 - 外部试点计划：ModelPad 仓库的 `functional-graph-pilot`。
+
+## 后续演进
+
+阶段 0-3 的完成范围仍是功能图谱 YAML、通用 CLI、分发和 ModelPad 两层试点验收。后续三层结构、架构图谱以及 GitNexus 引用收缩由独立计划 [architecture-graph-governance](architecture-graph-governance.md) 承载：功能图谱保持业务语义边界，架构图谱承载系统/模块/组件/接口边界，GitNexus UID 收缩为架构层到代码层的少量可选映射。该后续计划未完成阶段 0 设计前，不改变本计划已验收的历史契约或 ModelPad 现有 YAML。

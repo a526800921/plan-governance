@@ -108,8 +108,8 @@ function normalizeGraph(raw, root) {
     return { issues: ["根文档必须是 YAML 对象"], nodes: [], relations: [] };
   }
   if (raw.schema_version !== 1) issues.push(`schema_version 必须为 1，实际为 ${raw.schema_version ?? "<missing>"}`);
-  if (!raw.project || typeof raw.project.id !== "string" || typeof raw.project.name !== "string") {
-    issues.push("project.id 和 project.name 必须存在");
+  if (raw.project !== undefined && (!raw.project || typeof raw.project.id !== "string" || typeof raw.project.name !== "string")) {
+    issues.push("project.id 和 project.name 必须同时存在且为字符串");
   }
   const nodes = asArray(raw.nodes);
   const relations = asArray(raw.relations);
@@ -125,7 +125,7 @@ function normalizeGraph(raw, root) {
       return;
     }
     if (typeof node.id !== "string" || node.id.length === 0) issues.push(`${label}.id 缺失`);
-    else if (!/^[a-z0-9][a-z0-9._-]*$/.test(node.id)) issues.push(`${label}.id 必须是全小写分段标识`);
+    else if (!/^[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)*$/.test(node.id)) issues.push(`${label}.id 必须是由 . 分隔、段内仅含小写字母数字和连字符的标识`);
     else if (ids.has(node.id)) issues.push(`节点 ID 重复：${node.id}`);
     else ids.add(node.id);
     if (!NODE_TYPES.has(node.type)) issues.push(`${label}.type 不受支持：${node.type ?? "<missing>"}`);
@@ -188,8 +188,16 @@ function validate(root) {
         warnings.push("GitNexus CLI 不在 PATH 中，已跳过 UID 实体验证；保留 code_refs.fallback");
         break;
       }
-      if (check.status !== 0) {
+      let contextResult;
+      try {
+        contextResult = JSON.parse(check.stdout ?? "");
+      } catch {
+        contextResult = null;
+      }
+      if (check.status !== 0 || !contextResult || contextResult.status !== "found") {
+        const detail = contextResult?.error ?? (check.stderr || `退出码 ${check.status}`);
         result.issues.push(`${node.id}.code_refs GitNexus UID 失配：${ref.ref}；回退：${ref.fallback}`);
+        if (detail) result.issues.push(`${node.id}.code_refs GitNexus 响应：${String(detail).trim()}`);
       }
     }
   } else if (gitnexusRefs.length > 0) {
@@ -243,7 +251,12 @@ function impact(root, options) {
     if (current.depth >= options.depth) continue;
     for (const edge of edges.get(current.id) ?? []) {
       const nextDepth = current.depth + 1;
-      const nextPath = [...current.path, { from: current.id, type: edge.relation.type, to: edge.target }];
+      const nextPath = [...current.path, {
+        from: current.id,
+        type: edge.relation.type,
+        to: edge.target,
+        evidence: edge.relation.evidence,
+      }];
       if (bestDepth.has(edge.target) && bestDepth.get(edge.target) <= nextDepth) continue;
       bestDepth.set(edge.target, nextDepth);
       queue.push({ id: edge.target, depth: nextDepth, path: nextPath });
@@ -267,8 +280,13 @@ function printText(result) {
     if (items.length === 0) console.log("- 无");
     for (const item of items) {
       const path = item.path.map((edge) => `${edge.from} -[${edge.type}]-> ${edge.to}`).join("；");
+      const pathEvidence = item.path
+        .flatMap((edge) => edge.evidence ?? [])
+        .map((entry) => `${entry.ref}#${entry.locator}`)
+        .join("；");
       console.log(`- ${item.id}（${item.node.type}）：${item.node.name}`);
       console.log(`  路径：${path}`);
+      console.log(`  关系证据：${pathEvidence || "-"}`);
       console.log(`  证据：${item.evidence.map((entry) => `${entry.ref}#${entry.locator}`).join("；")}`);
     }
   };

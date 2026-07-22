@@ -5,8 +5,8 @@
   "plan_path": "docs/plans/phase-entry-gate-hardening.md",
   "plan_map_path": "docs/PLAN_MAP.md",
   "plan_sha256": "49dd47528902f16b2b2ac732d3a8111fe6752024349ee72754b04581b9d6c336",
-  "plan_map_sha256": "bf682553e0e80dd10a17db556fb1f0f00c1059d5f5c6aeca85b03b26285522f3",
-  "created_at": "2026-07-22T14:42:19Z",
+  "plan_map_sha256": "28c590fe484ddc9b0fb1762f0ce6122735c355b4b7c1b75a52ab2fec3f654706",
+  "created_at": "2026-07-22T15:39:08Z",
   "created_by": "plan-governance",
   "reason": "阶段完成快照"
 }

@@ -24,6 +24,41 @@ nodes:
       - kind: document
         ref: README.md
         locator: 影响传播图谱 fixture 证据
+  - id: business.two
+    type: business
+    name: Business Two
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - id: process.one
+    type: process
+    name: Process One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - id: external.one
+    type: external_workflow
+    name: External One
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - id: function.consumer
+    type: function
+    name: Function Consumer
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - id: function.cycle
+    type: function
+    name: Function Cycle
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
 relations:
   - from: business.one
     type: contains
@@ -35,6 +70,48 @@ relations:
   - from: function.one
     type: exposes
     to: api.one
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: process.one
+    type: orchestrates
+    to: function.one
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: function.one
+    type: implements
+    to: business.two
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: external.one
+    type: consumes
+    to: function.one
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: function.consumer
+    type: depends_on
+    to: function.one
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: function.consumer
+    type: depends_on
+    to: function.cycle
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: 影响传播图谱 fixture 证据
+  - from: function.cycle
+    type: depends_on
+    to: function.consumer
     evidence:
       - kind: document
         ref: README.md

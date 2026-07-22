@@ -1,12 +1,12 @@
 {
   "plan": "functional-graph-governance",
-  "phase": "阶段 0-3 全部完成",
+  "phase": "阶段 3",
   "status": "已完成",
   "plan_path": "docs/plans/functional-graph-governance.md",
   "plan_map_path": "docs/PLAN_MAP.md",
-  "plan_sha256": "bd18390b51471d2c14bae7ee8b2d99f033fdd07e9e5447e496e854ba1325410e",
-  "plan_map_sha256": "bf682553e0e80dd10a17db556fb1f0f00c1059d5f5c6aeca85b03b26285522f3",
-  "created_at": "2026-07-22T14:42:19Z",
+  "plan_sha256": "1309211b6b21753d0e3515b50c6eba4082c5ae413475db17b7559dc1c21a0583",
+  "plan_map_sha256": "28c590fe484ddc9b0fb1762f0ce6122735c355b4b7c1b75a52ab2fec3f654706",
+  "created_at": "2026-07-22T15:39:08Z",
   "created_by": "plan-governance",
   "reason": "阶段完成快照"
 }
