@@ -275,7 +275,7 @@ plan-governance-cli graph code impact \
 | 多候选重绑定 | ModelPad 中的 `APIHandler`：`APIServer.swift:89` 与 `mlx_lm_server_fork.py:986` | `plan-governance-cli graph code candidates --symbol APIHandler --kind class --format json /Users/jafish/Documents/work/ModelPad` | 产生两个候选，`resolution: ask_user`；不得自动选择或写回 | 自动选择任意候选并写回 | 已通过 CLI 测试和真实只读回放 |
 | 代码级影响查询 | 已确认的 `APIServer.swift` / `APIHandler` / `class` | `plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCore/API/APIServer.swift --symbol APIHandler --kind class --depth 2 --format json /Users/jafish/Documents/work/ModelPad` | 返回 GitNexus 风险、影响数量、流程和模块，不触发 analyze | 误查其他 repo、失败被伪装为无影响或自动刷新索引 | 已通过 CLI 测试和 ModelPad 真实回放 |
 
-阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；五类只读回放和候选报告 CLI 现已具备，代码级查询和独立准入仍未完成。
+阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；五类只读回放、候选报告 CLI 和代码级查询现已具备，当前只剩独立准入复核。
 
 #### 阶段 2 当前实现候选证据
 
@@ -284,7 +284,7 @@ plan-governance-cli graph code impact \
 - 根仓库全量测试当前为 31/31 通过，功能层默认路径保持兼容。
 - 候选报告 CLI 已实现并覆盖唯一候选、多候选、无候选三种解析结果；在 ModelPad 真实回放中，同名符号出现在 Swift 与 Python 文件中，输出 `ask_user`，不允许 LLM 在缺少文件约束时猜测。
 - 代码级影响 CLI 已实现并覆盖 GitNexus 结果封装、错误边界和不触发 `analyze` 的测试；ModelPad 真实回放返回 `CRITICAL`、34 个受影响符号、30 个直接、4 个间接，涉及 1 个流程和 2 个模块。
-- ModelPad 当前只保留阶段 1 的架构边界和功能→架构映射；`code_mappings` 不在多候选重绑定规则冻结前写入 ModelPad。
+- ModelPad 当前只保留阶段 1 的架构边界和功能→架构映射；`code_mappings` 暂不写入 ModelPad，待独立准入复核通过后再决定首批少量映射。
 
 ### 阶段 1 完成记录
 

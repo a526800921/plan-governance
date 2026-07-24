@@ -19,6 +19,10 @@
 | 候选报告 CLI | `plan-governance-cli graph code candidates --symbol APIHandler --kind class --format json /Users/jafish/Documents/work/ModelPad` | 返回两个候选和 `resolution: ask_user`；限定 `--file Sources/ModelPadCore/API/APIServer.swift` 时返回唯一候选 |
 | 代码级影响查询 | `plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCore/API/APIServer.swift --symbol APIHandler --kind class --depth 2 --format json /Users/jafish/Documents/work/ModelPad` | GitNexus 返回 `CRITICAL`、34 个受影响符号（30 个直接、4 个间接）、1 个流程和 2 个模块；未触发 `analyze` |
 
+### UID 失配到候选的串联回放
+
+UID `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999` 查询返回 `Symbol not found` 后，不删除或改写映射；随后用其稳定 fallback `Sources/ModelPadCore/API/APIServer.swift`、`APIHandler`、`class` 调用 `graph code candidates`，得到唯一 `APIHandler` 候选。若省略文件约束，则同一查询得到 Swift 和 Python 两个候选并输出 `ask_user`。该串联仍是两个只读命令，LLM 负责根据证据决定自动确认或请求用户。
+
 ## 设计结论
 
 - stale 只表示索引与当前提交不同，不直接等价于 UID 全部失效。

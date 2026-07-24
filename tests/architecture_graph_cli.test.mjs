@@ -241,3 +241,19 @@ test("code impact wraps GitNexus output without refreshing the index", () => {
   assert.equal(output.query.kind, "class");
   assert.equal(output.result.risk, "HIGH");
 });
+
+test("code impact rejects a GitNexus JSON error instead of reporting no impact", () => {
+  const target = fixture();
+  const bin = mkdtempSync(join(tmpdir(), "plan-gitnexus-error-stub-"));
+  const gitnexus = join(bin, "gitnexus");
+  writeFileSync(gitnexus, "#!/usr/bin/env node\nconsole.log(JSON.stringify({ error: \"Target 'Missing' not found\", impactedCount: 0, risk: 'UNKNOWN' }));\n");
+  chmodSync(gitnexus, 0o755);
+  const result = codeImpact(target, [
+    "--repo", "modelpad",
+    "--file", "Sources/Missing.swift",
+    "--symbol", "Missing",
+    "--kind", "class",
+  ], bin);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Target 'Missing' not found/);
+});

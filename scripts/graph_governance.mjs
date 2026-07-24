@@ -553,6 +553,9 @@ function codeImpact(root, options) {
   } catch (cause) {
     throw new Error(`GitNexus 代码级影响查询返回了无法解析的结果：${cause.message}`);
   }
+  if (gitnexusResult?.error) {
+    throw new Error(`GitNexus 代码级影响查询失败：${String(gitnexusResult.error)}`);
+  }
   return {
     schema_version: 1,
     query: {
