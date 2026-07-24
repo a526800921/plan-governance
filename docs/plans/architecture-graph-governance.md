@@ -281,7 +281,7 @@ plan-governance-cli graph code impact \
 
 - 架构层校验器已支持 `code_mappings[].code_anchor`，校验架构节点归属、文件存在性、`file + symbol + kind` 唯一性和可选 UID 格式。
 - 通用架构 fixture 已覆盖无 UID 锚点、悬空架构节点、代码文件缺失和重复锚点反例；阶段 2 新增测试与阶段 1 测试合计 12 项架构测试通过。
-- 根仓库全量测试当前为 31/31 通过，功能层默认路径保持兼容。
+- 根仓库全量测试当前为 32/32 通过，功能层默认路径保持兼容。
 - 候选报告 CLI 已实现并覆盖唯一候选、多候选、无候选三种解析结果；在 ModelPad 真实回放中，同名符号出现在 Swift 与 Python 文件中，输出 `ask_user`，不允许 LLM 在缺少文件约束时猜测。
 - 代码级影响 CLI 已实现并覆盖 GitNexus 结果封装、错误边界和不触发 `analyze` 的测试；ModelPad 真实回放返回 `CRITICAL`、34 个受影响符号、30 个直接、4 个间接，涉及 1 个流程和 2 个模块。
 - ModelPad 当前只保留阶段 1 的架构边界和功能→架构映射；`code_mappings` 暂不写入 ModelPad，待独立准入复核通过后再决定首批少量映射。
