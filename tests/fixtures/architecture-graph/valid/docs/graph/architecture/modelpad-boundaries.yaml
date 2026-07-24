@@ -1,0 +1,65 @@
+nodes:
+  - id: architecture.modelpad.local-http-api
+    type: interface
+    name: 本地 HTTP API 接口边界
+    evidence:
+      - kind: code
+        ref: README.md
+        locator: local HTTP API
+  - id: architecture.modelpad.openapi-contract
+    type: interface
+    name: OpenAPI 契约
+    evidence:
+      - kind: api
+        ref: README.md
+        locator: OpenAPI contract
+  - id: architecture.modelpad.config-persistence
+    type: data_boundary
+    name: 配置持久化边界
+    evidence:
+      - kind: code
+        ref: README.md
+        locator: config persistence
+  - id: architecture.modelpad.model-process-management
+    type: component
+    name: 模型进程管理边界
+    evidence:
+      - kind: code
+        ref: README.md
+        locator: model process management
+  - id: architecture.modelpad.app-state-orchestration
+    type: component
+    name: App 状态编排边界
+    evidence:
+      - kind: code
+        ref: README.md
+        locator: app state orchestration
+  - id: architecture.modelpad.external-model-service
+    type: service
+    name: 外部模型服务边界
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: external model service
+relations:
+  - type: contains
+    from: architecture.modelpad.app-state-orchestration
+    to: architecture.modelpad.local-http-api
+    evidence:
+      - kind: code
+        ref: README.md
+        locator: app assembles local API
+  - type: exposes
+    from: architecture.modelpad.local-http-api
+    to: architecture.modelpad.openapi-contract
+    evidence:
+      - kind: api
+        ref: README.md
+        locator: OpenAPI contract
+  - type: crosses
+    from: architecture.modelpad.local-http-api
+    to: architecture.modelpad.external-model-service
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: model service port

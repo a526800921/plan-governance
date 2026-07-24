@@ -1,0 +1,22 @@
+relations:
+  - type: realized_by
+    from: feature.config-refresh
+    to: architecture.modelpad.config-persistence
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: configuration refresh uses config persistence
+  - type: realized_by
+    from: feature.model-lifecycle
+    to: architecture.modelpad.model-process-management
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: model lifecycle uses process management
+  - type: realized_by
+    from: feature.pdf-workflow-reuse
+    to: architecture.modelpad.external-model-service
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: PDF workflow uses external model service

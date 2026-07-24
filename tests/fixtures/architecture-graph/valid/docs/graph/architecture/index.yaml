@@ -1,0 +1,7 @@
+schema_version: 1
+layer: architecture
+files:
+  - modelpad-boundaries.yaml
+  - mappings.yaml
+references:
+  functional: ../functional/index.yaml

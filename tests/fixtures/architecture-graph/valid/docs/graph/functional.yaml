@@ -1,0 +1,24 @@
+schema_version: 1
+nodes:
+  - id: feature.config-refresh
+    type: function
+    name: 配置刷新
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: configuration refresh
+  - id: feature.model-lifecycle
+    type: function
+    name: 模型生命周期
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: model lifecycle
+  - id: feature.pdf-workflow-reuse
+    type: function
+    name: 外部 PDF workflow 复用
+    evidence:
+      - kind: document
+        ref: README.md
+        locator: PDF workflow
+relations: []
