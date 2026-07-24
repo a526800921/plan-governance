@@ -173,7 +173,7 @@ gitnexus_uid: <可选>
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 设计中 |
-| 当前阻塞项 | 尚未建立阶段 2 的 GitNexus 映射 fixture、UID 失配/重绑定报告、代码级查询验证和独立准入复核 |
+| 当前阻塞项 | 已有 GitNexus 命中、失配、stale、无 UID 和真实多候选回放；仍未建立可执行的候选报告 CLI/fixture、代码级查询验证和独立准入复核 |
 | 实施边界 | 阶段 2 准入通过前不新增 ModelPad GitNexus 映射，不修改 GitNexus 索引，不实现代码级影响查询 |
 | 进入条件 | 阶段 2 独立准入复核明确达到“待实施”标准 |
 
@@ -186,7 +186,7 @@ gitnexus_uid: <可选>
 | 样本矩阵 | [阶段 2 样本矩阵](#阶段-2-样本矩阵) |
 | 验证方式 | GitNexus 状态、UID 命中/失配、稳定代码锚点和只读候选报告回放 |
 | 失败/回滚边界 | 阶段 2 只生成只读映射候选；边界未收敛时不修改 ModelPad 架构 YAML 和 GitNexus 索引 |
-| 当前阻塞项 | 阶段 2 候选尚未形成可执行的重绑定报告和独立准入复核 |
+| 当前阻塞项 | 阶段 2 已形成真实多候选回放，但尚未形成可执行的重绑定候选报告和独立准入复核 |
 | 最新独立准入复核 | 尚未进行 |
 
 ### 阶段 2 Step 0 候选
@@ -233,15 +233,16 @@ code_mappings:
 | UID 精确命中 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#1` | `gitnexus context -r modelpad --uid <uid>` | `status: found`，返回文件、符号和范围 | 命中被当作架构事实，或没有记录证据 | 已通过只读回放 |
 | UID 失配 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999` | 同上 | 生成失配候选，保留文件/符号 fallback | 失配被静默删除或误报为精确命中 | 已通过只读回放 |
 | 稳定锚点无 UID | `ModelProcessManager.swift` + `ModelProcessManager` + `class` | `test -f ... && rg -n 'class ModelProcessManager' ...` | 可作为长期映射，不依赖 UID | 把缺少 UID 判为无映射 | 已通过只读基线，fixture 待补 |
-| 多候选重绑定 | 同名或重载符号候选 | GitNexus 查询 + LLM 候选报告 | LLM 无法唯一判断时上升用户确认 | 自动选择任意候选并写回 | 待 fixture |
+| 多候选重绑定 | ModelPad 中的 `APIHandler`：`APIServer.swift:89` 与 `mlx_lm_server_fork.py:986` | `rg -n -g 'APIServer.swift' -g 'mlx_lm_server_fork.py' 'class APIHandler' Sources/ModelPadCore/API/APIServer.swift App/Resources/Scripts/mlx_lm_server_fork.py` | 产生两个候选；LLM 输出 `ask_user`，不得自动选择或写回 | 自动选择任意候选并写回 | 已通过真实只读回放；候选报告 CLI/fixture 待实现 |
 
-阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；当前已完成 stale、精确命中、失配和无 UID 锚点四类只读回放，多候选仍待 fixture。
+阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；五类只读回放现已具备，但候选报告尚未 CLI 化，代码级查询和独立准入仍未完成。
 
 #### 阶段 2 当前实现候选证据
 
 - 架构层校验器已支持 `code_mappings[].code_anchor`，校验架构节点归属、文件存在性、`file + symbol + kind` 唯一性和可选 UID 格式。
 - 通用架构 fixture 已覆盖无 UID 锚点、悬空架构节点、代码文件缺失和重复锚点反例；阶段 2 新增测试与阶段 1 测试合计 12 项架构测试通过。
 - 根仓库全量测试当前为 27/27 通过，功能层默认路径保持兼容。
+- ModelPad 真实回放已覆盖多候选边界：同名符号出现在 Swift 与 Python 文件中；该边界要求 `ask_user`，不允许 LLM 在缺少文件约束时猜测。
 - ModelPad 当前只保留阶段 1 的架构边界和功能→架构映射；`code_mappings` 不在多候选重绑定规则冻结前写入 ModelPad。
 
 ### 阶段 1 完成记录
