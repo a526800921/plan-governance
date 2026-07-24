@@ -31,4 +31,4 @@ UID `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#99
 - `analyze` 不由 hook、CLI 或 YAML 校验自动触发；刷新索引后仍需重新执行命中/失配检查。
 - LLM 能唯一确认时更新架构层映射；多候选、证据冲突或无法确认时才请求用户。
 - ModelPad 已提供真实多候选回放：同名 `APIHandler` 分属不同文件和语言；如果失配后的 fallback 缺少文件约束，LLM 必须输出 `ask_user`，不得自动写回。
-- 候选报告 CLI 和代码级影响 CLI 已将重绑定与影响范围边界固化为可执行的只读输出；阶段 2 仍保持设计中，下一步是独立准入复核。
+- 候选报告 CLI 和代码级影响 CLI 已将重绑定与影响范围边界固化为可执行的只读输出；阶段 2 已达到待实施标准，下一步是按计划实施少量架构→代码映射。
