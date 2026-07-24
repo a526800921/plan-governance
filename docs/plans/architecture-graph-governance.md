@@ -195,7 +195,19 @@ gitnexus_uid: <可选>
 
 #### 代码锚点候选
 
-架构层维护 `anchors_to` 关系或等价的代码映射记录，长期主键使用仓库内文件路径、全限定符号名和符号类型；GitNexus UID 只作为可选精确索引。首批只验证以下三类边界，不扩展到每个函数：
+架构层维护逻辑上的 `anchors_to` 映射，物理上使用独立的 `code_mappings` 数组保存 `code_anchor` 对象，不创建代码节点。长期主键使用仓库内文件路径、全限定符号名和符号类型；GitNexus UID 只作为可选精确索引。候选结构如下：
+
+```yaml
+code_mappings:
+  - architecture_id: architecture.modelpad.model-process-management
+    code_anchor:
+      file: Sources/ModelPadCore/Process/ModelProcessManager.swift
+      symbol: ModelProcessManager
+      kind: class
+      gitnexus_uid: <可选>
+```
+
+同一架构边界可以有多个 `code_anchor`，但每个锚点必须有唯一的文件、符号和类型组合；不得把 GitNexus 调用链复制到 YAML。首批只验证以下三类边界，不扩展到每个函数：
 
 | 架构边界 | 稳定代码锚点 | GitNexus UID | 维护目的 |
 |---|---|---|---|
@@ -220,10 +232,17 @@ gitnexus_uid: <可选>
 | 索引新鲜度 | ModelPad 当前提交 `0dde74d`、GitNexus 索引提交 `d63eb71` | `gitnexus status` | 明确报告 stale 和两者 commit，不直接判定 UID 全部失效 | stale 被静默忽略或自动触发 analyze | 已通过只读回放 |
 | UID 精确命中 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#1` | `gitnexus context -r modelpad --uid <uid>` | `status: found`，返回文件、符号和范围 | 命中被当作架构事实，或没有记录证据 | 已通过只读回放 |
 | UID 失配 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999` | 同上 | 生成失配候选，保留文件/符号 fallback | 失配被静默删除或误报为精确命中 | 已通过只读回放 |
-| 稳定锚点无 UID | `ModelProcessManager.swift` + `ModelProcessManager` + `class` | 代码文件存在性和符号定位检查 | 可作为长期映射，不依赖 UID | 把缺少 UID 判为无映射 | 待 fixture |
+| 稳定锚点无 UID | `ModelProcessManager.swift` + `ModelProcessManager` + `class` | `test -f ... && rg -n 'class ModelProcessManager' ...` | 可作为长期映射，不依赖 UID | 把缺少 UID 判为无映射 | 已通过只读基线，fixture 待补 |
 | 多候选重绑定 | 同名或重载符号候选 | GitNexus 查询 + LLM 候选报告 | LLM 无法唯一判断时上升用户确认 | 自动选择任意候选并写回 | 待 fixture |
 
-阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；当前只完成前三类的只读回放。
+阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；当前已完成 stale、精确命中、失配和无 UID 锚点四类只读回放，多候选仍待 fixture。
+
+#### 阶段 2 当前实现候选证据
+
+- 架构层校验器已支持 `code_mappings[].code_anchor`，校验架构节点归属、文件存在性、`file + symbol + kind` 唯一性和可选 UID 格式。
+- 通用架构 fixture 已覆盖无 UID 锚点、悬空架构节点、代码文件缺失和重复锚点反例；阶段 2 新增测试与阶段 1 测试合计 12 项架构测试通过。
+- 根仓库全量测试当前为 27/27 通过，功能层默认路径保持兼容。
+- ModelPad 当前只保留阶段 1 的架构边界和功能→架构映射；`code_mappings` 不在多候选重绑定规则冻结前写入 ModelPad。
 
 ### 阶段 1 完成记录
 

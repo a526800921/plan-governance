@@ -24,6 +24,10 @@ function mappingsPath(target) {
   return join(target, "docs", "graph", "architecture", "mappings.yaml");
 }
 
+function codeMappingsPath(target) {
+  return join(target, "docs", "graph", "architecture", "code-mappings.yaml");
+}
+
 function validate(target) {
   return spawnSync(process.execPath, [cli, "graph", "validate", "--layer", "architecture", target], { encoding: "utf8" });
 }
@@ -33,6 +37,7 @@ test("architecture graph validate accepts indexed domain files and cross-layer m
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /架构图谱校验通过/);
   assert.match(result.stdout, /节点 6 个，关系 6 条/);
+  assert.match(result.stdout, /代码锚点 3 个/);
 });
 
 test("architecture graph validate rejects dangling local relations", () => {
@@ -114,6 +119,52 @@ test("architecture graph validate rejects missing evidence", () => {
   const result = validate(target);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /缺少 evidence/);
+});
+
+test("architecture graph validate rejects a code anchor outside architecture nodes", () => {
+  const target = fixture((rootPath) => {
+    const path = codeMappingsPath(rootPath);
+    const content = readFileSync(path, "utf8").replace(
+      "architecture_id: architecture.modelpad.local-http-api",
+      "architecture_id: architecture.modelpad.missing",
+    );
+    writeFileSync(path, content);
+  });
+  const result = validate(target);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /指向悬空架构节点/);
+});
+
+test("architecture graph validate rejects a missing code anchor file", () => {
+  const target = fixture((rootPath) => {
+    const path = codeMappingsPath(rootPath);
+    const content = readFileSync(path, "utf8").replace("file: README.md", "file: Sources/Missing.swift");
+    writeFileSync(path, content);
+  });
+  const result = validate(target);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /code_anchor\.file 不存在/);
+});
+
+test("architecture graph validate rejects duplicate code anchors", () => {
+  const target = fixture((rootPath) => {
+    const path = codeMappingsPath(rootPath);
+    const content = readFileSync(path, "utf8").replace(
+      "architecture_id: architecture.modelpad.config-persistence\n    code_anchor:\n      file: README.md\n      symbol: ConfigStore\n      kind: class",
+      "architecture_id: architecture.modelpad.local-http-api\n    code_anchor:\n      file: README.md\n      symbol: APIHandler\n      kind: class",
+    );
+    writeFileSync(path, content);
+  });
+  const result = validate(target);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /代码锚点重复/);
+});
+
+test("architecture graph validate accepts a missing optional UID", () => {
+  const target = fixture();
+  const result = validate(target);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /代码锚点 3 个/);
 });
 
 test("functional graph validate remains the default path", () => {

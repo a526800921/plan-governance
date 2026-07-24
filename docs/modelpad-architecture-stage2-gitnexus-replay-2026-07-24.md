@@ -14,6 +14,7 @@
 | 索引新鲜度 | `gitnexus status` | 索引 commit 为 `d63eb71`，当前提交为 `0dde74d`，状态为 stale |
 | 精确 UID 命中 | `gitnexus context -r modelpad --uid 'Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#1'` | `status: found`，返回 `APIServer.swift`、`handleStart`、行范围和调用/访问关系 |
 | UID 失配 | `gitnexus context -r modelpad --uid 'Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999'` | 返回 Symbol not found；应转为失配候选，不删除稳定代码锚点 |
+| 无 UID 稳定锚点 | `test -f Sources/ModelPadCore/Process/ModelProcessManager.swift && rg -n 'class ModelProcessManager' Sources/ModelPadCore/Process/ModelProcessManager.swift` | 文件存在且唯一定位到 `ModelProcessManager`；可以保存为 `file + symbol + kind` 锚点 |
 
 ## 设计结论
 
@@ -22,4 +23,4 @@
 - 阶段 2 应优先保存文件路径、全限定符号名和符号类型；UID 只作为可选索引。
 - `analyze` 不由 hook、CLI 或 YAML 校验自动触发；刷新索引后仍需重新执行命中/失配检查。
 - LLM 能唯一确认时更新架构层映射；多候选、证据冲突或无法确认时才请求用户。
-- 当前尚未验证多候选重绑定和无 UID 稳定锚点 fixture，因此阶段 2 仍保持设计中。
+- 当前尚未验证多候选重绑定 fixture，因此阶段 2 仍保持设计中。

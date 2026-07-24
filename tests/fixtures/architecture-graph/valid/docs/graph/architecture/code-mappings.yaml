@@ -1,0 +1,16 @@
+code_mappings:
+  - architecture_id: architecture.modelpad.local-http-api
+    code_anchor:
+      file: README.md
+      symbol: APIHandler
+      kind: class
+  - architecture_id: architecture.modelpad.config-persistence
+    code_anchor:
+      file: README.md
+      symbol: ConfigStore
+      kind: class
+  - architecture_id: architecture.modelpad.model-process-management
+    code_anchor:
+      file: README.md
+      symbol: ModelProcessManager
+      kind: class

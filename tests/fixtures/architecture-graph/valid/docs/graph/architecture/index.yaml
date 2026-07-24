@@ -3,5 +3,6 @@ layer: architecture
 files:
   - modelpad-boundaries.yaml
   - mappings.yaml
+  - code-mappings.yaml
 references:
   functional: ../functional/index.yaml

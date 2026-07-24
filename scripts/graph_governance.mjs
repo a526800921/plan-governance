@@ -94,7 +94,8 @@ function mergeGraphDocuments(documents) {
   return documents.reduce((merged, document) => ({
     nodes: [...merged.nodes, ...asArray(document.nodes)],
     relations: [...merged.relations, ...asArray(document.relations)],
-  }), { nodes: [], relations: [] });
+    codeMappings: [...merged.codeMappings, ...asArray(document.code_mappings)],
+  }), { nodes: [], relations: [], codeMappings: [] });
 }
 
 function loadReferencedNodeIds(path, label) {
@@ -141,7 +142,12 @@ function loadArchitectureGraph(root) {
   }
   if (indexIssues.length > 0) throw new Error(indexIssues.join("；"));
   return {
-    graph: { schema_version: 1, nodes: graph.nodes, relations: graph.relations },
+    graph: {
+      schema_version: 1,
+      nodes: graph.nodes,
+      relations: graph.relations,
+      code_mappings: graph.codeMappings,
+    },
     path: indexPath,
     externalIds,
   };
@@ -210,6 +216,7 @@ function normalizeGraph(raw, root, options = {}) {
   }
   const nodes = asArray(raw.nodes);
   const relations = asArray(raw.relations);
+  const codeMappings = asArray(raw.code_mappings);
   if (nodes.length === 0) issues.push("nodes 不能为空");
   if (!Array.isArray(raw.nodes)) issues.push("nodes 必须是数组");
   if (!Array.isArray(raw.relations)) issues.push("relations 必须是数组");
@@ -269,7 +276,48 @@ function normalizeGraph(raw, root, options = {}) {
     validateEvidence(relation.evidence, label, root, issues);
   });
 
-  return { issues, nodes, relations, meta: raw };
+  if (options.layer === "architecture") {
+    if (raw.code_mappings !== undefined && !Array.isArray(raw.code_mappings)) {
+      issues.push("code_mappings 必须是数组");
+    }
+    const seenCodeAnchors = new Set();
+    codeMappings.forEach((mapping, index) => {
+      const label = `code_mappings[${index}]`;
+      if (!mapping || typeof mapping !== "object") {
+        issues.push(`${label} 必须是对象`);
+        return;
+      }
+      if (typeof mapping.architecture_id !== "string" || mapping.architecture_id.length === 0) {
+        issues.push(`${label}.architecture_id 缺失`);
+      } else if (!ids.has(mapping.architecture_id)) {
+        issues.push(`${label}.architecture_id 指向悬空架构节点：${mapping.architecture_id}`);
+      }
+      const anchor = mapping.code_anchor;
+      if (!anchor || typeof anchor !== "object") {
+        issues.push(`${label}.code_anchor 必须是对象`);
+        return;
+      }
+      if (typeof anchor.file !== "string" || anchor.file.length === 0) {
+        issues.push(`${label}.code_anchor.file 缺失`);
+      } else {
+        const absoluteFile = isAbsolute(anchor.file) ? anchor.file : resolve(root, anchor.file);
+        if (!existsSync(absoluteFile)) issues.push(`${label}.code_anchor.file 不存在：${anchor.file}`);
+      }
+      if (typeof anchor.symbol !== "string" || anchor.symbol.length === 0) issues.push(`${label}.code_anchor.symbol 缺失`);
+      if (typeof anchor.kind !== "string" || anchor.kind.length === 0) issues.push(`${label}.code_anchor.kind 缺失`);
+      if (anchor.gitnexus_uid !== undefined && (typeof anchor.gitnexus_uid !== "string" || anchor.gitnexus_uid.length === 0)) {
+        issues.push(`${label}.code_anchor.gitnexus_uid 必须是非空字符串`);
+      }
+      if (typeof mapping.architecture_id === "string" && typeof anchor.file === "string"
+        && typeof anchor.symbol === "string" && typeof anchor.kind === "string") {
+        const key = `${mapping.architecture_id}|${anchor.file}|${anchor.symbol}|${anchor.kind}`;
+        if (seenCodeAnchors.has(key)) issues.push(`代码锚点重复：${key}`);
+        seenCodeAnchors.add(key);
+      }
+    });
+  }
+
+  return { issues, nodes, relations, codeMappings, meta: raw };
 }
 
 function validate(root, layer = "functional") {
@@ -315,7 +363,8 @@ function validate(root, layer = "functional") {
   }
   console.log(`${layer === "architecture" ? "架构图谱" : "图谱"}校验通过：${loaded.path}`);
   warnings.forEach((warning) => console.log(`graph: WARNING: ${warning}`));
-  console.log(`schema_version=1，节点 ${result.nodes.length} 个，关系 ${result.relations.length} 条，GitNexus 引用 ${gitnexusRefs.length} 个`);
+  const mappingText = layer === "architecture" ? `，代码锚点 ${result.codeMappings.length} 个` : "";
+  console.log(`schema_version=1，节点 ${result.nodes.length} 个，关系 ${result.relations.length} 条，GitNexus 引用 ${gitnexusRefs.length} 个${mappingText}`);
   return 0;
 }
 
