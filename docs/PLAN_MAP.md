@@ -30,7 +30,7 @@
 | [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-07-13 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) |
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
-| [architecture-graph-governance](plans/architecture-graph-governance.md) | 设计中 | 阶段 1 | 2026-07-24 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
+| [architecture-graph-governance](plans/architecture-graph-governance.md) | 设计中 | 阶段 2 | 2026-07-24 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -78,7 +78,7 @@
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
-| 通用架构层校验器已实现，但 ModelPad 正式架构图谱和阶段 1 独立准入尚未完成 | 在不迁移旧 `functional.yaml` 的前提下建立五组边界和架构层映射，运行三个新三层场景，完成重复事实检查和独立复核 | architecture-graph-governance 阶段 1 | 是 | 进行中 |
+| 阶段 2 尚未建立 GitNexus 衔接的 Step 0 和独立准入证据 | 先冻结少量架构→代码映射、UID 失配/重绑定候选报告、代码级查询边界和失败/回滚策略；通过独立复核后才进入实施 | architecture-graph-governance 阶段 2 | 是 | 进行中 |
 
 ## 完成证据
 
