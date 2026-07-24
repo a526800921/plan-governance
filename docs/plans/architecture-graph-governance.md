@@ -95,6 +95,7 @@
 - `docs/modelpad-architecture-stage0-inventory-2026-07-24.md`：ModelPad 阶段 0 只读候选与轻量/升级样本
 - `docs/modelpad-architecture-stage0-llm-replay-2026-07-24.md`：LLM 自动维护与人工兜底的只读设计回放
 - `docs/modelpad-architecture-stage1-validation-2026-07-24.md`：ModelPad 阶段 1 架构 YAML、映射和回归验收记录
+- `docs/modelpad-architecture-stage2-gitnexus-replay-2026-07-24.md`：ModelPad 阶段 2 GitNexus 新鲜度、命中和失配回放
 - ModelPad 的 `docs/graph/functional.yaml`：后续阶段候选迁移范围，当前不修改
 - 后续候选架构图谱文件：路径和 Schema 待阶段 0 冻结
 - `scripts/graph_governance.mjs` 与测试：仅在阶段 1 明确需要修改时纳入
@@ -181,12 +182,48 @@ gitnexus_uid: <可选>
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 设计中 |
-| Step 0 | 阶段 2 Step 0 尚未建立 |
-| 样本矩阵 | 阶段 2 GitNexus 映射、失配和重绑定样本尚未建立 |
-| 验证方式 | 待阶段 2 Step 0 冻结 |
+| Step 0 | [阶段 2 Step 0 候选](#阶段-2-step-0-候选) |
+| 样本矩阵 | [阶段 2 样本矩阵](#阶段-2-样本矩阵) |
+| 验证方式 | GitNexus 状态、UID 命中/失配、稳定代码锚点和只读候选报告回放 |
 | 失败/回滚边界 | 阶段 2 只生成只读映射候选；边界未收敛时不修改 ModelPad 架构 YAML 和 GitNexus 索引 |
-| 当前阻塞项 | 尚未建立阶段 2 自己的准入证据 |
+| 当前阻塞项 | 阶段 2 候选尚未形成可执行的重绑定报告和独立准入复核 |
 | 最新独立准入复核 | 尚未进行 |
+
+### 阶段 2 Step 0 候选
+
+阶段 2 只负责架构层到代码图谱的少量可选映射、UID 新鲜度和失配候选，不把 GitNexus 函数调用关系复制到架构图谱，也不改变阶段 1 已完成的功能→架构映射。
+
+#### 代码锚点候选
+
+架构层维护 `anchors_to` 关系或等价的代码映射记录，长期主键使用仓库内文件路径、全限定符号名和符号类型；GitNexus UID 只作为可选精确索引。首批只验证以下三类边界，不扩展到每个函数：
+
+| 架构边界 | 稳定代码锚点 | GitNexus UID | 维护目的 |
+|---|---|---|---|
+| 本地 HTTP API | `Sources/ModelPadCore/API/APIServer.swift` / `APIHandler` / `class` | 可选 | 定位接口处理边界 |
+| 配置持久化 | `Sources/ModelPadCore/Persistence/ConfigStore.swift` / `ConfigStore` / `class` | 可选 | 定位配置读写边界 |
+| 模型进程管理 | `Sources/ModelPadCore/Process/ModelProcessManager.swift` / `ModelProcessManager` / `class` | 可选 | 定位进程生命周期边界 |
+
+代码锚点不是新的代码事实源；它只说明架构边界对应的代码范围。函数、调用链、依赖和数据流继续由 GitNexus 负责。
+
+#### 新鲜度和 LLM 维护边界
+
+- `gitnexus status` 只读报告索引 commit 与当前 commit 的差异；索引 stale 不等于所有 UID 立即失效。
+- GitNexus `context --uid` 命中时记录精确命中；未命中时保留稳定代码锚点并生成失配候选，不静默删除映射。
+- GitNexus `analyze` 不由 hook、CLI 或阶段 2 映射校验自动触发；是否重新索引属于独立操作，索引刷新后仍需重新验证候选。
+- LLM 能依据文件、符号类型、符号名和 GitNexus 查询证据唯一确认时，可更新架构层映射；证据冲突、多个符号候选或无法确认时才请求用户。
+- 任何 UID 重绑定、架构边界拆分/合并和 `anchors_to` 方向变化，都必须保留候选报告和前后差异；不自动写回。
+
+### 阶段 2 样本矩阵
+
+| 样本 | 输入或基线 | 可执行命令 | 预期结果 | 失败判定 | 当前状态 |
+|---|---|---|---|---|---|
+| 索引新鲜度 | ModelPad 当前提交 `0dde74d`、GitNexus 索引提交 `d63eb71` | `gitnexus status` | 明确报告 stale 和两者 commit，不直接判定 UID 全部失效 | stale 被静默忽略或自动触发 analyze | 已通过只读回放 |
+| UID 精确命中 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#1` | `gitnexus context -r modelpad --uid <uid>` | `status: found`，返回文件、符号和范围 | 命中被当作架构事实，或没有记录证据 | 已通过只读回放 |
+| UID 失配 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999` | 同上 | 生成失配候选，保留文件/符号 fallback | 失配被静默删除或误报为精确命中 | 已通过只读回放 |
+| 稳定锚点无 UID | `ModelProcessManager.swift` + `ModelProcessManager` + `class` | 代码文件存在性和符号定位检查 | 可作为长期映射，不依赖 UID | 把缺少 UID 判为无映射 | 待 fixture |
+| 多候选重绑定 | 同名或重载符号候选 | GitNexus 查询 + LLM 候选报告 | LLM 无法唯一判断时上升用户确认 | 自动选择任意候选并写回 | 待 fixture |
+
+阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；当前只完成前三类的只读回放。
 
 ### 阶段 1 完成记录
 
