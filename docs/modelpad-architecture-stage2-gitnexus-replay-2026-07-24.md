@@ -16,6 +16,8 @@
 | UID 失配 | `gitnexus context -r modelpad --uid 'Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999'` | 返回 Symbol not found；应转为失配候选，不删除稳定代码锚点 |
 | 无 UID 稳定锚点 | `test -f Sources/ModelPadCore/Process/ModelProcessManager.swift && rg -n 'class ModelProcessManager' Sources/ModelPadCore/Process/ModelProcessManager.swift` | 文件存在且唯一定位到 `ModelProcessManager`；可以保存为 `file + symbol + kind` 锚点 |
 | 多候选重绑定 | `rg -n -g 'APIServer.swift' -g 'mlx_lm_server_fork.py' 'class APIHandler' Sources/ModelPadCore/API/APIServer.swift App/Resources/Scripts/mlx_lm_server_fork.py` | 发现两个 `APIHandler`：Swift `APIServer.swift:89` 和 Python `mlx_lm_server_fork.py:986`；仅凭符号名无法唯一重绑定，结论应为 `ask_user` |
+| 候选报告 CLI | `plan-governance-cli graph code candidates --symbol APIHandler --kind class --format json /Users/jafish/Documents/work/ModelPad` | 返回两个候选和 `resolution: ask_user`；限定 `--file Sources/ModelPadCore/API/APIServer.swift` 时返回唯一候选 |
+| 代码级影响查询 | `plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCore/API/APIServer.swift --symbol APIHandler --kind class --depth 2 --format json /Users/jafish/Documents/work/ModelPad` | GitNexus 返回 `CRITICAL`、34 个受影响符号（30 个直接、4 个间接）、1 个流程和 2 个模块；未触发 `analyze` |
 
 ## 设计结论
 
@@ -25,4 +27,4 @@
 - `analyze` 不由 hook、CLI 或 YAML 校验自动触发；刷新索引后仍需重新执行命中/失配检查。
 - LLM 能唯一确认时更新架构层映射；多候选、证据冲突或无法确认时才请求用户。
 - ModelPad 已提供真实多候选回放：同名 `APIHandler` 分属不同文件和语言；如果失配后的 fallback 缺少文件约束，LLM 必须输出 `ask_user`，不得自动写回。
-- 该回放证明了升级边界，但还没有形成可执行的候选报告 CLI/fixture；阶段 2 仍保持设计中。
+- 候选报告 CLI 和代码级影响 CLI 已将重绑定与影响范围边界固化为可执行的只读输出；阶段 2 仍保持设计中，下一步是独立准入复核。

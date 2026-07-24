@@ -173,8 +173,8 @@ gitnexus_uid: <可选>
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 设计中 |
-| 当前阻塞项 | 已有 GitNexus 命中、失配、stale、无 UID 和真实多候选回放；仍未建立可执行的候选报告 CLI/fixture、代码级查询验证和独立准入复核 |
-| 实施边界 | 阶段 2 准入通过前不新增 ModelPad GitNexus 映射，不修改 GitNexus 索引，不实现代码级影响查询 |
+| 当前阻塞项 | GitNexus 五类样本、候选报告 CLI 和代码级影响查询均已具备；仅剩阶段 2 独立准入复核 |
+| 实施边界 | 阶段 2 准入通过前不新增 ModelPad GitNexus 映射，不修改 GitNexus 索引，不写回任何 YAML |
 | 进入条件 | 阶段 2 独立准入复核明确达到“待实施”标准 |
 
 ## 阶段准入摘要
@@ -186,7 +186,7 @@ gitnexus_uid: <可选>
 | 样本矩阵 | [阶段 2 样本矩阵](#阶段-2-样本矩阵) |
 | 验证方式 | GitNexus 状态、UID 命中/失配、稳定代码锚点和只读候选报告回放 |
 | 失败/回滚边界 | 阶段 2 只生成只读映射候选；边界未收敛时不修改 ModelPad 架构 YAML 和 GitNexus 索引 |
-| 当前阻塞项 | 阶段 2 已形成真实多候选回放，但尚未形成可执行的重绑定候选报告和独立准入复核 |
+| 当前阻塞项 | 阶段 2 已形成真实多候选回放、候选报告 CLI 和代码级影响查询，但尚未完成独立准入复核 |
 | 最新独立准入复核 | 尚未进行 |
 
 ### 阶段 2 Step 0 候选
@@ -225,6 +225,45 @@ code_mappings:
 - LLM 能依据文件、符号类型、符号名和 GitNexus 查询证据唯一确认时，可更新架构层映射；证据冲突、多个符号候选或无法确认时才请求用户。
 - 任何 UID 重绑定、架构边界拆分/合并和 `anchors_to` 方向变化，都必须保留候选报告和前后差异；不自动写回。
 
+#### 只读候选报告 CLI 契约
+
+为让 LLM 在修改计划前获得可复现的重绑定证据，阶段 2 增加以下只读命令：
+
+```text
+plan-governance-cli graph code candidates \
+  [--file <relative-path>] \
+  --symbol <symbol> \
+  --kind <kind> \
+  [--format text|json] \
+  <root>
+```
+
+- `--file` 可省略：省略时在仓库代码文件中搜索同名符号，用于验证多候选边界；提供时优先在指定文件中搜索。
+- `--symbol`、`--kind` 是必填定位条件；首期 `kind` 至少支持 `class` 和 `function`，不把行号作为身份。
+- 输出只包含查询条件、候选文件、符号、类型、行号和 `resolution`：`unique_candidate`、`ask_user` 或 `no_candidate`；多候选必须为 `ask_user`。
+- 命令不解析或写回架构 YAML，不修改 GitNexus 索引，不自动触发 `analyze`；LLM 是否更新 `code_mappings` 仍受唯一证据和人工兜底规则约束。
+- 失败边界：搜索工具不可用、输入不完整或根目录非法时返回错误；无候选和多候选均返回成功的只读报告，不伪造映射。
+
+#### 代码级影响查询 CLI 契约
+
+在架构代码锚点已由 LLM 唯一确认后，使用 GitNexus 查询代码级影响范围：
+
+```text
+plan-governance-cli graph code impact \
+  --repo <gitnexus-repo> \
+  --file <relative-path> \
+  --symbol <symbol> \
+  --kind <kind> \
+  [--depth 3] \
+  [--format text|json] \
+  <root>
+```
+
+- `--repo` 必填，禁止根据当前目录猜测 GitNexus 仓库，避免跨项目误查；`file/symbol/kind` 使用已确认的稳定代码锚点。
+- 命令只调用 `gitnexus impact`，输出查询条件、GitNexus 返回的风险、直接/间接数量、受影响流程和模块；不把 GitNexus 函数关系复制回 YAML。
+- GitNexus 不可用、repo 未注册、索引失配或查询失败时返回错误并保留原始诊断；不自动执行 `analyze`，不把失败降级为“无影响”。
+- 该命令是架构层到代码层的查询验证，不改变功能层默认的轻量影响分析路径；只有计划声明需要定位代码对象时才调用。
+
 ### 阶段 2 样本矩阵
 
 | 样本 | 输入或基线 | 可执行命令 | 预期结果 | 失败判定 | 当前状态 |
@@ -232,17 +271,19 @@ code_mappings:
 | 索引新鲜度 | ModelPad 当前提交 `0dde74d`、GitNexus 索引提交 `d63eb71` | `gitnexus status` | 明确报告 stale 和两者 commit，不直接判定 UID 全部失效 | stale 被静默忽略或自动触发 analyze | 已通过只读回放 |
 | UID 精确命中 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#1` | `gitnexus context -r modelpad --uid <uid>` | `status: found`，返回文件、符号和范围 | 命中被当作架构事实，或没有记录证据 | 已通过只读回放 |
 | UID 失配 | `Function:Sources/ModelPadCore/API/APIServer.swift:APIHandler.handleStart#999` | 同上 | 生成失配候选，保留文件/符号 fallback | 失配被静默删除或误报为精确命中 | 已通过只读回放 |
-| 稳定锚点无 UID | `ModelProcessManager.swift` + `ModelProcessManager` + `class` | `test -f ... && rg -n 'class ModelProcessManager' ...` | 可作为长期映射，不依赖 UID | 把缺少 UID 判为无映射 | 已通过只读基线，fixture 待补 |
-| 多候选重绑定 | ModelPad 中的 `APIHandler`：`APIServer.swift:89` 与 `mlx_lm_server_fork.py:986` | `rg -n -g 'APIServer.swift' -g 'mlx_lm_server_fork.py' 'class APIHandler' Sources/ModelPadCore/API/APIServer.swift App/Resources/Scripts/mlx_lm_server_fork.py` | 产生两个候选；LLM 输出 `ask_user`，不得自动选择或写回 | 自动选择任意候选并写回 | 已通过真实只读回放；候选报告 CLI/fixture 待实现 |
+| 稳定锚点无 UID | `ModelProcessManager.swift` + `ModelProcessManager` + `class` | `test -f ... && rg -n 'class ModelProcessManager' ...` | 可作为长期映射，不依赖 UID | 把缺少 UID 判为无映射 | 已通过只读基线和架构 fixture |
+| 多候选重绑定 | ModelPad 中的 `APIHandler`：`APIServer.swift:89` 与 `mlx_lm_server_fork.py:986` | `plan-governance-cli graph code candidates --symbol APIHandler --kind class --format json /Users/jafish/Documents/work/ModelPad` | 产生两个候选，`resolution: ask_user`；不得自动选择或写回 | 自动选择任意候选并写回 | 已通过 CLI 测试和真实只读回放 |
+| 代码级影响查询 | 已确认的 `APIServer.swift` / `APIHandler` / `class` | `plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCore/API/APIServer.swift --symbol APIHandler --kind class --depth 2 --format json /Users/jafish/Documents/work/ModelPad` | 返回 GitNexus 风险、影响数量、流程和模块，不触发 analyze | 误查其他 repo、失败被伪装为无影响或自动刷新索引 | 已通过 CLI 测试和 ModelPad 真实回放 |
 
-阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；五类只读回放现已具备，但候选报告尚未 CLI 化，代码级查询和独立准入仍未完成。
+阶段 2 Step 0 只有在精确命中、失配、无 UID 锚点、多候选和索引 stale 五类样本都有可复现输出后，才能申请独立准入；五类只读回放和候选报告 CLI 现已具备，代码级查询和独立准入仍未完成。
 
 #### 阶段 2 当前实现候选证据
 
 - 架构层校验器已支持 `code_mappings[].code_anchor`，校验架构节点归属、文件存在性、`file + symbol + kind` 唯一性和可选 UID 格式。
 - 通用架构 fixture 已覆盖无 UID 锚点、悬空架构节点、代码文件缺失和重复锚点反例；阶段 2 新增测试与阶段 1 测试合计 12 项架构测试通过。
-- 根仓库全量测试当前为 27/27 通过，功能层默认路径保持兼容。
-- ModelPad 真实回放已覆盖多候选边界：同名符号出现在 Swift 与 Python 文件中；该边界要求 `ask_user`，不允许 LLM 在缺少文件约束时猜测。
+- 根仓库全量测试当前为 31/31 通过，功能层默认路径保持兼容。
+- 候选报告 CLI 已实现并覆盖唯一候选、多候选、无候选三种解析结果；在 ModelPad 真实回放中，同名符号出现在 Swift 与 Python 文件中，输出 `ask_user`，不允许 LLM 在缺少文件约束时猜测。
+- 代码级影响 CLI 已实现并覆盖 GitNexus 结果封装、错误边界和不触发 `analyze` 的测试；ModelPad 真实回放返回 `CRITICAL`、34 个受影响符号、30 个直接、4 个间接，涉及 1 个流程和 2 个模块。
 - ModelPad 当前只保留阶段 1 的架构边界和功能→架构映射；`code_mappings` 不在多候选重绑定规则冻结前写入 ModelPad。
 
 ### 阶段 1 完成记录

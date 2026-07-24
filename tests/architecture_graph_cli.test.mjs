@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,6 +30,18 @@ function codeMappingsPath(target) {
 
 function validate(target) {
   return spawnSync(process.execPath, [cli, "graph", "validate", "--layer", "architecture", target], { encoding: "utf8" });
+}
+
+function codeCandidates(target, args) {
+  return spawnSync(process.execPath, [cli, "graph", "code", "candidates", ...args, "--format", "json", target], { encoding: "utf8" });
+}
+
+function codeImpact(target, args, gitnexusPath) {
+  const pathEnv = [gitnexusPath, process.env.PATH].filter(Boolean).join(":");
+  return spawnSync(process.execPath, [cli, "graph", "code", "impact", ...args, "--format", "json", target], {
+    encoding: "utf8",
+    env: { ...process.env, PATH: pathEnv },
+  });
 }
 
 test("architecture graph validate accepts indexed domain files and cross-layer mappings", () => {
@@ -173,4 +185,59 @@ test("functional graph validate remains the default path", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /图谱校验通过/);
   assert.doesNotMatch(result.stdout, /架构图谱校验通过/);
+});
+
+test("code candidates reports a unique class when the file is constrained", () => {
+  const target = fixture((rootPath) => {
+    mkdirSync(join(rootPath, "Sources"), { recursive: true });
+    writeFileSync(join(rootPath, "Sources", "Only.swift"), "private final class Only: NSObject {}\n");
+  });
+  const result = codeCandidates(target, ["--file", "Sources/Only.swift", "--symbol", "Only", "--kind", "class"]);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.resolution, "unique_candidate");
+  assert.deepEqual(output.candidates, [{ file: "Sources/Only.swift", line: 1, symbol: "Only", kind: "class" }]);
+});
+
+test("code candidates escalates a same-symbol cross-language match", () => {
+  const target = fixture((rootPath) => {
+    mkdirSync(join(rootPath, "Sources"), { recursive: true });
+    mkdirSync(join(rootPath, "Scripts"), { recursive: true });
+    writeFileSync(join(rootPath, "Sources", "API.swift"), "private final class APIHandler: NSObject {}\n");
+    writeFileSync(join(rootPath, "Scripts", "server.py"), "class APIHandler:\n    pass\n");
+  });
+  const result = codeCandidates(target, ["--symbol", "APIHandler", "--kind", "class"]);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.resolution, "ask_user");
+  assert.equal(output.candidates.length, 2);
+  assert.deepEqual(output.candidates.map((candidate) => candidate.file), ["Scripts/server.py", "Sources/API.swift"]);
+});
+
+test("code candidates reports no candidate without inventing a mapping", () => {
+  const result = codeCandidates(fixture(), ["--symbol", "MissingBoundary", "--kind", "class"]);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.resolution, "no_candidate");
+  assert.deepEqual(output.candidates, []);
+});
+
+test("code impact wraps GitNexus output without refreshing the index", () => {
+  const target = fixture();
+  const bin = mkdtempSync(join(tmpdir(), "plan-gitnexus-stub-"));
+  const gitnexus = join(bin, "gitnexus");
+  writeFileSync(gitnexus, "#!/usr/bin/env node\nif (process.argv[2] !== 'impact') process.exit(9);\nconsole.log(JSON.stringify({ risk: 'HIGH', impactedCount: 2, summary: { direct: 1, indirect: 1, processes_affected: 1, modules_affected: 1 } }));\n");
+  chmodSync(gitnexus, 0o755);
+  const result = codeImpact(target, [
+    "--repo", "modelpad",
+    "--file", "Sources/ModelPadCore/API/APIServer.swift",
+    "--symbol", "APIHandler",
+    "--kind", "class",
+    "--depth", "2",
+  ], bin);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.source, "gitnexus");
+  assert.equal(output.query.kind, "class");
+  assert.equal(output.result.risk, "HIGH");
 });

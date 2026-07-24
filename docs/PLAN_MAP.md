@@ -78,7 +78,7 @@
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
-| 阶段 2 尚未建立 GitNexus 衔接的 Step 0 和独立准入证据 | 先冻结少量架构→代码映射、UID 失配/重绑定候选报告、代码级查询边界和失败/回滚策略；通过独立复核后才进入实施 | architecture-graph-governance 阶段 2 | 是 | 进行中 |
+| 阶段 2 已完成五类只读样本、候选报告 CLI 和代码级影响查询，尚缺独立准入复核 | 基于当前 CLI、ModelPad 回放和失败边界执行独立复核；通过后再决定是否写入少量 ModelPad `code_mappings` | architecture-graph-governance 阶段 2 | 是 | 进行中 |
 
 ## 完成证据
 

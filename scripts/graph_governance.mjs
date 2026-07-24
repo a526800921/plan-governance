@@ -44,6 +44,8 @@ function usage() {
   console.log(`用法：
   plan-governance-cli graph validate [--layer functional|architecture] [root]
   plan-governance-cli graph impact --from <graph-node-id> [--depth 2] [--format text|json] [root]
+  plan-governance-cli graph code candidates [--file <relative-path>] --symbol <symbol> --kind class|function [--format text|json] [root]
+  plan-governance-cli graph code impact --repo <gitnexus-repo> --file <relative-path> --symbol <symbol> --kind <kind> [--depth 3] [--format text|json] [root]
 
 功能图谱文件：<root>/docs/graph/functional.yaml
 架构图谱入口：<root>/docs/graph/architecture/index.yaml`);
@@ -403,6 +405,182 @@ function parseImpactArgs(args) {
   return options;
 }
 
+const CODE_FILE_GLOBS = [
+  "*.c", "*.cc", "*.cpp", "*.cs", "*.go", "*.h", "*.java", "*.js", "*.jsx",
+  "*.kt", "*.m", "*.mm", "*.mjs", "*.php", "*.py", "*.rb", "*.rs", "*.swift",
+  "*.ts", "*.tsx",
+];
+
+function codeCandidatePattern(kind, symbol) {
+  const escaped = symbol.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+  const modifiers = "(?:(?:public|private|fileprivate|internal|open|final|static|abstract|sealed|override|async)\\s+)*";
+  if (kind === "class") return `^\\s*${modifiers}(?:class|struct|enum|actor|protocol)\\s+${escaped}\\b`;
+  if (kind === "function") return `^\\s*${modifiers}(?:func|def|function)\\s+${escaped}\\s*\\(`;
+  throw new Error("--kind 首期只能是 class 或 function");
+}
+
+function listCodeFiles(root) {
+  const args = ["--files", "--hidden", "-g", "!.git", "-g", "!node_modules", "-g", "!.build", "-g", "!dist"];
+  CODE_FILE_GLOBS.forEach((glob) => args.push("-g", glob));
+  const result = spawnSync("rg", args, { cwd: root, encoding: "utf8" });
+  if (result.error?.code === "ENOENT") throw new Error("候选报告需要 rg，但当前 PATH 中找不到 rg");
+  if (result.status === 1) return [];
+  if (result.status !== 0) throw new Error(`候选报告无法列出代码文件：${(result.stderr || `退出码 ${result.status}`).trim()}`);
+  return (result.stdout ?? "").split("\n").filter(Boolean);
+}
+
+function runCodeCandidateSearch(root, options) {
+  let files;
+  if (options.file && existsSync(resolve(root, options.file))) {
+    files = [options.file];
+  } else {
+    files = listCodeFiles(root);
+  }
+  if (files.length === 0) return [];
+
+  const args = ["--with-filename", "--no-heading", "--color", "never", "-n", "-e", codeCandidatePattern(options.kind, options.symbol), "--", ...files];
+  const result = spawnSync("rg", args, { cwd: root, encoding: "utf8" });
+  if (result.error?.code === "ENOENT") throw new Error("候选报告需要 rg，但当前 PATH 中找不到 rg");
+  if (result.status > 1) throw new Error(`候选报告搜索失败：${(result.stderr || `退出码 ${result.status}`).trim()}`);
+  return (result.stdout ?? "").split("\n").filter(Boolean).map((line) => {
+    const firstColon = line.indexOf(":");
+    const secondColon = line.indexOf(":", firstColon + 1);
+    return {
+      file: line.slice(0, firstColon),
+      line: Number(line.slice(firstColon + 1, secondColon)),
+      symbol: options.symbol,
+      kind: options.kind,
+    };
+  }).sort((left, right) => left.file.localeCompare(right.file) || left.line - right.line);
+}
+
+function parseCodeCandidatesArgs(args) {
+  const options = { file: null, symbol: null, kind: null, format: "text", root: process.cwd() };
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--file") options.file = args[++index];
+    else if (arg === "--symbol") options.symbol = args[++index];
+    else if (arg === "--kind") options.kind = args[++index];
+    else if (arg === "--format") options.format = args[++index];
+    else if (arg === "-h" || arg === "--help") return null;
+    else positional.push(arg);
+  }
+  if (positional.length > 1) throw new Error("code candidates 只能接收一个 root 路径");
+  if (positional.length === 1) options.root = resolve(positional[0]);
+  if (!options.symbol) throw new Error("code candidates 必须指定 --symbol <symbol>");
+  if (!options.kind) throw new Error("code candidates 必须指定 --kind <kind>");
+  if (!options.file && options.file !== null) throw new Error("--file 必须指定路径");
+  if (!options.format || !["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
+  if (!existsSync(options.root)) throw new Error(`root 不存在：${options.root}`);
+  return options;
+}
+
+function codeCandidates(root, options) {
+  const candidates = runCodeCandidateSearch(root, options);
+  const resolution = candidates.length === 1
+    ? "unique_candidate"
+    : candidates.length > 1 ? "ask_user" : "no_candidate";
+  return {
+    schema_version: 1,
+    query: { file: options.file, symbol: options.symbol, kind: options.kind },
+    resolution,
+    candidates,
+  };
+}
+
+function printCodeCandidatesText(result) {
+  console.log(`代码候选报告：${result.query.symbol}（${result.query.kind}）`);
+  console.log(`目标文件：${result.query.file ?? "未限定"}`);
+  console.log(`resolution: ${result.resolution}`);
+  if (result.candidates.length === 0) {
+    console.log("候选：\n- 无");
+    return;
+  }
+  console.log("候选：");
+  result.candidates.forEach((candidate) => {
+    console.log(`- ${candidate.file}:${candidate.line} ${candidate.symbol}（${candidate.kind}）`);
+  });
+}
+
+function parseCodeImpactArgs(args) {
+  const options = { repo: null, file: null, symbol: null, kind: null, depth: 3, format: "text", root: process.cwd() };
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--repo") options.repo = args[++index];
+    else if (arg === "--file") options.file = args[++index];
+    else if (arg === "--symbol") options.symbol = args[++index];
+    else if (arg === "--kind") options.kind = args[++index];
+    else if (arg === "--depth") options.depth = Number(args[++index]);
+    else if (arg === "--format") options.format = args[++index];
+    else if (arg === "-h" || arg === "--help") return null;
+    else positional.push(arg);
+  }
+  if (positional.length > 1) throw new Error("code impact 只能接收一个 root 路径");
+  if (positional.length === 1) options.root = resolve(positional[0]);
+  ["repo", "file", "symbol", "kind"].forEach((field) => {
+    if (!options[field]) throw new Error(`code impact 必须指定 --${field} <value>`);
+  });
+  if (!Number.isInteger(options.depth) || options.depth < 1 || options.depth > 10) throw new Error("--depth 必须是 1 到 10 的整数");
+  if (!options.format || !["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
+  if (!existsSync(options.root)) throw new Error(`root 不存在：${options.root}`);
+  return options;
+}
+
+function gitnexusKind(kind) {
+  return kind.length > 0 ? `${kind[0].toUpperCase()}${kind.slice(1)}` : kind;
+}
+
+function codeImpact(root, options) {
+  const args = [
+    "impact",
+    "--repo", options.repo,
+    "--file", options.file,
+    "--kind", gitnexusKind(options.kind),
+    "--depth", String(options.depth),
+    options.symbol,
+  ];
+  const result = spawnSync("gitnexus", args, { cwd: root, encoding: "utf8" });
+  if (result.error?.code === "ENOENT") throw new Error("代码级影响查询需要 GitNexus CLI，但当前 PATH 中找不到 gitnexus");
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || `退出码 ${result.status}`).trim();
+    throw new Error(`GitNexus 代码级影响查询失败：${detail}`);
+  }
+  let gitnexusResult;
+  try {
+    gitnexusResult = JSON.parse(result.stdout ?? "");
+  } catch (cause) {
+    throw new Error(`GitNexus 代码级影响查询返回了无法解析的结果：${cause.message}`);
+  }
+  return {
+    schema_version: 1,
+    query: {
+      repo: options.repo,
+      file: options.file,
+      symbol: options.symbol,
+      kind: options.kind,
+      depth: options.depth,
+    },
+    source: "gitnexus",
+    result: gitnexusResult,
+  };
+}
+
+function printCodeImpactText(report) {
+  const result = report.result;
+  console.log(`代码影响分析：${report.query.file} / ${report.query.symbol}（${report.query.kind}）`);
+  console.log(`GitNexus repo：${report.query.repo}，最大 ${report.query.depth} 跳`);
+  console.log(`风险：${result.risk ?? "未知"}；影响符号：${result.impactedCount ?? "未知"}`);
+  if (result.summary) {
+    console.log(`直接：${result.summary.direct ?? 0}；间接：${result.summary.indirect ?? 0}；流程：${result.summary.processes_affected ?? 0}；模块：${result.summary.modules_affected ?? 0}`);
+  }
+  const processes = (result.affected_processes ?? []).map((item) => item.name).join("、") || "无";
+  const modules = (result.affected_modules ?? []).map((item) => item.name).join("、") || "无";
+  console.log(`受影响流程：${processes}`);
+  console.log(`受影响模块：${modules}`);
+}
+
 function impact(root, options) {
   const loaded = loadGraph(root);
   const graph = normalizeGraph(loaded.graph, root);
@@ -491,6 +669,31 @@ function main(args) {
       if (options.format === "json") console.log(JSON.stringify(result, null, 2));
       else printText(result);
       return 0;
+    }
+    if (command === "code") {
+      if (args[1] === "candidates") {
+        const options = parseCodeCandidatesArgs(args.slice(2));
+        if (options === null) {
+          usage();
+          return 0;
+        }
+        const result = codeCandidates(options.root, options);
+        if (options.format === "json") console.log(JSON.stringify(result, null, 2));
+        else printCodeCandidatesText(result);
+        return 0;
+      }
+      if (args[1] === "impact") {
+        const options = parseCodeImpactArgs(args.slice(2));
+        if (options === null) {
+          usage();
+          return 0;
+        }
+        const result = codeImpact(options.root, options);
+        if (options.format === "json") console.log(JSON.stringify(result, null, 2));
+        else printCodeImpactText(result);
+        return 0;
+      }
+      return error(`code 不支持子命令：${args[1] ?? "<missing>"}`);
     }
     return error(`不支持子命令：${command}`);
   } catch (cause) {

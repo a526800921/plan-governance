@@ -179,9 +179,11 @@ plan-governance-cli check . --strict-readiness
 plan-governance-cli graph validate .
 plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --format text .
 plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --format json .
+plan-governance-cli graph code candidates --symbol APIHandler --kind class --format json .
+plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCore/API/APIServer.swift --symbol APIHandler --kind class --depth 2 --format json .
 ```
 
-项目图谱固定放在 `docs/graph/functional.yaml`。CLI 只读，不修改 YAML、计划状态、计划正文或业务代码；图谱节点使用稳定 ID，证据使用 `kind/ref/locator`，代码对象使用带文件回退的 `code_refs`。影响分析默认两跳，按 `contains`、`orchestrates`、`exposes`、`implements`、`consumes`、`depends_on` 的契约方向传播，并输出最短路径、直接/间接分类和证据引用。
+项目图谱固定放在 `docs/graph/functional.yaml`。CLI 只读，不修改 YAML、计划状态、计划正文或业务代码；图谱节点使用稳定 ID，证据使用 `kind/ref/locator`，代码对象使用带文件回退的 `code_refs`。影响分析默认两跳，按 `contains`、`orchestrates`、`exposes`、`implements`、`consumes`、`depends_on` 的契约方向传播，并输出最短路径、直接/间接分类和证据引用。代码候选命令根据 `file/symbol/kind` 搜索稳定锚点；多候选输出 `resolution: ask_user`，不自动写回。
 
 也可以不全局安装，直接使用锁定版本：
 
