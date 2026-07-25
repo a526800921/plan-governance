@@ -823,6 +823,14 @@ function planImpact(root, options) {
       && (relation.type !== "implements" || functionalNodeId(relation.to)),
   });
   const functionalImpact = filterFunctionalImpact(legacyImpact);
+  const testImpact = impact(root, {
+    from: request.graph_scope,
+    depth: 2,
+    nodeFilter: (node, id) => (functionalNodeId(id)
+      && ["business", "function", "process", "external_workflow"].includes(node?.type)) || id.startsWith("test."),
+    relationFilter: (relation) => relation.type !== "exposes"
+      && (relation.type !== "implements" || functionalNodeId(relation.to) || relation.to.startsWith("test.")),
+  });
   const architecture = decision.queriedLayers.includes("architecture")
     ? architectureImpact(root, request)
     : null;
@@ -841,8 +849,8 @@ function planImpact(root, options) {
   }
 
   const testEvidence = uniqueEvidence([
-    ...legacyImpact.direct,
-    ...legacyImpact.indirect,
+    ...testImpact.direct,
+    ...testImpact.indirect,
     ...(architecture?.nodes ?? []),
   ]);
   const actions = ["必须评估", testEvidence.length > 0 ? "必须测试" : "建议检查"];

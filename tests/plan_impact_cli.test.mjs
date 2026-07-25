@@ -83,4 +83,14 @@ test("plan impact rejects invalid input and unresolved code anchors", () => {
   });
   assert.notEqual(unresolved.status, 0);
   assert.match(unresolved.stderr, /代码定位未唯一确认/);
+
+  const missingArchitecture = fixture();
+  const mappings = join(missingArchitecture, "docs", "graph", "architecture", "mappings.yaml");
+  writeFileSync(mappings, readFileSync(mappings, "utf8").replace(/  - type: realized_by\n    from: feature\.model-lifecycle[\s\S]*?(?=\n  - type|$)/, ""));
+  const missingMapping = runPlan(missingArchitecture, {
+    graph_scope: "feature.model-lifecycle",
+    change_kind: "api_contract_change",
+  });
+  assert.notEqual(missingMapping.status, 0);
+  assert.match(missingMapping.stderr, /没有可验证的架构映射/);
 });

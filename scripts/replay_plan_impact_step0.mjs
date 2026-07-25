@@ -94,6 +94,7 @@ for (const relation of mappings.relations ?? []) {
   mappingByFeature.set(relation.from, nodes);
 }
 const architectureRelations = boundaries.relations ?? [];
+const architectureById = new Map((boundaries.nodes ?? []).map((node) => [node.id, node]));
 
 function expandArchitectureNodes(seedNodes, changeKind) {
   const nodes = new Set(seedNodes);
@@ -174,7 +175,10 @@ for (const sample of samples) {
     .some((item) => (item.node?.evidence ?? []).some((evidence) => evidence.kind === "test"));
   if (request.expected_test_mapping.length > 0) {
     assert(hasTestEvidence, `${sample.name} 期望测试映射但基线没有测试证据`);
-    const evidenceText = JSON.stringify(functionalImpact);
+    const evidenceText = JSON.stringify([
+      functionalImpact,
+      ...(request.expected_architecture_nodes ?? []).map((id) => architectureById.get(id)),
+    ]);
     for (const testPath of request.expected_test_mapping) assert(evidenceText.includes(testPath), `${sample.name} 缺少测试证据：${testPath}`);
   } else assert(!hasTestEvidence, `${sample.name} 应明确输出无可用测试映射`);
 
