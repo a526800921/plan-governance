@@ -162,18 +162,18 @@ gitnexus_uid: <可选>
 | 阶段 0 | 冻结三层边界、节点归属、API 归属和可选代码映射契约 | 用户已确认三层方向 | ModelPad 现状矩阵、最小架构样本、维护成本和反向引用检查 | 已完成 |
 | 阶段 1 | 建立 ModelPad 最小架构图谱并验证功能到架构的映射 | 阶段 0 独立准入通过 | 架构节点/关系校验、三个真实场景和重复事实检查 | 已完成 |
 | 阶段 2 | 衔接架构图谱与 GitNexus 代码图谱 | 阶段 1 完成，代码锚点契约已冻结 | 少量 UID 映射、失配候选、重绑定报告和代码级影响查询 | 已完成 |
-| 阶段 3 | 接入计划治理的三层前置影响分析 | 阶段 2 完成 | `graph_scope`、`change_kind` 跨层查询、行动分级、测试映射与新鲜度候选只读报告、独立验收 | 实施中 |
+| 阶段 3 | 接入计划治理的三层前置影响分析 | 阶段 2 完成 | `graph_scope`、`change_kind` 跨层查询、行动分级、测试映射与新鲜度候选只读报告、独立验收 | 已完成 |
 
 ## 当前阶段
 
-当前阶段指针：阶段 3（实施中）。阶段 0、阶段 1 和阶段 2 已完成；阶段 3 已通过 Step 0 和独立准入复核，生产命令正在实施和验收。
+当前阶段指针：阶段 3（已完成）。阶段 0、阶段 1、阶段 2 和阶段 3 均已完成。
 
 ### 阶段 3 准入状态
 
 | 字段 | 内容 |
 |---|---|
-| 准入状态 | 实施中 |
-| 当前阻塞项 | 生产命令的最终错误边界、ModelPad 回放和完成复核尚未完成 |
+| 准入状态 | 已完成 |
+| 当前阻塞项 | 无 |
 | 实施边界 | 只设计计划前置的只读影响分析；不自动修改计划、YAML、代码或 GitNexus 索引 |
 | 进入条件 | 阶段 3 独立准入复核明确达到“待实施”标准 |
 
@@ -181,12 +181,12 @@ gitnexus_uid: <可选>
 
 | 字段 | 内容 |
 |---|---|
-| 准入状态 | 实施中 |
+| 准入状态 | 已完成 |
 | Step 0 | [阶段 3 Step 0 与实施前契约](#阶段-3-step-0-与实施前契约) |
 | 样本矩阵 | [阶段 3 样本矩阵](#阶段-3-样本矩阵) |
 | 验证方式 | 计划样本的功能层默认查询、风险升级查询、行动分级和只读输出回放 |
 | 失败/回滚边界 | 阶段 3 只输出影响分析建议；边界未收敛时不修改计划正文、图谱 YAML、代码或 GitNexus 索引 |
-| 当前阻塞项 | 生产命令的最终错误边界、ModelPad 回放和完成复核尚未完成 |
+| 当前阻塞项 | 无 |
 | 最新独立准入复核 | [2026-07-25 阶段 3 通过](#最新独立准入复核) |
 
 ### 阶段 3 Step 0 与实施前契约
@@ -249,12 +249,32 @@ Step 0 原型已覆盖缺失 `graph_scope`、非法 `change_kind`、代码定位
 - 生产输出固定包含查询层级、升级原因、功能/架构/代码结果、行动分级、测试映射、未查询层级和只读标记。
 - 生产测试覆盖轻量路径、API→OpenAPI 展开、明确代码定位、非法输入和未解析锚点；阶段 2 已覆盖的 GitNexus 错误语义继续由 `graph code impact` 测试维护。
 
-#### 阶段 3 非目标和完成条件候选
+#### 阶段 3 非目标和完成条件
 
 - 不把功能图谱、架构图谱或 GitNexus 变成计划的第二事实源；计划正文仍由计划治理维护。
 - 不在 hook、CLI 或 LLM 运行时自动写回图谱、计划状态、计划正文或代码；LLM 只消费只读结果，人只在证据不足或产品取舍未决时兜底。
 - 不在本阶段实现完整测试覆盖率推导、自动测试选择、自动代码修改或 GitNexus 自动刷新。
-- 只有轻量路径、风险升级路径、代码定位分叉、行动分级、无测试映射和失败/回滚边界均有可执行样本，并经独立准入复核通过后，阶段 3 才能进入实施。
+- 轻量路径、风险升级路径、代码定位分叉、行动分级、无测试映射和失败/回滚边界均已有可执行样本，并经独立准入复核通过。
+
+### 完成证据
+
+- `plan-governance-cli plan impact --input ...` 已实现，优先读取功能图谱 `index.yaml`，旧 ModelPad 功能图谱只读回退并隔离非功能节点。
+- 四个 ModelPad 真实样本通过：配置刷新仅查询功能层；模型生命周期 API 查询架构层并展开 OpenAPI；明确代码定位时得到 `unique_candidate`；PDF workflow 输出“无可用测试映射”。
+- 生产命令测试覆盖轻量路径、API→OpenAPI、代码定位、非法输入、未解析代码锚点和缺失架构映射；Step 0 回放及失败契约均通过。
+- 根仓库 `npm test` 37/37 通过，`plan-governance-cli check .`、`--strict-readiness` 和 `git diff --check` 通过。
+- ModelPad `gitnexus detect-changes --repo modelpad --scope unstaged --limit 100` 输出 `No changes detected.`；未运行 `gitnexus analyze`，未修改 Swift、功能图谱或 GitNexus 索引。
+- 最终独立完成复核明确结论为“通过；阶段3完成”。
+
+## 验证方式
+
+- 使用 `npm test` 执行根仓库全部 CLI、架构图谱、Step 0 和 `plan impact` 契约测试。
+- 使用 `node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad --check-failures` 回放四个真实样本和非法输入边界。
+- 使用本地 `plan-governance-cli plan impact --input ... --format json /Users/jafish/Documents/work/ModelPad` 验证功能层轻量路径、API→OpenAPI、代码候选和无测试映射。
+- 使用 `plan-governance-cli check .`、`plan-governance-cli check . --strict-readiness`、`git diff --check`、反向引用搜索和 ModelPad `gitnexus detect-changes` 完成治理验收。
+
+## 测试覆盖率
+
+2026-07-25 执行 `npm test`，37/37 项通过；其中包含 12 项架构图谱测试、阶段 2 代码图谱测试、4 项 Step 0/失败契约测试和 4 项生产 `plan impact` 场景测试。未生成或伪造代码覆盖率百分比，测试通过数是本阶段可复现的覆盖证据。
 
 ### 阶段 2 完成证据与 Step 0
 

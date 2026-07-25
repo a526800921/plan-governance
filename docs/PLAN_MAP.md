@@ -30,7 +30,7 @@
 | [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-07-13 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) |
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
-| [architecture-graph-governance](plans/architecture-graph-governance.md) | 实施中 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
+| [architecture-graph-governance](plans/architecture-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -48,7 +48,7 @@
 10. `plan-governance-distribution-setup`
 11. `requirements-grilling-integration`
 12. `functional-graph-governance` ✅（阶段 0-3：契约、CLI、分发和 ModelPad 试点全部完成）
-13. `architecture-graph-governance`（实施中：阶段 2 已完成，阶段 3 Step 0 和独立准入复核通过，正在实现计划前置影响分析）
+13. `architecture-graph-governance` ✅（阶段 0-3：三层契约、ModelPad 架构/代码映射、计划前置影响分析和独立验收全部完成）
 
 ## 依赖关系
 
@@ -78,7 +78,7 @@
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
-| 生产命令的最终错误边界、ModelPad 回放和完成复核尚未完成 | 继续补齐命令级失败测试和真实仓库验收；完成复核前不宣称阶段完成 | architecture-graph-governance 阶段 3 | 是 | 进行中 |
+| 无 | 阶段 3 已完成，后续只在新需求或真实样本暴露差异时创建后续计划 | architecture-graph-governance 阶段 3 | 否 | 已关闭 |
 
 ## 完成证据
 
@@ -108,3 +108,4 @@
 | requirements-grilling-integration | 阶段 1 | 需求探索规则、唯一计划模板、初始化器、受管代理规则和 README 已同步；27 项针对性 Python 测试、87 项全量测试/91.95% 覆盖率、npm 7 项、严格治理、打包清单和反向引用检查通过 |
 | requirements-grilling-integration | 阶段 2 | `plan-governance-cli@0.2.4` 已发布并成为 latest；已安装 tarball 的 `init` 与临时 Codex `setup` 回归通过；dry-run、同步、冲突保护和探索/准入边界均已验证；npm 7 项、Python 87 项/91.95%、严格治理、13 个生产资源、反向引用和格式检查通过 |
 | functional-graph-governance | 阶段 0-3 | `npm test` 15/15 通过；通用 `graph validate/impact`、npm 打包清单、正反例 fixture、ModelPad 图谱校验和三个场景 fixture 全部通过。 |
+| architecture-graph-governance | 阶段 3 | `npm test` 37/37 通过；四个 ModelPad 真实 `plan impact` 样本、Step 0 失败契约、治理/严格治理、反向引用和 GitNexus 变更检测通过；未刷新 GitNexus 索引。 |
