@@ -30,7 +30,7 @@
 | [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-07-13 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) |
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
-| [architecture-graph-governance](plans/architecture-graph-governance.md) | 待实施 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
+| [architecture-graph-governance](plans/architecture-graph-governance.md) | 实施中 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -48,7 +48,7 @@
 10. `plan-governance-distribution-setup`
 11. `requirements-grilling-integration`
 12. `functional-graph-governance` ✅（阶段 0-3：契约、CLI、分发和 ModelPad 试点全部完成）
-13. `architecture-graph-governance`（待实施：阶段 2 已完成，阶段 3 Step 0 和独立准入复核通过，开始实现计划前置影响分析）
+13. `architecture-graph-governance`（实施中：阶段 2 已完成，阶段 3 Step 0 和独立准入复核通过，正在实现计划前置影响分析）
 
 ## 依赖关系
 
@@ -78,7 +78,7 @@
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
-| 阶段 3 生产 `plan impact` 命令尚未实现 | 按已通过的 Step 0 契约进入只读命令实施，并补齐命令级失败测试；实施完成前不宣称阶段完成 | architecture-graph-governance 阶段 3 | 否 | 待开始 |
+| 生产命令的最终错误边界、ModelPad 回放和完成复核尚未完成 | 继续补齐命令级失败测试和真实仓库验收；完成复核前不宣称阶段完成 | architecture-graph-governance 阶段 3 | 是 | 进行中 |
 
 ## 完成证据
 

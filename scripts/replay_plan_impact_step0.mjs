@@ -85,12 +85,24 @@ if (!existsSync(fixtureRoot) || !existsSync(functionalPath) || !existsSync(mappi
 
 const functional = readYaml(functionalPath);
 const mappings = readYaml(mappingsPath);
+const boundaries = readYaml(resolve(modelpadRoot, "docs", "graph", "architecture", "modelpad-boundaries.yaml"));
 const mappingByFeature = new Map();
 for (const relation of mappings.relations ?? []) {
   if (relation.type !== "realized_by") continue;
   const nodes = mappingByFeature.get(relation.from) ?? [];
   nodes.push(relation.to);
   mappingByFeature.set(relation.from, nodes);
+}
+const architectureRelations = boundaries.relations ?? [];
+
+function expandArchitectureNodes(seedNodes, changeKind) {
+  const nodes = new Set(seedNodes);
+  if (changeKind === "api_contract_change") {
+    for (const relation of architectureRelations) {
+      if (relation.type === "exposes" && nodes.has(relation.from)) nodes.add(relation.to);
+    }
+  }
+  return [...nodes].sort();
 }
 
 const samples = readdirSync(fixtureRoot)
@@ -137,7 +149,7 @@ for (const sample of samples) {
     && !legacyNonFunctionalPrefixes.some((prefix) => item.id.startsWith(prefix))).map((item) => item.id))].sort();
   assert.deepEqual(functionalIds, [...request.expected_functional_nodes].sort(), `${sample.name} functional 影响节点不匹配`);
 
-  const architectureNodes = mappingByFeature.get(request.graph_scope) ?? [];
+  const architectureNodes = expandArchitectureNodes(mappingByFeature.get(request.graph_scope) ?? [], request.change_kind);
   if (decision.queriedLayers.includes("architecture")) {
     assert(architectureNodes.length > 0, `${sample.name} 需要架构层但没有 realized_by 映射`);
     for (const node of request.expected_architecture_nodes ?? []) {

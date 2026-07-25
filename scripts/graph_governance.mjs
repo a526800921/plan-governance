@@ -39,11 +39,21 @@ const ARCHITECTURE_NODE_TYPES = new Set([
 const EVIDENCE_KINDS = new Set(["document", "code", "test", "api", "gitnexus"]);
 const FORWARD_RELATIONS = new Set(["exposes", "implements"]);
 const REVERSE_RELATIONS = new Set(["contains", "orchestrates", "consumes", "depends_on"]);
+const PLAN_CHANGE_KINDS = new Set([
+  "behavior_change",
+  "api_contract_change",
+  "internal_refactor",
+  "data_migration",
+  "security_change",
+]);
+const PLAN_UPGRADE_SIGNALS = new Set(["external_boundary"]);
+const LEGACY_NON_FUNCTIONAL_PREFIXES = ["api.", "code.", "test.", "document."];
 
 function usage() {
   console.log(`用法：
   plan-governance-cli graph validate [--layer functional|architecture] [root]
   plan-governance-cli graph impact --from <graph-node-id> [--depth 2] [--format text|json] [root]
+  plan-governance-cli plan impact --input <plan-impact-request.json> [--format text|json] [root]
   plan-governance-cli graph code candidates [--file <relative-path>] --symbol <symbol> --kind class|function [--format text|json] [root]
   plan-governance-cli graph code impact --repo <gitnexus-repo> --file <relative-path> --symbol <symbol> --kind <kind> [--depth 3] [--format text|json] [root]
 
@@ -60,6 +70,10 @@ function graphPath(root) {
   return resolve(root, "docs", "graph", "functional.yaml");
 }
 
+function functionalIndexPath(root) {
+  return resolve(root, "docs", "graph", "functional", "index.yaml");
+}
+
 function architectureIndexPath(root) {
   return resolve(root, "docs", "graph", "architecture", "index.yaml");
 }
@@ -74,9 +88,32 @@ function readYamlFile(path, label) {
 }
 
 function loadGraph(root) {
-  const path = graphPath(root);
-  const graph = readYamlFile(path, "图谱文件");
-  return { graph, path };
+  const indexPath = functionalIndexPath(root);
+  if (!existsSync(indexPath)) {
+    const path = graphPath(root);
+    const graph = readYamlFile(path, "图谱文件");
+    return { graph, path };
+  }
+  const index = readYamlFile(indexPath, "功能图谱入口");
+  const issues = [];
+  if (!index || typeof index !== "object" || Array.isArray(index)) throw new Error("功能图谱入口必须是 YAML 对象");
+  if (index.schema_version !== 1) issues.push(`功能图谱 schema_version 必须为 1，实际为 ${index.schema_version ?? "<missing>"}`);
+  if (index.layer !== "functional") issues.push(`功能图谱 layer 必须为 functional，实际为 ${index.layer ?? "<missing>"}`);
+  const files = asPathList(index.files, "功能图谱 files", issues);
+  if (issues.length > 0) throw new Error(issues.join("；"));
+  const documents = files.map((relativePath) => readYamlFile(resolve(indexPath, "..", relativePath), "功能图谱领域文件"));
+  const graph = mergeGraphDocuments(documents);
+  return {
+    graph: {
+      schema_version: 1,
+      project: index.project,
+      gitnexus: index.gitnexus,
+      nodes: graph.nodes,
+      relations: graph.relations,
+      code_refs: graph.codeRefs,
+    },
+    path: indexPath,
+  };
 }
 
 function asPathList(value, label, issues) {
@@ -405,6 +442,53 @@ function parseImpactArgs(args) {
   return options;
 }
 
+function parsePlanImpactArgs(args) {
+  const options = { input: null, format: "text", root: process.cwd() };
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--input") options.input = args[++index];
+    else if (arg === "--format") options.format = args[++index];
+    else if (arg === "-h" || arg === "--help") return null;
+    else positional.push(arg);
+  }
+  if (positional.length > 1) throw new Error("plan impact 只能接收一个 root 路径");
+  if (positional.length === 1) options.root = resolve(positional[0]);
+  if (!options.input) throw new Error("plan impact 必须指定 --input <plan-impact-request.json>");
+  if (!options.format || !["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
+  if (!existsSync(options.root)) throw new Error(`root 不存在：${options.root}`);
+  return options;
+}
+
+function loadPlanImpactRequest(root, input) {
+  const path = isAbsolute(input) ? input : resolve(root, input);
+  const request = readYamlFile(path, "计划影响输入");
+  if (!request || typeof request !== "object" || Array.isArray(request)) throw new Error("计划影响输入必须是 JSON/YAML 对象");
+  if (typeof request.graph_scope !== "string" || !request.graph_scope.startsWith("feature.")) {
+    throw new Error("计划影响输入 graph_scope 必须是功能节点");
+  }
+  if (!PLAN_CHANGE_KINDS.has(request.change_kind)) {
+    throw new Error(`计划影响输入 change_kind 不受支持：${request.change_kind ?? "<missing>"}`);
+  }
+  const upgradeSignals = request.upgrade_signals ?? [];
+  if (!Array.isArray(upgradeSignals) || upgradeSignals.some((signal) => !PLAN_UPGRADE_SIGNALS.has(signal))) {
+    throw new Error("计划影响输入 upgrade_signals 只支持 external_boundary");
+  }
+  if (request.code_locator_requested !== undefined && typeof request.code_locator_requested !== "boolean") {
+    throw new Error("计划影响输入 code_locator_requested 必须是布尔值");
+  }
+  if (request.code_locator_requested) {
+    const anchor = request.code_anchor;
+    if (!anchor || typeof anchor !== "object") throw new Error("code_locator_requested=true 时必须提供 code_anchor");
+    for (const field of ["file", "symbol", "kind"]) {
+      if (typeof anchor[field] !== "string" || anchor[field].length === 0) throw new Error(`code_anchor.${field} 缺失`);
+    }
+  } else if (request.code_anchor !== undefined) {
+    throw new Error("未请求代码定位时不得提供 code_anchor");
+  }
+  return { request, path };
+}
+
 const CODE_FILE_GLOBS = [
   "*.c", "*.cc", "*.cpp", "*.cs", "*.go", "*.h", "*.java", "*.js", "*.jsx",
   "*.kt", "*.m", "*.mm", "*.mjs", "*.php", "*.py", "*.rb", "*.rs", "*.swift",
@@ -592,6 +676,7 @@ function impact(root, options) {
   if (!byId.has(options.from)) throw new Error(`未知图谱节点：${options.from}`);
   const edges = new Map(graph.nodes.map((node) => [node.id, []]));
   for (const relation of graph.relations) {
+    if (options.relationFilter && !options.relationFilter(relation)) continue;
     if (FORWARD_RELATIONS.has(relation.type)) edges.get(relation.from)?.push({ relation, target: relation.to });
     if (REVERSE_RELATIONS.has(relation.type)) edges.get(relation.to)?.push({ relation, target: relation.from });
   }
@@ -603,6 +688,7 @@ function impact(root, options) {
     const current = queue.shift();
     if (current.depth >= options.depth) continue;
     for (const edge of edges.get(current.id) ?? []) {
+      if (options.nodeFilter && !options.nodeFilter(byId.get(edge.target), edge.target)) continue;
       const nextDepth = current.depth + 1;
       const nextPath = [...current.path, {
         from: current.id,
@@ -624,6 +710,181 @@ function impact(root, options) {
     direct: results.filter((item) => item.depth === 1),
     indirect: results.filter((item) => item.depth > 1),
   };
+}
+
+function isFunctionalImpactNode(item) {
+  if (!item?.node || !functionalNodeId(item.id)) return false;
+  return ["business", "function", "process", "external_workflow"].includes(item.node.type);
+}
+
+function functionalNodeId(id) {
+  return typeof id === "string" && !LEGACY_NON_FUNCTIONAL_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
+
+function filterFunctionalImpact(result) {
+  return {
+    direct: result.direct.filter(isFunctionalImpactNode),
+    indirect: result.indirect.filter(isFunctionalImpactNode),
+  };
+}
+
+function planLayerDecision(request) {
+  const queriedLayers = ["functional"];
+  const upgradeReasons = {};
+  const architectureRequired = ["api_contract_change", "data_migration", "security_change"].includes(request.change_kind)
+    || (request.upgrade_signals ?? []).includes("external_boundary");
+  if (architectureRequired) {
+    queriedLayers.push("architecture");
+    upgradeReasons.architecture = request.change_kind === "behavior_change"
+      ? "upgrade_signal=external_boundary"
+      : `change_kind=${request.change_kind}`;
+  }
+  if (request.code_locator_requested === true) {
+    queriedLayers.push("code");
+    upgradeReasons.code = "code_locator_requested=true";
+  }
+  const unqueriedLayers = {};
+  if (!queriedLayers.includes("architecture")) unqueriedLayers.architecture = "未命中架构升级信号";
+  if (!queriedLayers.includes("code")) unqueriedLayers.code = "未要求具体代码定位";
+  return { queriedLayers, upgradeReasons, unqueriedLayers };
+}
+
+function architectureImpact(root, request) {
+  const loaded = loadArchitectureGraph(root);
+  const graph = normalizeGraph(loaded.graph, root, { layer: "architecture", externalIds: loaded.externalIds });
+  if (graph.issues.length > 0) throw new Error(`架构图谱校验失败，无法分析：${graph.issues.join("；")}`);
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const mappingRelations = graph.relations.filter((relation) => relation.type === "realized_by");
+  const seedRelations = mappingRelations.filter((relation) => relation.from === request.graph_scope);
+  if (seedRelations.length === 0) throw new Error(`功能节点没有可验证的架构映射：${request.graph_scope}`);
+
+  const selected = new Set(seedRelations.map((relation) => relation.to));
+  const selectedRelations = [...seedRelations];
+  if (request.change_kind === "api_contract_change") {
+    graph.relations
+      .filter((relation) => relation.type === "exposes" && selected.has(relation.from))
+      .forEach((relation) => {
+        selected.add(relation.to);
+        selectedRelations.push(relation);
+      });
+  }
+  if (["data_migration", "security_change"].includes(request.change_kind)) {
+    graph.relations
+      .filter((relation) => relation.type === "crosses" && (selected.has(relation.from) || selected.has(relation.to)))
+      .forEach((relation) => {
+        selected.add(relation.from);
+        selected.add(relation.to);
+        selectedRelations.push(relation);
+      });
+  }
+
+  return {
+    nodes: [...selected].sort().map((id) => ({
+      id,
+      node: byId.get(id),
+      evidence: byId.get(id)?.evidence ?? [],
+      paths: selectedRelations
+        .filter((relation) => relation.to === id || relation.from === id)
+        .map((relation) => ({
+          from: relation.from,
+          type: relation.type,
+          to: relation.to,
+          evidence: relation.evidence,
+        })),
+    })),
+  };
+}
+
+function uniqueEvidence(items) {
+  const seen = new Set();
+  return items.flatMap((item) => item?.evidence ?? [])
+    .filter((evidence) => evidence.kind === "test")
+    .filter((evidence) => {
+      const key = `${evidence.ref}#${evidence.locator}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function planImpact(root, options) {
+  const { request, path: inputPath } = loadPlanImpactRequest(root, options.input);
+  const decision = planLayerDecision(request);
+  const loaded = loadGraph(root);
+  const graph = normalizeGraph(loaded.graph, root);
+  if (graph.issues.length > 0) throw new Error(`功能图谱校验失败，无法分析：${graph.issues.join("；")}`);
+  const sourceNode = graph.nodes.find((node) => node.id === request.graph_scope);
+  if (!sourceNode) throw new Error(`未知功能图谱节点：${request.graph_scope}`);
+  const legacyImpact = impact(root, {
+    from: request.graph_scope,
+    depth: 2,
+    nodeFilter: (node, id) => functionalNodeId(id) && ["business", "function", "process", "external_workflow"].includes(node?.type),
+    relationFilter: (relation) => relation.type !== "exposes"
+      && (relation.type !== "implements" || functionalNodeId(relation.to)),
+  });
+  const functionalImpact = filterFunctionalImpact(legacyImpact);
+  const architecture = decision.queriedLayers.includes("architecture")
+    ? architectureImpact(root, request)
+    : null;
+
+  let code = null;
+  if (decision.queriedLayers.includes("code")) {
+    const candidate = codeCandidates(root, {
+      file: request.code_anchor.file,
+      symbol: request.code_anchor.symbol,
+      kind: request.code_anchor.kind,
+    });
+    if (candidate.resolution !== "unique_candidate") {
+      throw new Error(`代码定位未唯一确认：resolution=${candidate.resolution}；请使用 graph code candidates 获取候选并上升确认`);
+    }
+    code = candidate;
+  }
+
+  const testEvidence = uniqueEvidence([
+    ...legacyImpact.direct,
+    ...legacyImpact.indirect,
+    ...(architecture?.nodes ?? []),
+  ]);
+  const actions = ["必须评估", testEvidence.length > 0 ? "必须测试" : "建议检查"];
+  return {
+    schema_version: 1,
+    source: {
+      input: inputPath,
+      graph_scope: request.graph_scope,
+      change_kind: request.change_kind,
+      node: sourceNode,
+    },
+    queried_layers: decision.queriedLayers,
+    upgrade_reasons: decision.upgradeReasons,
+    unqueried_layers: decision.unqueriedLayers,
+    functional: functionalImpact,
+    architecture,
+    code,
+    actions,
+    tests: testEvidence.length > 0
+      ? { status: "available", evidence: testEvidence }
+      : { status: "unavailable", message: "无可用测试映射", evidence: [] },
+    writes: false,
+    analyze_triggered: false,
+  };
+}
+
+function printPlanImpactText(result) {
+  console.log(`计划前置影响分析：${result.source.graph_scope}（${result.source.change_kind}）`);
+  console.log(`查询层级：${result.queried_layers.join(" → ")}`);
+  console.log(`升级原因：${Object.entries(result.upgrade_reasons).map(([layer, reason]) => `${layer}: ${reason}`).join("；") || "无"}`);
+  console.log("功能影响：");
+  for (const item of [...result.functional.direct, ...result.functional.indirect]) {
+    console.log(`- ${item.id}：${item.node.name}`);
+  }
+  if (result.architecture) {
+    console.log("架构影响：");
+    for (const item of result.architecture.nodes) console.log(`- ${item.id}：${item.node.name}`);
+  }
+  if (result.code) console.log(`代码定位：${result.code.resolution}；${result.code.candidates[0].file}:${result.code.candidates[0].line}`);
+  console.log(`行动建议：${result.actions.join("、")}`);
+  console.log(`测试映射：${result.tests.status === "available" ? result.tests.evidence.map((item) => item.ref).join("、") : result.tests.message}`);
+  console.log(`未查询层级：${Object.entries(result.unqueried_layers).map(([layer, reason]) => `${layer}（${reason}）`).join("；") || "无"}`);
 }
 
 function printText(result) {
@@ -671,6 +932,18 @@ function main(args) {
       const result = impact(options.root, options);
       if (options.format === "json") console.log(JSON.stringify(result, null, 2));
       else printText(result);
+      return 0;
+    }
+    if (command === "plan") {
+      if (args[1] !== "impact") return error(`plan 不支持子命令：${args[1] ?? "<missing>"}`);
+      const options = parsePlanImpactArgs(args.slice(2));
+      if (options === null) {
+        usage();
+        return 0;
+      }
+      const result = planImpact(options.root, options);
+      if (options.format === "json") console.log(JSON.stringify(result, null, 2));
+      else printPlanImpactText(result);
       return 0;
     }
     if (command === "code") {

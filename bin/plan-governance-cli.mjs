@@ -188,6 +188,7 @@ function main() {
   if (command === "init") return runPython(initializer, args.slice(1));
   if (command === "hook") return runPython(hookRuntime, args.slice(1));
   if (command === "graph") return runNode(graphRuntime, args.slice(1));
+  if (command === "plan") return runNode(graphRuntime, args);
   if (command === "check") return runPython(checker, args.slice(1));
   return runPython(checker, args);
 }
