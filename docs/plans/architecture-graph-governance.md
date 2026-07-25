@@ -212,7 +212,7 @@ plan-governance-cli plan impact \
 
 #### 阶段 3 Step 0 真实仓库回放
 
-阶段 3 的 Step 0 基线类型为“ModelPad 真实仓库只读回放”，不是静态自洽样本。四个输入样本位于 ModelPad 的 `docs/graph/fixtures/plan-impact/`；回放脚本只调用阶段 2 已完成的只读 CLI，不实现 `plan impact` 的生产逻辑：
+阶段 3 的 Step 0 基线类型为“ModelPad 真实仓库只读回放”，不是静态自洽样本。四个输入样本位于 ModelPad 的 `docs/graph/fixtures/plan-impact/`；回放脚本调用阶段 2 已完成的只读 CLI，并包含一个仅用于验证决策边界的参考回放器，不实现 `plan impact` 的生产逻辑：
 
 ```bash
 node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad
@@ -221,12 +221,14 @@ node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad
 回放脚本验证：
 
 - 四个样本都能从真实功能图谱得到非空影响结果；
+- 旧功能图谱返回的 `api.*`、`code.*`、`test.*` 和 `document.*` 混合节点只作为基线观测，参考回放器按三层 ID 边界排除它们，不把旧混合结果当作新功能层契约；
+- 四个样本的 `queried_layers`、升级原因、`unqueried_layers`、功能节点集合和行动分级逐项断言；
 - 需要架构层的样本确实存在 `realized_by` 映射；
 - 只有明确要求代码定位的样本才执行代码候选查询，且 `APIHandler` 得到唯一候选；
 - 配置刷新和模型生命周期样本存在测试证据，PDF workflow 样本明确没有可用测试映射；
 - 整个回放不写文件且不触发 `gitnexus analyze`。
 
-回放输出位置为命令标准输出；阶段 3 实施前应将通过输出追加到本计划的验证证据中。当前基线输出为：配置刷新功能层影响 6 项、模型生命周期功能层影响 9 项、PDF workflow 功能层影响 4 项；架构映射分别为 2、2、1 个；只有代码定位变体执行 `APIHandler` 唯一候选查询。
+回放输出位置为命令标准输出；阶段 3 实施前应将通过输出追加到本计划的验证证据中。当前旧图谱基线影响数为：配置刷新 6 项、模型生命周期 9 项、PDF workflow 4 项；参考决策结果分别为 `functional`、`functional + architecture`、`functional + architecture + code`、`functional + architecture`；架构映射分别为 0、2、2、1 个；只有代码定位变体执行 `APIHandler` 唯一候选查询。`--check-failures` 另验证 4 个非法输入契约被拒绝。
 
 #### 阶段 3 样本矩阵
 
@@ -237,7 +239,7 @@ node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad
 | API 契约升级并定位代码 | `model-lifecycle-api-code.json`，增加 `APIHandler` 稳定锚点 | 同上 | 在前一场景基础上查询 `code`，候选解析为 `unique_candidate` | 未声明代码定位却下钻、候选不唯一仍自动选择或触发 analyze | Step 0 已通过 |
 | 外部 workflow 跨边界 | `pdf-workflow-behavior.json`：`feature.pdf-workflow-reuse` + `behavior_change` | 同上 | 查询功能及已确认的外部服务架构边界；输出 `必须评估`、`建议检查` 和“无可用测试映射” | 猜测不存在的边界、强制查询 GitNexus或虚构测试覆盖 | Step 0 已通过 |
 
-失败输入边界由生产命令的契约测试补充：缺失 `graph_scope`、非法 `change_kind`、悬空功能节点、必需架构映射缺失、代码候选多结果和 GitNexus 错误都必须保留诊断并返回非零；任何失败都不得写回或伪装成无影响。
+Step 0 原型已覆盖缺失 `graph_scope`、非法 `change_kind`、代码定位缺少锚点和非法升级信号 4 类输入拒绝；生产命令仍需补充悬空功能节点、必需架构映射缺失、代码候选多结果和 GitNexus 错误的契约测试，均必须保留诊断并返回非零，任何失败都不得写回或伪装成无影响。
 
 #### 阶段 3 非目标和完成条件候选
 
