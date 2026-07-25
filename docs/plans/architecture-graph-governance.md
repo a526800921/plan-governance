@@ -166,14 +166,14 @@ gitnexus_uid: <可选>
 
 ## 当前阶段
 
-当前阶段指针：阶段 3（设计中）。阶段 0、阶段 1 和阶段 2 已完成；阶段 3 尚未完成自己的 Step 0、样本矩阵和独立准入复核。
+当前阶段指针：阶段 3（设计中）。阶段 0、阶段 1 和阶段 2 已完成；阶段 3 的真实仓库 Step 0 和样本矩阵已完成，生产命令契约测试和独立准入复核尚未完成。
 
 ### 阶段 3 准入状态
 
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 设计中 |
-| 当前阻塞项 | 阶段 3 尚未冻结计划前置命令、跨层升级边界、行动分级和测试映射证据 |
+| 当前阻塞项 | 阶段 3 尚未完成生产命令契约测试和独立准入复核 |
 | 实施边界 | 只设计计划前置的只读影响分析；不自动修改计划、YAML、代码或 GitNexus 索引 |
 | 进入条件 | 阶段 3 独立准入复核明确达到“待实施”标准 |
 
@@ -182,46 +182,69 @@ gitnexus_uid: <可选>
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 设计中 |
-| Step 0 | [阶段 3 Step 0 候选](#阶段-3-step-0-候选) |
+| Step 0 | [阶段 3 Step 0 与实施前契约](#阶段-3-step-0-与实施前契约) |
 | 样本矩阵 | [阶段 3 样本矩阵](#阶段-3-样本矩阵) |
 | 验证方式 | 计划样本的功能层默认查询、风险升级查询、行动分级和只读输出回放 |
 | 失败/回滚边界 | 阶段 3 只输出影响分析建议；边界未收敛时不修改计划正文、图谱 YAML、代码或 GitNexus 索引 |
-| 当前阻塞项 | 阶段 3 Step 0 和独立准入复核尚未完成 |
+| 当前阻塞项 | 阶段 3 生产命令契约测试和独立准入复核尚未完成 |
 | 最新独立准入复核 | 尚未进行；阶段 2 完成复核不替代阶段 3 准入 |
 
-### 阶段 3 Step 0 候选
+### 阶段 3 Step 0 与实施前契约
 
 阶段 3 只把三层图谱作为计划治理的前置参考：先查询功能层，再按 `change_kind` 和风险信号升级到架构层或 GitNexus；不把三层结果变成自动批准、自动写回或自动修改代码。
 
-#### 计划前置查询候选
+#### 计划前置查询契约候选
 
 ```text
 plan-governance-cli plan impact \
-  --graph-scope <functional-node-id> \
-  --change-kind <change-kind> \
+  --input <plan-impact-request.json> \
   [--format text|json] \
   <root>
 ```
 
-- `graph_scope` 由计划声明，首期只允许一个主 `change_kind`：`behavior_change`、`api_contract_change`、`internal_refactor`、`data_migration`、`security_change`。
-- 默认只查询功能层；API 契约、数据迁移、安全、共享架构或明确代码定位需求才升级架构层和 GitNexus。
-- 输出影响节点、升级原因、建议行动级别、证据和“未查询的层级及原因”；不把“无结果”解释为“无风险”。
-- 测试映射只引用已有测试证据；没有映射时明确输出“无可用测试映射”，不虚构覆盖率。
+- 输入文件只承载本次计划项，不写入任何图谱节点。首期必填 `graph_scope` 和一个主 `change_kind`；`change_kind` 仅允许 `behavior_change`、`api_contract_change`、`internal_refactor`、`data_migration`、`security_change`。需要具体代码证据时，额外声明 `code_locator_requested: true` 和稳定 `code_anchor`。
+- 默认只查询功能层。`api_contract_change`、`data_migration`、`security_change` 或明确的共享架构映射才升级架构层；只有 `code_locator_requested: true` 时才调用候选查询或 GitNexus，不因存在代码映射就自动下钻。
+- 输出至少包含 `queried_layers`、影响节点、升级原因、证据、建议行动级别、测试映射和 `unqueried_layers`；不把“无结果”解释为“无风险”。
+- 行动分级固定为：`必须评估`（受影响功能、架构边界或共享反向关联）、`必须测试`（存在直接测试/契约/数据边界证据）、`建议检查`（外部 workflow、间接关联或没有现成测试映射）。分级表达治理动作，不断言代码必然需要修改。
+- 测试映射只引用已有测试证据；没有映射时成功返回但明确输出“无可用测试映射”，不虚构覆盖率。
+- 输入缺失、`graph_scope` 不存在、`change_kind` 非法、必需图谱文件缺失或需要升级但没有可验证映射时返回非零；查询失败不得降级为“无影响”。
+- 命令只读，不修改计划正文、输入文件、任何 YAML、代码或 GitNexus 索引，也不自动触发 `gitnexus analyze`。
+
+#### 阶段 3 Step 0 真实仓库回放
+
+阶段 3 的 Step 0 基线类型为“ModelPad 真实仓库只读回放”，不是静态自洽样本。四个输入样本位于 ModelPad 的 `docs/graph/fixtures/plan-impact/`；回放脚本只调用阶段 2 已完成的只读 CLI，不实现 `plan impact` 的生产逻辑：
+
+```bash
+node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad
+```
+
+回放脚本验证：
+
+- 四个样本都能从真实功能图谱得到非空影响结果；
+- 需要架构层的样本确实存在 `realized_by` 映射；
+- 只有明确要求代码定位的样本才执行代码候选查询，且 `APIHandler` 得到唯一候选；
+- 配置刷新和模型生命周期样本存在测试证据，PDF workflow 样本明确没有可用测试映射；
+- 整个回放不写文件且不触发 `gitnexus analyze`。
+
+回放输出位置为命令标准输出；阶段 3 实施前应将通过输出追加到本计划的验证证据中。当前基线输出为：配置刷新功能层影响 6 项、模型生命周期功能层影响 9 项、PDF workflow 功能层影响 4 项；架构映射分别为 2、2、1 个；只有代码定位变体执行 `APIHandler` 唯一候选查询。
 
 #### 阶段 3 样本矩阵
 
 | 样本 | 输入或基线 | 可执行命令 | 预期结果 | 失败判定 | 当前状态 |
 |---|---|---|---|---|---|
-| 轻量行为变更 | `feature.config-refresh` + `behavior_change` | 阶段 3 计划影响命令（待实现） | 只输出功能层影响，不下钻架构层/GitNexus，并说明原因 | 无条件遍历三层或遗漏功能影响 | 待 Step 0 fixture |
-| API 契约升级 | `feature.model-lifecycle` + `api_contract_change` | 同上 | 输出功能→架构 API 契约→按需代码影响，并给出升级证据 | 把全部代码判为必须修改或没有升级理由 | 待 Step 0 fixture |
-| 外部 workflow 跨边界 | `feature.pdf-workflow-reuse` + `behavior_change` | 同上 | 输出外部服务/数据边界及行动建议，代码查询按需触发 | 猜测不存在的边界或强制查询 GitNexus | 待 Step 0 fixture |
+| 轻量行为变更 | `config-refresh-behavior.json`：`feature.config-refresh` + `behavior_change` | `node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad` | 期望层级只有 `functional`；输出 `必须评估`、`必须测试`；代码查询跳过 | 无条件下钻架构/GitNexus、遗漏功能影响或丢失测试证据 | Step 0 已通过 |
+| API 契约升级 | `model-lifecycle-api.json`：`feature.model-lifecycle` + `api_contract_change`，不要求代码定位 | 同上 | 查询 `functional` + `architecture`，定位本地 HTTP API 和进程管理边界；代码层明确未查询及原因 | 把全部代码判为必须修改、无升级理由或默认调用 GitNexus | Step 0 已通过 |
+| API 契约升级并定位代码 | `model-lifecycle-api-code.json`，增加 `APIHandler` 稳定锚点 | 同上 | 在前一场景基础上查询 `code`，候选解析为 `unique_candidate` | 未声明代码定位却下钻、候选不唯一仍自动选择或触发 analyze | Step 0 已通过 |
+| 外部 workflow 跨边界 | `pdf-workflow-behavior.json`：`feature.pdf-workflow-reuse` + `behavior_change` | 同上 | 查询功能及已确认的外部服务架构边界；输出 `必须评估`、`建议检查` 和“无可用测试映射” | 猜测不存在的边界、强制查询 GitNexus或虚构测试覆盖 | Step 0 已通过 |
+
+失败输入边界由生产命令的契约测试补充：缺失 `graph_scope`、非法 `change_kind`、悬空功能节点、必需架构映射缺失、代码候选多结果和 GitNexus 错误都必须保留诊断并返回非零；任何失败都不得写回或伪装成无影响。
 
 #### 阶段 3 非目标和完成条件候选
 
 - 不把功能图谱、架构图谱或 GitNexus 变成计划的第二事实源；计划正文仍由计划治理维护。
 - 不在 hook、CLI 或 LLM 运行时自动写回图谱、计划状态、计划正文或代码；LLM 只消费只读结果，人只在证据不足或产品取舍未决时兜底。
 - 不在本阶段实现完整测试覆盖率推导、自动测试选择、自动代码修改或 GitNexus 自动刷新。
-- 只有轻量路径、风险升级路径、行动分级、无测试映射和失败/回滚边界均有可执行样本，并经独立准入复核通过后，阶段 3 才能进入实施。
+- 只有轻量路径、风险升级路径、代码定位分叉、行动分级、无测试映射和失败/回滚边界均有可执行样本，并经独立准入复核通过后，阶段 3 才能进入实施。
 
 ### 阶段 2 完成证据与 Step 0
 

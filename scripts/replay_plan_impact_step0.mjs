@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+
+import assert from "node:assert/strict";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { parse as parseYaml } from "yaml";
+
+const governanceRoot = resolve(import.meta.dirname, "..");
+const modelpadRoot = resolve(process.argv[2] ?? "/Users/jafish/Documents/work/ModelPad");
+const cli = resolve(governanceRoot, "bin", "plan-governance-cli.mjs");
+const fixtureRoot = resolve(modelpadRoot, "docs", "graph", "fixtures", "plan-impact");
+const functionalPath = resolve(modelpadRoot, "docs", "graph", "functional.yaml");
+const mappingsPath = resolve(modelpadRoot, "docs", "graph", "architecture", "mappings.yaml");
+
+function fail(message) {
+  console.error(`阶段 3 Step 0 回放失败：${message}`);
+  process.exit(1);
+}
+
+function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (cause) {
+    fail(`${path} 读取失败：${cause.message}`);
+  }
+}
+
+function readYaml(path) {
+  try {
+    return parseYaml(readFileSync(path, "utf8"));
+  } catch (cause) {
+    fail(`${path} 读取失败：${cause.message}`);
+  }
+}
+
+function run(args) {
+  const result = spawnSync(process.execPath, [cli, ...args, "--format", "json", modelpadRoot], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) fail(`${args.join(" ")}：${result.stderr.trim()}`);
+  try {
+    return JSON.parse(result.stdout);
+  } catch (cause) {
+    fail(`${args.join(" ")} 返回非 JSON：${cause.message}`);
+  }
+}
+
+if (!existsSync(fixtureRoot) || !existsSync(functionalPath) || !existsSync(mappingsPath)) {
+  fail("缺少 ModelPad 图谱或阶段 3 fixture");
+}
+
+const functional = readYaml(functionalPath);
+const mappings = readYaml(mappingsPath);
+const mappingByFeature = new Map();
+for (const relation of mappings.relations ?? []) {
+  if (relation.type !== "realized_by") continue;
+  const nodes = mappingByFeature.get(relation.from) ?? [];
+  nodes.push(relation.to);
+  mappingByFeature.set(relation.from, nodes);
+}
+
+const samples = readdirSync(fixtureRoot)
+  .filter((name) => name.endsWith(".json"))
+  .sort()
+  .map((name) => ({ name, data: readJson(resolve(fixtureRoot, name)) }));
+assert.equal(samples.length, 4, "Step 0 应包含四个计划影响样本");
+
+const allowedKinds = new Set([
+  "behavior_change",
+  "api_contract_change",
+  "internal_refactor",
+  "data_migration",
+  "security_change",
+]);
+const summaries = [];
+
+for (const sample of samples) {
+  const request = sample.data;
+  assert.match(request.graph_scope, /^feature\./, `${sample.name} graph_scope 必须是功能节点`);
+  assert(allowedKinds.has(request.change_kind), `${sample.name} change_kind 不受支持`);
+  assert(Array.isArray(request.expected_layers) && request.expected_layers.length > 0, `${sample.name} 缺少 expected_layers`);
+  assert(Array.isArray(request.expected_actions) && request.expected_actions.length > 0, `${sample.name} 缺少 expected_actions`);
+
+  const functionalImpact = run(["graph", "impact", "--from", request.graph_scope, "--depth", "2"]);
+  assert.equal(functionalImpact.source.id, request.graph_scope, `${sample.name} 功能层 source 不匹配`);
+  const impactedIds = [
+    ...(functionalImpact.direct ?? []).map((item) => item.id),
+    ...(functionalImpact.indirect ?? []).map((item) => item.id),
+  ];
+  assert(impactedIds.length > 0, `${sample.name} 功能层没有可观察影响`);
+
+  const architectureNodes = mappingByFeature.get(request.graph_scope) ?? [];
+  if (request.expected_layers.includes("architecture")) {
+    assert(architectureNodes.length > 0, `${sample.name} 需要架构层但没有 realized_by 映射`);
+    for (const node of request.expected_architecture_nodes ?? []) {
+      assert(architectureNodes.includes(node), `${sample.name} 缺少架构映射：${node}`);
+    }
+  }
+
+  let codeResolution = "skipped";
+  if (request.code_locator_requested) {
+    assert(request.code_anchor, `${sample.name} 要求代码定位但缺少 code_anchor`);
+    const candidates = run([
+      "graph", "code", "candidates",
+      "--file", request.code_anchor.file,
+      "--symbol", request.code_anchor.symbol,
+      "--kind", request.code_anchor.kind,
+    ]);
+    assert.equal(candidates.resolution, "unique_candidate", `${sample.name} 代码锚点未唯一确认`);
+    codeResolution = candidates.resolution;
+  }
+
+  const hasTestEvidence = [...(functionalImpact.direct ?? []), ...(functionalImpact.indirect ?? [])]
+    .some((item) => (item.node?.evidence ?? []).some((evidence) => evidence.kind === "test"));
+  if (request.expected_test_mapping.length > 0) assert(hasTestEvidence, `${sample.name} 期望测试映射但基线没有测试证据`);
+  else assert(!hasTestEvidence, `${sample.name} 应明确输出无可用测试映射`);
+
+  summaries.push({
+    sample: sample.name,
+    graph_scope: request.graph_scope,
+    change_kind: request.change_kind,
+    expected_layers: request.expected_layers,
+    functional_impact_count: impactedIds.length,
+    architecture_nodes: architectureNodes,
+    code_resolution: codeResolution,
+    test_mapping: hasTestEvidence ? "available" : "无可用测试映射",
+    actions: request.expected_actions,
+  });
+}
+
+console.log(JSON.stringify({
+  baseline: "ModelPad 真实仓库只读回放",
+  samples: summaries,
+  writes: false,
+  analyze_triggered: false,
+}, null, 2));
