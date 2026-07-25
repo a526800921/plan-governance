@@ -191,7 +191,7 @@ plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCor
 也可以不全局安装，直接使用锁定版本：
 
 ```bash
-npx --yes --package plan-governance-cli@0.2.3 plan-governance-cli check . --strict-readiness
+npx --yes --package plan-governance-cli@0.3.0 plan-governance-cli check . --strict-readiness
 ```
 
 npm 包内部仍使用版本化的 Python 检查器，但用户不需要直接调用或复制该脚本。旧项目已有本地脚本时仍可保留作为兼容或回滚路径。

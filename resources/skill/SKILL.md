@@ -261,6 +261,34 @@ plan-governance-cli check . --stale-days 10
 - `--attest <plan-name>`：为已登记计划创建或覆盖 `docs/attestations/<plan-name>.json` 完成快照。
 - `--check-attestations`：检查完成快照中的计划文件和 `PLAN_MAP.md` hash 是否漂移；漂移、缺失或 JSON 损坏只输出 `WARNING`，不改变退出码。
 
+## 图谱与计划前置影响分析
+
+当项目声明了功能图谱或架构图谱时，使用 npm CLI 的只读命令查询影响范围：
+
+```bash
+plan-governance-cli graph validate .
+plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --format json .
+plan-governance-cli graph code candidates --symbol APIHandler --kind class --format json .
+plan-governance-cli graph code impact \
+  --repo modelpad \
+  --file Sources/ModelPadCore/API/APIServer.swift \
+  --symbol APIHandler \
+  --kind class \
+  --format json .
+```
+
+计划前置分析使用计划输入文件：
+
+```bash
+plan-governance-cli plan impact \
+  --input docs/graph/fixtures/plan-impact/model-lifecycle-api.json \
+  --format json .
+```
+
+`plan impact` 默认只查询功能层；API 契约、数据迁移、安全、外部边界或明确要求代码定位时，才升级到架构层或代码层。输出包含查询层级、升级原因、影响节点、行动分级、测试映射和未查询层级。`graph validate`、`graph impact`、代码查询和 `plan impact` 全部只读，不修改 YAML、计划、代码或 GitNexus 索引；失败也不能被解释为“无影响”。
+
+GitNexus 只在需要代码定位时使用。CLI 不自动执行 `gitnexus analyze`，也不自动写回 UID 或 YAML；候选映射由 LLM 依据文件、符号、类型和测试等证据确认，证据不足或存在多个合理候选时再请求用户确认。
+
 `影响模块或文件` 的作用域匹配规则：
 
 - `--drift`、`--pre-commit` 和 `plan_governance_hook.py --event pre-write` 使用同一语义。
