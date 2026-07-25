@@ -365,6 +365,18 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 2026-07-13 发现 `0.2.2` 的初始化器模板仍会在 `AGENTS.md` 和 `CLAUDE.md` 中写入旧的 Python 检查命令，形成 skill 与代理规则入口不一致。已将 README、当前代理规则和初始化器模板统一为 `plan-governance-cli check/init`，保留包内 Python 脚本作为运行资源和显式兼容模式，并发布 `0.2.3`。
 
+## 2026-07-25 发布维护
+
+本次维护将阶段 3 完成后的图谱 CLI 能力纳入正式分发资源：
+
+- `resources/skill/SKILL.md` 新增 `graph validate`、`graph impact`、代码候选/代码影响查询和 `plan impact` 的使用边界，明确默认功能层查询、按风险升级、只读和 GitNexus 不自动分析/写回规则。
+- README 的锁定版本示例更新为 `plan-governance-cli@0.3.0`，并与当前图谱命令保持一致。
+- `plan-governance-cli@0.3.0` 已发布到公共 npm registry，并成为 `latest`；tarball 包含 14 个生产资源，包括 `scripts/graph_governance.mjs` 和更新后的 skill。
+- `npm test` 通过 37/37；严格治理检查通过；公共 npm 包对 ModelPad 执行 `graph validate` 和 `plan impact` 均通过。
+- 使用公共包执行 `setup --target codex --force` 后，二次 `--dry-run` 显示全部 manifest 资源最新。
+
+本次仅更新分发文档、skill 和版本元数据，不修改项目治理文档、图谱 YAML 或 GitNexus 索引。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
@@ -377,6 +389,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 | 2026-07-13 | 阶段验收复核 | 阶段 3 | 通过 | hook runtime 可分发和手动调用；无稳定目标 Schema，因此 manifest 不安装 hook 配置 | Codex 独立复核 |
 | 2026-07-13 | 最终验收复核 | 整个计划 | 通过 | npm 资源分发、skill 同步、init、检查、hook 边界、测试、registry 和反向引用检查通过 | Codex 独立复核 |
 | 2026-07-13 | 完成后维护复核 | 整个计划 | 通过 | `0.2.3` 已发布；初始化器生成的代理规则、README 和当前项目入口均改用 npm CLI；生成器测试和治理检查通过 | Codex 独立复核 |
+| 2026-07-25 | 完成后维护复核 | 整个计划 | 通过 | `0.3.0` 已发布并成为 `latest`；skill/README 已同步图谱 CLI 和 `plan impact`；37/37 npm 测试、严格治理、公共包 ModelPad 图谱校验/影响分析和 Codex setup 二次 dry-run 通过 | Codex 独立复核 |
 | - | - | - | - | - | - |
 
 ## 未决问题
