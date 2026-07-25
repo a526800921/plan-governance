@@ -112,6 +112,7 @@ def test_main_can_create_claude_md(tmp_path):
     assert "--migrate-plan-map-last-updated" in text
     assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
+    assert "机器识别的结构化章节标题固定为 `阶段路线图`" in text
     assert "追加式独立复核记录" in text
     assert "需求探索与 grilling" in text
     assert "grill-me" in text
@@ -137,6 +138,7 @@ def test_main_can_create_agents_md(tmp_path):
     assert "--migrate-plan-map-last-updated" in text
     assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
+    assert "机器识别的结构化章节标题固定为 `阶段路线图`" in text
     assert "需求探索与 grilling" in text
     assert "grill-me" in text
     assert "用户确认结构化总结" in text

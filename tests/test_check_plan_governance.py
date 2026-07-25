@@ -211,6 +211,38 @@ def test_missing_readiness_fields_warns_and_strict_fails(tmp_path, capsys):
     assert "阶段准入摘要缺少字段" in capsys.readouterr().out
 
 
+def test_numbered_readiness_heading_explains_fixed_title(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    numbered = readiness_plan_text().replace("### 阶段准入摘要", "### 阶段 1 准入摘要")
+    write(tmp_path / "docs" / "plans" / "demo.md", numbered)
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "检测到标题 `阶段 1 准入摘要`" in output
+    assert "请改为固定标题 `阶段准入摘要`" in output
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
+    assert "阶段编号以 `PLAN_MAP.md` 的当前阶段为准" in capsys.readouterr().out
+
+
+def test_numbered_review_headings_explain_fixed_titles(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"),
+    )
+    numbered = readiness_plan_text()
+    numbered = numbered.replace("### 最新独立准入复核", "### 阶段 1 最新独立准入复核")
+    numbered = numbered.replace("## 独立复核记录", "## 阶段 1 独立复核记录")
+    write(tmp_path / "docs" / "plans" / "demo.md", numbered)
+
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "请改为固定标题 `最新独立准入复核`" in output
+    assert "请改为固定标题 `独立复核记录`" in output
+
+
 def test_conflicting_latest_review_warns_and_strict_fails(tmp_path, capsys):
     write(
         tmp_path / "docs" / "PLAN_MAP.md",

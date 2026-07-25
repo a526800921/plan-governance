@@ -116,6 +116,32 @@ def key_value_table(section):
     return values
 
 
+def numbered_structural_heading(plan_text, heading_names):
+    """查找误把阶段编号写入结构化章节标题的常见形式。"""
+    phase_number = r"[0-9一二三四五六七八九十百]+"
+    variants = []
+    for name in heading_names:
+        variants.append(rf"阶段\s*{phase_number}\s+{re.escape(name)}")
+        if name.startswith("阶段"):
+            variants.append(rf"阶段\s*{phase_number}\s*{re.escape(name[2:])}")
+    pattern = re.compile(
+        rf"^#+\s+((?:{'|'.join(variants)}))\s*$",
+        re.MULTILINE,
+    )
+    match = pattern.search(mask_fenced_code(plan_text))
+    return match.group(1) if match else None
+
+
+def structural_heading_hint(plan_text, heading_name):
+    numbered_heading = numbered_structural_heading(plan_text, [heading_name])
+    if not numbered_heading:
+        return ""
+    return (
+        f"；检测到标题 `{numbered_heading}`，请改为固定标题 "
+        f"`{heading_name}`，阶段编号以 `PLAN_MAP.md` 的当前阶段为准"
+    )
+
+
 def phase_roadmap_rows(plan_text):
     section = markdown_section(plan_text, ["阶段路线图"])
     return [row for row in markdown_table_rows(section) if row and row[0] != "阶段"]
@@ -160,11 +186,12 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
     roadmap = phase_roadmap_rows(plan_text)
     matching_rows = [row for row in roadmap if row and row[0] == current_phase]
     if not matching_rows:
+        roadmap_hint = structural_heading_hint(plan_text, "阶段路线图")
         readiness_issue(
             warnings,
             errors,
             strict,
-            f"{plan_name}: PLAN_MAP 当前阶段 {current_phase} 未在计划阶段路线图中找到",
+            f"{plan_name}: PLAN_MAP 当前阶段 {current_phase} 未在计划阶段路线图中找到{roadmap_hint}",
         )
     else:
         roadmap_status = matching_rows[-1][4] if len(matching_rows[-1]) > 4 else ""
@@ -177,16 +204,21 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
             )
 
     if markdown_section(plan_text, ["当前阶段"]) is None:
-        readiness_issue(warnings, errors, strict, f"{plan_name}: 缺少 `## 当前阶段` 章节")
+        section_hint = structural_heading_hint(plan_text, "当前阶段")
+        readiness_issue(warnings, errors, strict, f"{plan_name}: 缺少 `## 当前阶段` 章节{section_hint}")
 
-    summary = key_value_table(markdown_section(plan_text, ["阶段准入摘要"]))
+    summary_section = markdown_section(plan_text, ["阶段准入摘要"])
+    summary = key_value_table(summary_section)
     missing_fields = sorted(READINESS_FIELDS - set(summary))
     if missing_fields:
+        title_hint = ""
+        if summary_section is None:
+            title_hint = structural_heading_hint(plan_text, "阶段准入摘要")
         readiness_issue(
             warnings,
             errors,
             strict,
-            f"{plan_name}: 阶段准入摘要缺少字段：{', '.join(missing_fields)}",
+            f"{plan_name}: 阶段准入摘要缺少字段：{', '.join(missing_fields)}{title_hint}",
         )
     for field in sorted(READINESS_FIELDS - {"当前阻塞项"}):
         if field in summary and is_placeholder(summary[field]):
@@ -215,11 +247,12 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
     review_fields = {"日期", "阶段", "结论", "证据", "复核者"}
     missing_review = sorted(review_fields - set(review))
     if missing_review:
+        review_hint = structural_heading_hint(plan_text, "最新独立准入复核")
         readiness_issue(
             warnings,
             errors,
             strict,
-            f"{plan_name}: 最新独立准入复核缺少字段：{', '.join(missing_review)}",
+            f"{plan_name}: 最新独立准入复核缺少字段：{', '.join(missing_review)}{review_hint}",
         )
     if review.get("日期"):
         try:
@@ -243,7 +276,13 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
 
     history = [row for row in review_history_rows(plan_text) if len(row) >= 4 and row[2] == current_phase]
     if not history:
-        readiness_issue(warnings, errors, strict, f"{plan_name}: 独立复核记录缺少当前阶段 {current_phase} 的记录")
+        history_hint = structural_heading_hint(plan_text, "独立复核记录")
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 独立复核记录缺少当前阶段 {current_phase} 的记录{history_hint}",
+        )
     else:
         latest_history = history[-1]
         if review.get("日期") and latest_history[0] != review["日期"]:
