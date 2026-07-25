@@ -108,4 +108,4 @@
 | requirements-grilling-integration | 阶段 1 | 需求探索规则、唯一计划模板、初始化器、受管代理规则和 README 已同步；27 项针对性 Python 测试、87 项全量测试/91.95% 覆盖率、npm 7 项、严格治理、打包清单和反向引用检查通过 |
 | requirements-grilling-integration | 阶段 2 | `plan-governance-cli@0.2.4` 已发布并成为 latest；已安装 tarball 的 `init` 与临时 Codex `setup` 回归通过；dry-run、同步、冲突保护和探索/准入边界均已验证；npm 7 项、Python 87 项/91.95%、严格治理、13 个生产资源、反向引用和格式检查通过 |
 | functional-graph-governance | 阶段 0-3 | `npm test` 15/15 通过；通用 `graph validate/impact`、npm 打包清单、正反例 fixture、ModelPad 图谱校验和三个场景 fixture 全部通过。 |
-| architecture-graph-governance | 阶段 3 | `npm test` 37/37 通过；四个 ModelPad 真实 `plan impact` 样本、Step 0 失败契约、治理/严格治理、反向引用和 GitNexus 变更检测通过；未刷新 GitNexus 索引。 |
+| architecture-graph-governance | 阶段 3 | `npm test` 37/37 通过；五个 ModelPad 真实 `plan impact` 样本、Step 0 失败契约、治理/严格治理、反向引用和 GitNexus 变更检测通过；未刷新 GitNexus 索引。 |

@@ -212,7 +212,7 @@ plan-governance-cli plan impact \
 
 #### 阶段 3 Step 0 真实仓库回放
 
-阶段 3 的 Step 0 基线类型为“ModelPad 真实仓库只读回放”，不是静态自洽样本。四个输入样本位于 ModelPad 的 `docs/graph/fixtures/plan-impact/`；回放脚本调用阶段 2 已完成的只读 CLI，并包含一个仅用于验证决策边界的参考回放器，不实现 `plan impact` 的生产逻辑：
+阶段 3 的 Step 0 基线类型为“ModelPad 真实仓库只读回放”，不是静态自洽样本。五个输入样本位于 ModelPad 的 `docs/graph/fixtures/plan-impact/`；回放脚本调用阶段 2 已完成的只读 CLI，并包含一个仅用于验证决策边界的参考回放器，不实现 `plan impact` 的生产逻辑：
 
 ```bash
 node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad
@@ -220,15 +220,15 @@ node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad
 
 回放脚本验证：
 
-- 四个样本都能从真实功能图谱得到非空影响结果；
+- 五个样本都能从真实功能图谱得到非空影响结果；
 - 旧功能图谱返回的 `api.*`、`code.*`、`test.*` 和 `document.*` 混合节点只作为基线观测，参考回放器按三层 ID 边界排除它们，不把旧混合结果当作新功能层契约；
-- 四个样本的 `queried_layers`、升级原因、`unqueried_layers`、功能节点集合和行动分级逐项断言；
+- 五个样本的 `queried_layers`、升级原因、`unqueried_layers`、功能节点集合和行动分级逐项断言；
 - 需要架构层的样本确实存在 `realized_by` 映射；
 - 只有明确要求代码定位的样本才执行代码候选查询，且 `APIHandler` 得到唯一候选；
 - 配置刷新和模型生命周期样本存在测试证据，PDF workflow 样本明确没有可用测试映射；
 - 整个回放不写文件且不触发 `gitnexus analyze`。
 
-回放输出位置为命令标准输出；阶段 3 实施前应将通过输出追加到本计划的验证证据中。当前旧图谱基线影响数为：配置刷新 6 项、模型生命周期 9 项、PDF workflow 4 项；参考决策结果分别为 `functional`、`functional + architecture`、`functional + architecture + code`、`functional + architecture`；架构映射分别为 0、2、2、1 个；只有代码定位变体执行 `APIHandler` 唯一候选查询。`--check-failures` 另验证 4 个非法输入契约被拒绝。
+回放输出位置为命令标准输出；阶段 3 实施前应将通过输出追加到本计划的验证证据中。当前旧图谱基线影响数为：配置刷新行为 6 项、配置刷新 API 6 项、模型生命周期 9 项、PDF workflow 4 项；参考决策结果分别为 `functional + architecture`、`functional`、`functional + architecture + code`、`functional + architecture`、`functional + architecture`；架构映射分别为 4、0、3、3、1 个；只有代码定位变体执行 `APIHandler` 唯一候选查询。`--check-failures` 另验证 4 个非法输入契约被拒绝。
 
 #### 阶段 3 样本矩阵
 
@@ -259,7 +259,7 @@ Step 0 原型已覆盖缺失 `graph_scope`、非法 `change_kind`、代码定位
 ### 完成证据
 
 - `plan-governance-cli plan impact --input ...` 已实现，优先读取功能图谱 `index.yaml`，旧 ModelPad 功能图谱只读回退并隔离非功能节点。
-- 四个 ModelPad 真实样本通过：配置刷新仅查询功能层；模型生命周期 API 查询架构层并展开 OpenAPI；明确代码定位时得到 `unique_candidate`；PDF workflow 输出“无可用测试映射”。
+- 五个 ModelPad 真实样本通过：配置刷新行为变更仅查询功能层；配置刷新 API 契约变更查询架构层并展开 OpenAPI；模型生命周期 API 查询架构层并展开 OpenAPI；明确代码定位时得到 `unique_candidate`；PDF workflow 输出“无可用测试映射”。
 - 生产命令测试覆盖轻量路径、API→OpenAPI、代码定位、非法输入、未解析代码锚点和缺失架构映射；Step 0 回放及失败契约均通过。
 - 根仓库 `npm test` 37/37 通过，`plan-governance-cli check .`、`--strict-readiness` 和 `git diff --check` 通过。
 - ModelPad `gitnexus detect-changes --repo modelpad --scope unstaged --limit 100` 输出 `No changes detected.`；未运行 `gitnexus analyze`，未修改 Swift、功能图谱或 GitNexus 索引。
@@ -268,7 +268,7 @@ Step 0 原型已覆盖缺失 `graph_scope`、非法 `change_kind`、代码定位
 ## 验证方式
 
 - 使用 `npm test` 执行根仓库全部 CLI、架构图谱、Step 0 和 `plan impact` 契约测试。
-- 使用 `node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad --check-failures` 回放四个真实样本和非法输入边界。
+- 使用 `node scripts/replay_plan_impact_step0.mjs /Users/jafish/Documents/work/ModelPad --check-failures` 回放五个真实样本和非法输入边界。
 - 使用本地 `plan-governance-cli plan impact --input ... --format json /Users/jafish/Documents/work/ModelPad` 验证功能层轻量路径、API→OpenAPI、代码候选和无测试映射。
 - 使用 `plan-governance-cli check .`、`plan-governance-cli check . --strict-readiness`、`git diff --check`、反向引用搜索和 ModelPad `gitnexus detect-changes` 完成治理验收。
 
@@ -454,9 +454,10 @@ relations:
 | 最小合法架构图谱 | 五组 ModelPad 架构边界节点、最小 `contains`/`exposes` 关系 | `plan-governance-cli graph validate --layer architecture <fixture-root>` | 通过并报告节点、关系、Schema 版本 | 节点类型、证据、关系端点或方向非法 | 已实现，架构 fixture 通过 |
 | 跨层映射 | `mappings.yaml` 中三条 `realized_by`：配置刷新、模型生命周期、PDF workflow | 同上并加载 `functional/index.yaml` | 通过外部功能节点存在性校验，架构层拥有映射事实 | 功能 ID 悬空、映射放入功能层或重复维护业务描述 | 已实现，架构 fixture 通过 |
 | 架构关系反例 | 悬空端点、自环、重复关系、缺证据、非法节点类型 | 同上，分别执行正反例 fixture | 每个反例只报对应错误，不污染其他结果 | 反例通过、错误不稳定或静默忽略 | 已实现，8 项架构测试通过 |
-| 配置刷新轻量路径 | `graph_scope: feature.config-refresh`、`change_kind: behavior_change` | `graph impact --from feature.config-refresh --layer functional ...` | 先输出功能影响，不自动遍历全部架构节点 | 无风险信号却强制下钻或遗漏功能影响 | 复用阶段 0 基线，待新入口 |
-| API 契约升级路径 | `graph_scope: feature.model-lifecycle`、`change_kind: api_contract_change` | 同上并启用架构层映射 | 沿 `realized_by`、`exposes` 输出 API、消费者和契约证据 | 未说明升级原因或把全部代码判为必须修改 | 复用阶段 0 基线，待新入口 |
-| 外部 workflow 跨边界路径 | `graph_scope: feature.pdf-workflow-reuse`、`change_kind: behavior_change` | 同上并按需查询 `crosses` | 输出外部模型服务边界及必要评估动作 | 猜测不存在的安全边界或无条件查询 GitNexus | 复用阶段 0 基线，待新入口 |
+| 配置刷新轻量路径 | `graph_scope: feature.config-refresh`、`change_kind: behavior_change` | `graph impact --from feature.config-refresh --layer functional ...` | 先输出功能影响，不自动遍历全部架构节点 | 无风险信号却强制下钻或遗漏功能影响 | ModelPad 真实回放，已通过 |
+| 配置刷新 API 升级路径 | `graph_scope: feature.config-refresh`、`change_kind: api_contract_change` | `plan impact --input config-refresh-api.json ...` | 沿 API 接口边界升级到架构层并展开 OpenAPI | 计划包含公共 API 却仍只查询功能层，或遗漏接口契约 | ModelPad 真实回放，已通过 |
+| API 契约升级路径 | `graph_scope: feature.model-lifecycle`、`change_kind: api_contract_change` | 同上并启用架构层映射 | 沿 `realized_by`、`exposes` 输出 API、消费者和契约证据 | 未说明升级原因或把全部代码判为必须修改 | ModelPad 真实回放，已通过 |
+| 外部 workflow 跨边界路径 | `graph_scope: feature.pdf-workflow-reuse`、`change_kind: behavior_change` | 同上并按需查询 `crosses` | 输出外部模型服务边界及必要评估动作 | 猜测不存在的安全边界或无条件查询 GitNexus | ModelPad 真实回放，已通过 |
 
 阶段 1 的通用校验 Step 0 已具备可执行命令、输入 fixture、预期输出和失败判定；ModelPad 正式图谱和三类新三层场景是阶段 1 进入实施后的完成条件，不再阻塞本次准入。
 

@@ -110,7 +110,7 @@ const samples = readdirSync(fixtureRoot)
   .filter((name) => name.endsWith(".json"))
   .sort()
   .map((name) => ({ name, data: readJson(resolve(fixtureRoot, name)) }));
-assert.equal(samples.length, 4, "Step 0 应包含四个计划影响样本");
+assert.equal(samples.length, 5, "Step 0 应包含五个计划影响样本");
 
 const allowedKinds = new Set([
   "behavior_change",
