@@ -31,6 +31,8 @@
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
 | [architecture-graph-governance](plans/architecture-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
+| [plan-governance-operability-optimization](plans/plan-governance-operability-optimization.md) | 设计中 | 阶段 0 | 2026-08-10 | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | [阶段 0 Step 0 证据](plans/plan-governance-operability-optimization.md#阶段-0-step-0-证据)；[阶段 0 样本矩阵](plans/plan-governance-operability-optimization.md#阶段-0-样本矩阵)；[自主连续执行约定](plans/plan-governance-operability-optimization.md#公共契约变化) |
+| [autonomous-plan-execution](plans/autonomous-plan-execution.md) | 设计中 | 阶段 0 | 2026-08-10 | plan-governance-operability-optimization, phase-entry-gate-hardening, agent-runtime-integration, plan-governance-npm-cli | [阶段 0 Step 0 证据](plans/autonomous-plan-execution.md#阶段-0-step-0-证据)；[阶段 0 样本矩阵](plans/autonomous-plan-execution.md#阶段-0-样本矩阵) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -49,6 +51,8 @@
 11. `requirements-grilling-integration`
 12. `functional-graph-governance` ✅（阶段 0-3：契约、CLI、分发和 ModelPad 试点全部完成）
 13. `architecture-graph-governance` ✅（阶段 0-3：三层契约、ModelPad 架构/代码映射、计划前置影响分析和独立验收全部完成）
+14. `plan-governance-operability-optimization`（阶段 0：冻结当前工作集、阶段依赖、证据状态和治理 drift 覆盖的最小兼容契约）
+15. `autonomous-plan-execution`（阶段 0：冻结自主连续执行的步骤模型、状态语义、失败分支和兼容边界）
 
 ## 依赖关系
 
@@ -67,6 +71,8 @@
 | requirements-grilling-integration | phase-entry-gate-hardening, plan-governance-distribution-setup | 复用既有阶段准入状态机，并依赖已冻结的 npm 资源清单、模板分发和显式 skill 同步边界 |
 | functional-graph-governance | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | 复用已确认需求探索、阶段准入和只读 runtime 边界，已完成通用 CLI、Schema、分发和 ModelPad 试点交接 |
 | architecture-graph-governance | functional-graph-governance | 在已完成的功能图谱试点基础上，重新冻结功能层、架构层和代码层边界，并收缩 GitNexus 引用维护范围 |
+| plan-governance-operability-optimization | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | 复用 drift/pre-commit、严格准入、完成快照、只读 hook 与图谱查询边界；基于真实项目评审补齐当前工作集、阶段关系、证据状态和治理文件覆盖的可操作性缺口 |
+| autonomous-plan-execution | plan-governance-operability-optimization, phase-entry-gate-hardening, agent-runtime-integration, plan-governance-npm-cli | 依赖上游冻结当前工作集、阶段关系与证据状态边界，并复用严格准入、完成快照、只读 hook 和已发布 CLI 的安全语义；阶段 1 起对共享文件采用串行写入，新增可选步骤模型与下一步骤只读查询，不构建自动操作引擎 |
 
 ## 替代、合并和废弃
 
@@ -78,7 +84,8 @@
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
-| 无 | 阶段 3 已完成，后续只在新需求或真实样本暴露差异时创建后续计划 | architecture-graph-governance 阶段 3 | 否 | 已关闭 |
+| 阶段 0 的最小兼容契约和独立准入尚未完成 | 用固定 fixture 对比当前工作集、阶段关系、证据状态和治理 drift 覆盖的候选方案，再独立复核 | plan-governance-operability-optimization 阶段 0 | 是 | 待确认 |
+| 自主连续执行的步骤模型、状态语义和上游兼容契约尚未冻结 | 先完成顺序、分支、失败、阶段门、旧计划兼容和无写入 fixture 的设计，再独立复核 | autonomous-plan-execution 阶段 0 | 是 | 待确认 |
 
 ## 完成证据
 
