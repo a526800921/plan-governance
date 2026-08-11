@@ -136,5 +136,5 @@
 | architecture-graph-governance | 阶段 3 | `npm test` 37/37 通过；五个 ModelPad 真实 `plan impact` 样本、Step 0 失败契约、治理/严格治理、反向引用和 GitNexus 变更检测通过；未刷新 GitNexus 索引。 |
 | plan-governance-operability-optimization | 阶段 1 | `workset` 文本/JSON、活跃/历史过滤、阻塞/未知动作、直接关系透传、结构错误、旧计划兼容、阶段状态与计划状态分离和无写入行为通过；npm 39/39、Python 97 passed、覆盖率 91.39%、打包安装 smoke test、严格治理、反向引用和第三轮独立复核通过；曾将当前 `0.3.0` tarball 安装并同步到本机，随后按用户要求恢复同步前状态。 |
 | plan-governance-operability-optimization | 阶段 2 | 阶段关系七列表、共享写入九列表兼容校验、R1—R7、npm 39/39、Python 106 passed/90.66%、严格治理、停滞检查、反向引用、只读 hash 和独立阶段完成验收通过；阶段 3 不自动放行。 |
-| plan-governance-operability-optimization | 阶段 3 | S1—S6 真实 drift/pre-commit、完成计划关闭窗口、attestation 生命周期、模板/旧计划兼容、Python 118 passed/88.71%、npm 39/39、严格治理、停滞、反向引用、只读 hash 和独立完成验收通过；未同步全局环境或其他项目。 |
+| plan-governance-operability-optimization | 阶段 3 | S1—S6 真实 drift/pre-commit、完成计划关闭窗口、attestation 生命周期、模板/旧计划兼容、覆盖率补强、Python 122 passed/91.36%、npm 39/39、严格治理、停滞、反向引用、只读 hash 和独立完成验收通过；未同步全局环境或其他项目。 |
 | autonomous-plan-execution | 阶段 1 | `plan steps validate` 合法/未启用/结构错误、不适用分支、空表、默认/严格退出码、旧计划兼容、阶段状态与计划状态分离和无写入行为通过；npm 39/39、Python 97 passed、覆盖率 91.39%、打包安装 smoke test、严格治理、反向引用和第三轮独立复核通过；曾将当前 `0.3.0` tarball 安装并同步到本机，随后按用户要求恢复同步前状态。 |

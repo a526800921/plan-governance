@@ -515,6 +515,7 @@ git diff --check
 | 2026-08-11 | 阶段 3 修订后最终独立准入复核 | 阶段 3 | 通过：阶段 3 达到 `待实施` 标准；S1—S6、基线、兼容边界和回滚条件已确认 | [阶段 3 准入复核报告](../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 3 首次完成验收复核 | 阶段 3 | 未通过：技术实现和 S1—S6 已通过，但阶段状态、实施步骤和 `PLAN_MAP.md` 完成证据尚未同步 | [阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 3 完成验收复核 | 阶段 3 | 通过：阶段 3 已完成；S1—S6、完成条件、关闭窗口、实施回归、治理同步和独立验收均通过 | [阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 验收后覆盖率补强复核 | 阶段 3 | 通过：coverage follow-up 仅新增测试和证据同步，无生产逻辑或公共契约变化；Python 122 passed/91.36%、npm 39/39 和治理检查均通过 | [覆盖率补强记录](../reviews/plan-governance-stage3-completion-review-20260811.md#验收后覆盖率补强记录) | Schrodinger（独立只读复核 subagent） |
 
 ## 未决问题
 
@@ -679,6 +680,7 @@ git diff --check
 | 2026-08-11 | 实施 | 增加旧/新 attestation 兼容、purpose/snapshot_id/supersedes/review_status 派生和结构检查 | `scripts/check_plan_governance.py`；attestation 生命周期测试 | 通过 | Codex |
 | 2026-08-11 | 实施 | 更新 plan/PLAN_MAP 模板、README 和 skill 说明，保留旧计划不迁移 | `resources/skill/assets/plan.template.md`；`resources/skill/SKILL.md`；`README.md`；npm 模板测试 | 通过 | Codex |
 | 2026-08-11 | 验证 | Python 118 passed/88.71% 覆盖率；npm 39/39；临时目录 drift/pre-commit、attestation 和模板行为回放通过 | `python3 -m pytest -q`；`npm test`；S1—S6 行为命令 | 通过 | Codex |
+| 2026-08-11 | 后续验证 | 补充关闭窗口空分支、相对路径安全边界、attestation 参数和结构/替代关系边界测试；Python 122 passed/91.36% | `python3 -m pytest -q`；覆盖率缺失行回归 | 通过 | Codex |
 
 ### 阶段 3 验证方式
 
@@ -707,11 +709,19 @@ git diff --check
 
 ## 完成证据
 
-阶段 3 已完成 S1—S6 真实行为回放：drift/pre-commit 精确归属、完成计划关闭窗口、非法阶段证据、状态/进展分层、旧/新 attestation 生命周期、模板/旧计划兼容和只读 hash 均有测试证据。`python3 -m pytest -q` 通过 118 项、覆盖率 88.71%；`npm test` 通过 39/39；`check . --strict-readiness`、`--stale-days 10`、`--drift`、`--pre-commit`、`--check-attestations --strict-readiness`、语法检查和 `git diff --check` 均通过。独立完成验收记录见[阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md)。
+阶段 3 已完成 S1—S6 真实行为回放：drift/pre-commit 精确归属、完成计划关闭窗口、非法阶段证据、状态/进展分层、旧/新 attestation 生命周期、模板/旧计划兼容和只读 hash 均有测试证据；完成后的覆盖率补强也已完成。`python3 -m pytest -q` 通过 122 项、覆盖率 91.36%；`npm test` 通过 39/39；`check . --strict-readiness`、`--stale-days 10`、`--drift`、`--pre-commit`、`--check-attestations --strict-readiness`、语法检查和 `git diff --check` 均通过。独立完成验收记录见[阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md)；覆盖率补强为验收后的测试-only follow-up，不改变原独立验收结论。
 
 ## 后续改进（不阻塞阶段 3 完成）
 
-阶段 3 新增关闭窗口、attestation 关系和结构错误分支后，Python 覆盖率为 88.71%，低于阶段 2 的 90.66%。该结果仍满足当前 85% 的治理门槛，不构成阶段 3 阻塞；后续单独补齐新增 helper 和边界分支测试，再重新记录覆盖率，不改变本次阶段完成结论。
+阶段 3 新增关闭窗口、attestation 关系和结构错误分支后，原始 Python 覆盖率为 88.71%，低于阶段 2 的 90.66%。该结果满足当前 85% 的治理门槛；本次 follow-up 已补齐新增 helper、参数安全边界和 attestation 结构/替代关系分支，最新覆盖率已回升到 91.36%，不改变阶段 3 的完成结论。
+
+### 覆盖率补强 Step 0 与边界
+
+- 基线命令：`python3 -m pytest -q`，当前基线为 `118 passed`、总覆盖率 `88.71%`。
+- 基线类型：阶段 3 完成后新增分支的覆盖率报告和缺失行清单；不修改 `scripts/` 生产逻辑，不改变公共契约、状态语义或兼容边界。
+- 实施范围：仅为已实现的关闭窗口、attestation 关系/结构错误和相关错误分支补充可复现测试；不顺手重构生产代码，不迁移历史快照，不同步全局环境或其他项目。
+- 完成条件：新增测试实际命中目标分支；全量 Python/npm 测试、治理检查、格式检查和反向引用检查通过；覆盖率相对 88.71% 基线提升，或由复核记录明确说明无法经济提升的剩余分支。当前已满足。
+- 失败/回滚边界：若测试依赖改变现有行为或需要修改公共契约，停止该 follow-up，恢复仅测试范围；不得以降低阈值或排除代码行代替覆盖率补强。
 
 ## 最新独立准入复核
 

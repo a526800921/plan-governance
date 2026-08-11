@@ -852,6 +852,26 @@ def test_drift_completed_plan_closing_window_is_narrow(tmp_path, capsys):
     assert "src/new.py" in output
 
 
+def test_drift_helpers_handle_empty_files_and_no_plan_targets():
+    warnings = []
+    check_plan_governance.warn_uncovered_changes(warnings, "--drift", set(), {})
+    assert warnings == []
+
+    check_plan_governance.warn_uncovered_changes(
+        warnings,
+        "--drift",
+        {"src/uncovered.py"},
+        {},
+    )
+    assert "没有活跃计划声明影响范围" in warnings[0]
+
+
+def test_safe_relative_path_rejects_absolute_drive_and_parent_paths():
+    assert check_plan_governance.safe_relative_path("/tmp/snapshot.json") is None
+    assert check_plan_governance.safe_relative_path("C:/tmp/snapshot.json") is None
+    assert check_plan_governance.safe_relative_path("docs/../snapshot.json") is None
+
+
 def test_pre_commit_uses_the_same_plan_map_and_phase_evidence_ownership(tmp_path, capsys):
     write(
         tmp_path / "docs" / "PLAN_MAP.md",
@@ -926,6 +946,55 @@ def test_attest_purpose_creates_relation_snapshot_and_reports_current(tmp_path, 
     output = capsys.readouterr().out
     assert "计划文件 hash 已变化" in output
     assert "status=needs_review" in output
+
+
+def test_create_attestation_rejects_invalid_relation_arguments(tmp_path):
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_path = tmp_path / "docs" / "plans" / "demo.md"
+    write(plan_map_path, "# PLAN_MAP\n")
+    write(plan_path, "# demo\n")
+    plans = {
+        "demo": {
+            "path": plan_path,
+            "phase": "阶段 1",
+            "status": "已完成",
+        }
+    }
+
+    errors = []
+    assert check_plan_governance.create_attestation(
+        tmp_path,
+        plan_map_path,
+        plans,
+        "demo",
+        errors,
+        purpose="unsupported",
+    ) is None
+    assert "purpose 非法" in errors[-1]
+
+    errors = []
+    assert check_plan_governance.create_attestation(
+        tmp_path,
+        plan_map_path,
+        plans,
+        "demo",
+        errors,
+        purpose="release_gate",
+        review_status="unsupported",
+    ) is None
+    assert "review_status 非法" in errors[-1]
+
+    errors = []
+    assert check_plan_governance.create_attestation(
+        tmp_path,
+        plan_map_path,
+        plans,
+        "demo",
+        errors,
+        purpose="release_gate",
+        supersedes="../outside.json",
+    ) is None
+    assert "supersedes 必须是仓库内相对路径" in errors[-1]
 
 
 def test_attestation_supersedes_old_snapshot_and_duplicate_current_is_strict_error(tmp_path, capsys):
@@ -1028,6 +1097,126 @@ def test_attestation_missing_supersedes_target_is_strict_error(tmp_path, capsys)
     assert "status=needs_review" in output
     assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
     assert "supersedes 目标不存在" in capsys.readouterr().out
+
+
+def test_attestation_structure_and_supersedes_boundaries_are_reported(tmp_path):
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    write(plan_map_path, plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"))
+    write(plan, plan_text(with_coverage=True))
+    plan_sha = hashlib.sha256(plan.read_bytes()).hexdigest()
+    plan_map_sha = hashlib.sha256(plan_map_path.read_bytes()).hexdigest()
+    base = {
+        "plan": "demo",
+        "phase": "阶段 1",
+        "status": "已完成",
+        "plan_path": "docs/plans/demo.md",
+        "plan_map_path": "docs/PLAN_MAP.md",
+        "plan_sha256": plan_sha,
+        "plan_map_sha256": plan_map_sha,
+        "created_at": "2026-08-11T01:02:03Z",
+        "created_by": "test",
+        "reason": "测试",
+        "purpose": "release_gate",
+        "review_status": "current",
+        "supersedes": "",
+    }
+
+    def snapshot(relative_path, **updates):
+        payload = {**base, **updates}
+        write(tmp_path / relative_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+
+    snapshot(
+        "docs/attestations/invalid-purpose.json",
+        purpose="unsupported",
+        snapshot_id="20260811T010203Z-11111111",
+    )
+    snapshot(
+        "docs/attestations/missing-snapshot.json",
+        snapshot_id=None,
+    )
+    missing_snapshot = tmp_path / "docs/attestations/missing-snapshot.json"
+    missing_data = json.loads(missing_snapshot.read_text(encoding="utf-8"))
+    missing_data.pop("snapshot_id", None)
+    missing_snapshot.write_text(json.dumps(missing_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    snapshot(
+        "docs/attestations/invalid-review.json",
+        snapshot_id="20260811T010204Z-22222222",
+        review_status="unsupported",
+    )
+    snapshot(
+        "docs/attestations/non-string-supersedes.json",
+        snapshot_id="20260811T010205Z-33333333",
+        supersedes=["docs/attestations/other.json"],
+    )
+    snapshot(
+        "docs/attestations/absolute-supersedes.json",
+        snapshot_id="20260811T010206Z-44444444",
+        supersedes="/tmp/other.json",
+    )
+    snapshot(
+        "docs/attestations/invalid-plan-path.json",
+        snapshot_id="20260811T010207Z-55555555",
+        plan_path="/tmp/demo.md",
+    )
+    snapshot(
+        "docs/attestations/invalid-map-path.json",
+        snapshot_id="20260811T010208Z-66666666",
+        plan_map_path="/tmp/PLAN_MAP.md",
+    )
+    snapshot(
+        "docs/attestations/missing-plan.json",
+        snapshot_id="20260811T010209Z-77777777",
+        plan_path="docs/plans/missing.md",
+    )
+    snapshot(
+        "docs/attestations/missing-map.json",
+        snapshot_id="20260811T010210Z-88888888",
+        plan_map_path="docs/missing-PLAN_MAP.md",
+    )
+
+    mismatch = "docs/attestations/mismatch-target.json"
+    snapshot(
+        mismatch,
+        snapshot_id="20260811T010211Z-99999999",
+        supersedes="docs/attestations/other-purpose.json",
+    )
+    snapshot(
+        "docs/attestations/other-purpose.json",
+        purpose="compliance",
+        snapshot_id="20260811T010212Z-aaaaaaaa",
+    )
+    self_path = "docs/attestations/self-target.json"
+    snapshot(
+        self_path,
+        snapshot_id="20260811T010213Z-bbbbbbbb",
+        supersedes=self_path,
+    )
+
+    warnings = []
+    errors = []
+    reports = []
+    check_plan_governance.warn_attestation_drift(
+        warnings,
+        tmp_path,
+        {"demo": {"path": plan, "phase": "阶段 1", "status": "已完成"}},
+        errors=errors,
+        reports=reports,
+    )
+    output = "\n".join(warnings)
+    assert "purpose 非法" in output
+    assert "snapshot_id 格式非法" in output
+    assert "review_status 非法" in output
+    assert "supersedes 必须是相对路径字符串" in output
+    assert "supersedes 必须是仓库内相对路径" in output
+    assert "快照引用的计划路径非法" in output
+    assert "快照引用的 PLAN_MAP 路径非法" in output
+    assert "计划文件不存在" in output
+    assert "PLAN_MAP.md 不存在" in output
+    assert "supersedes 目标必须与当前快照属于同一计划和 purpose" in output
+    assert "supersedes 不能指向自身" in output
+    assert errors == []
+    assert reports
 
 
 def test_recent_evidence_remains_separate_from_independent_review():
