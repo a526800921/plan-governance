@@ -1,5 +1,7 @@
 import importlib.util
+import hashlib
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -90,19 +92,23 @@ def plan_text_with_target(target, extra_text=""):
 
 def readiness_plan_text(
     status="待实施",
+    summary_status=None,
+    phase_status=None,
     roadmap_phase="阶段 1",
     review_phase="阶段 1",
     history_conclusion="通过",
     include_summary=True,
     unresolved_blocker=False,
 ):
+    summary_status = summary_status or status
     blocker_summary = "未解决阻塞" if unresolved_blocker else "无"
     blocker_row = "| 示例问题 | 暂不处理 | 是 | 未解决 |" if unresolved_blocker else "| - | - | 否 | 已延后 |"
     summary = f"""### 阶段准入摘要
 
 | 字段 | 内容 |
 |---|---|
-| 准入状态 | 待实施 |
+| 准入状态 | {summary_status} |
+{"| 阶段状态 | " + phase_status + " |" if phase_status else ""}
 | Step 0 | [Step 0 证据](#step-0-证据) |
 | 样本矩阵 | `tests/fixtures/readiness.md` |
 | 验证方式 | `python3 -m pytest`，输出见测试报告 |
@@ -192,6 +198,20 @@ def test_complete_readiness_passes_default_and_strict(tmp_path, capsys):
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
     assert "阶段准入" not in capsys.readouterr().out
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
+    assert "检查通过" in capsys.readouterr().out
+
+
+def test_completed_current_phase_can_coexist_with_active_plan_status(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 实施中 | 阶段 1 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        readiness_plan_text(status="已完成", summary_status="实施中", phase_status="已完成"),
+    )
+
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
     assert "检查通过" in capsys.readouterr().out
 
@@ -942,3 +962,373 @@ def test_check_attestations_warns_for_bad_json_and_missing_plan(tmp_path, capsys
     assert "attestation JSON 无法解析" in output
     assert "快照引用了未登记计划" in output
     assert "检查通过" in output
+
+
+def workset_plan_text(status="设计中", review="尚未进行", blocker=False, missing_summary=False, next_action=None):
+    summary = "" if missing_summary else f"""### 阶段准入摘要
+
+| 字段 | 内容 |
+|---|---|
+| 准入状态 | {status} |
+| Step 0 | 基线 |
+| 样本矩阵 | fixture |
+| 验证方式 | pytest |
+| 失败/回滚边界 | 失败停止 |
+| 当前阻塞项 | {'存在阻塞' if blocker else '无'} |
+| 最新独立准入复核 | {review} |
+"""
+    action = f"\n下一动作: {next_action}\n" if next_action else ""
+    blocker_row = "| 阻塞 | 先处理 | 是 | 待处理 |" if blocker else "| - | - | 否 | 已决定 |"
+    return f"""# 计划
+
+## 当前阶段
+{action}
+{summary}
+## 最新独立准入复核
+
+| 字段 | 内容 |
+|---|---|
+| 日期 | 2026-08-10 |
+| 阶段 | 阶段 1 |
+| 结论 | {'通过' if review == '通过' else '尚未进行'} |
+| 证据 | fixture |
+| 复核者 | tester |
+
+## 未决问题
+
+| 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
+|---|---|---|---|
+{blocker_row}
+"""
+
+
+def autonomous_step_plan(rows, policy="serial", enabled=True, include_table=True):
+    mode = "execution_mode: autonomous-continuous\n" if enabled else ""
+    table = "" if not include_table else f"""### 执行清单
+
+| 步骤 ID | 前置步骤 | 动作 | 证据 | 完成条件 | 状态 | 分支记录 |
+|---|---|---|---|---|---|---|
+{rows}
+"""
+    return f"""# 计划
+
+{mode}execution_policy: {policy}
+
+## 当前阶段
+
+{table}
+"""
+
+
+def test_workset_derives_actions_history_and_parallel_state(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "\n".join(
+                [
+                    "| [ready](plans/ready.md) | 待实施 | 阶段 1 | - | - |",
+                    "| [review](plans/review.md) | 设计中 | 阶段 1 | - | - |",
+                    "| [step0](plans/step0.md) | 设计中 | 阶段 1 | - | - |",
+                    "| [blocked](plans/blocked.md) | 设计中 | 阶段 1 | - | - |",
+                    "| [running](plans/running.md) | 实施中 | 阶段 1 | - | - |",
+                    "| [unknown](plans/unknown.md) | 实施中 | 阶段 1 | - | - |",
+                    "| [history](plans/history.md) | 已完成 | 阶段 1 | - | - |",
+                ]
+            )
+        )
+        + "\n## 阶段关系\n\n| 来源计划 | 来源阶段 | 目标计划 | 目标阶段 | 关系类型 | 解除条件 | 证据 |\n|---|---|---|---|---|---|---|\n| ready | 阶段 1 | review | 阶段 1 | soft_context | - | rel.md |\n",
+    )
+    write(tmp_path / "docs" / "plans" / "ready.md", workset_plan_text("待实施", "通过"))
+    write(tmp_path / "docs" / "plans" / "review.md", workset_plan_text("设计中"))
+    write(tmp_path / "docs" / "plans" / "step0.md", workset_plan_text("设计中", missing_summary=True))
+    write(tmp_path / "docs" / "plans" / "blocked.md", workset_plan_text("设计中", blocker=True))
+    write(tmp_path / "docs" / "plans" / "running.md", workset_plan_text("实施中", next_action="验证"))
+    write(tmp_path / "docs" / "plans" / "unknown.md", workset_plan_text("实施中"))
+    write(tmp_path / "docs" / "plans" / "history.md", workset_plan_text("已完成", "通过"))
+
+    assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    items = {item["plan"]: item for item in payload["plans"]}
+    assert "history" not in items
+    assert items["ready"]["next_action"]["kind"] == "implement"
+    assert items["review"]["next_action"]["kind"] == "independent_review"
+    assert items["step0"]["next_action"]["kind"] == "complete_step0"
+    assert items["blocked"]["next_action"]["kind"] == "resolve_blocker"
+    assert items["running"]["next_action"]["kind"] == "verify"
+    assert items["unknown"]["next_action"]["state"] == "unknown"
+    assert items["ready"]["parallel"]["state"] == "known"
+    assert items["ready"]["parallel"]["peers"] == ["review"]
+
+    assert check_plan_governance.main(["--workset", "--include-history", str(tmp_path)]) == 0
+    assert "history" in capsys.readouterr().out
+
+
+def test_workset_include_history_keeps_unstructured_legacy_plan_compatible(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [history](plans/history.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "history.md", "# 旧计划\n\n只有自然语言记录。\n")
+
+    assert check_plan_governance.main(["--workset", "--include-history", "--json", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["plans"][0]["plan"] == "history"
+    assert payload["plans"][0]["readiness"] == "unknown"
+
+
+def test_workset_reads_only_current_recent_evidence(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [running](plans/running.md) | 实施中 | 阶段 1 | - | - |"),
+    )
+    plan = workset_plan_text("实施中", next_action="验证")
+    plan = plan.replace(
+        "## 最新独立准入复核",
+        "### 最近实施/验证记录\n\n"
+        "| 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |\n"
+        "|---|---|---|---|---|---|\n"
+        "| 2026-08-10 | 验证 | 只读回放 | 命令输出 | 通过 | tester |\n\n"
+        "## 最新独立准入复核",
+    )
+    write(tmp_path / "docs" / "plans" / "running.md", plan)
+
+    assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["plans"][0]["recent_evidence"][0][2] == "只读回放"
+
+
+def test_workset_handles_missing_map_plan_and_unknown_status(tmp_path, capsys):
+    assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 1
+    assert "未找到 docs/PLAN_MAP.md" in capsys.readouterr().out
+
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "\n".join(
+                [
+                    "| [missing](plans/missing.md) | 设计中 | 阶段 1 | - | - |",
+                    "| [invalid](plans/invalid.md) | 不合法 | 阶段 1 | - | - |",
+                ]
+            )
+        ),
+    )
+    write(tmp_path / "docs" / "plans" / "invalid.md", workset_plan_text("不合法"))
+    assert check_plan_governance.main(["--workset", "--json", "--include-history", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert any("计划文件不存在" in warning for warning in payload["warnings"])
+    assert any("状态非法" in warning for warning in payload["warnings"])
+    assert payload["plans"] == []
+    assert check_plan_governance.main(
+        ["--workset", "--strict-readiness", str(tmp_path)]
+    ) == 1
+    assert "ERROR" in capsys.readouterr().out
+
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [missing](plans/missing.md) | 设计中 | 阶段 1 | - | - |"),
+    )
+    assert check_plan_governance.main(["--workset", "--strict-readiness", str(tmp_path)]) == 1
+    assert "ERROR" in capsys.readouterr().out
+
+
+def test_workset_rejects_duplicate_plan_ids_without_actions(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map(
+            "| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |\n"
+            "| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"
+        ),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", workset_plan_text("设计中"))
+
+    assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert any("重复计划 ID" in warning for warning in payload["warnings"])
+    assert payload["plans"] == []
+
+
+def test_validate_steps_valid_not_enabled_and_invalid_modes(tmp_path, capsys):
+    write(tmp_path / "docs" / "PLAN_MAP.md", plan_map("| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |"))
+    valid_rows = "| S1 | - | 建立基线 | 测试输出 | 基线存在 | 已完成 | - |\n| S2 | S1 | 校验方案 | 测试输出 | 校验通过 | 未开始 | - |\n| S3 | S2 | 记录分支 | 替代输出 | 分支已记录 | 不适用 | 触发条件：不满足；理由：无需执行；替代证据：替代输出 |"
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan(valid_rows))
+
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "valid"
+    assert payload["execution_policy"] == "serial"
+    assert len(payload["steps"]) == 3
+
+    write(tmp_path / "docs" / "plans" / "demo.md", "# 旧计划\n\n## 实施步骤\n\n- 普通步骤\n")
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "not_enabled"
+
+    invalid_rows = "| S1 | Missing | 动作 | 证据 | 完成 | 取消 | - |\n| S1 | S1 | 动作 | 证据 | 完成 | 不适用 | - |"
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan(invalid_rows, policy="bad"))
+    assert check_plan_governance.main(["--validate-steps", "demo", "--root", str(tmp_path)]) == 0
+    output = capsys.readouterr().out
+    assert "WARNING" in output
+    assert check_plan_governance.main(["--validate-steps", "--strict-readiness", "--json", "demo", "--root", str(tmp_path)]) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "invalid"
+    assert any("重复" in error for error in payload["errors"])
+
+
+def test_validate_steps_rejects_missing_table_fields_unknown_dependency_and_cycle(tmp_path, capsys):
+    write(tmp_path / "docs" / "PLAN_MAP.md", plan_map("| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |"))
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan("", include_table=False))
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    assert "执行清单" in json.loads(capsys.readouterr().out)["errors"][0]
+
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan("", include_table=True))
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    assert "至少需要一个步骤" in json.loads(capsys.readouterr().out)["errors"][0]
+
+    bad_header = "### 执行清单\n\n| A | B |\n|---|---|\n| x | y |\n"
+    write(tmp_path / "docs" / "plans" / "demo.md", "# 计划\n\nexecution_mode: autonomous-continuous\n\n" + bad_header)
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    assert "固定七列表头" in json.loads(capsys.readouterr().out)["errors"][0]
+
+    cycle_rows = "| S1 | S2 | 动作 | 证据 | 完成 | 未开始 | - |\n| S2 | S1 Missing | 动作 | 证据 | 完成 | 未开始 | - |"
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan(cycle_rows, policy="parallel"))
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    errors = json.loads(capsys.readouterr().out)["errors"]
+    assert any("未知前置" in error for error in errors)
+
+    branch_rows = "| S1 | - | 动作 | 证据 | 完成 | 不适用 | 仅记录了理由 |"
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan(branch_rows))
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    errors = json.loads(capsys.readouterr().out)["errors"]
+    assert any("触发条件" in error for error in errors)
+
+    empty_branch_rows = "| S1 | - | 动作 | 证据 | 完成 | 不适用 | 触发条件：；理由：；替代证据： |"
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan(empty_branch_rows))
+    assert check_plan_governance.main(["--validate-steps", "--strict-readiness", "--json", "demo", "--root", str(tmp_path)]) == 1
+    errors = json.loads(capsys.readouterr().out)["errors"]
+    assert any("有效触发条件" in error for error in errors)
+
+    cycle_rows = "| S1 | S2 | 动作 | 证据 | 完成 | 未开始 | - |\n| S2 | S1 | 动作 | 证据 | 完成 | 未开始 | - |"
+    write(tmp_path / "docs" / "plans" / "demo.md", autonomous_step_plan(cycle_rows, policy="parallel"))
+    assert check_plan_governance.main(["--validate-steps", "--json", "demo", "--root", str(tmp_path)]) == 0
+    assert "环依赖" in "\n".join(json.loads(capsys.readouterr().out)["errors"])
+
+
+def relation_fixture(name, tmp_path):
+    source = Path(__file__).parent / "fixtures" / "plan-governance-stage2-relations" / name
+    docs = tmp_path / "docs"
+    (docs / "plans").mkdir(parents=True)
+    shutil.copy2(source / "docs" / "PLAN_MAP.md", docs / "PLAN_MAP.md")
+    for plan in (source / "docs" / "plans").glob("*.md"):
+        shutil.copy2(plan, docs / "plans" / plan.name)
+    return tmp_path
+
+
+def test_stage2_relation_fixture_valid_and_legacy_compatible(tmp_path, capsys):
+    valid = relation_fixture("valid", tmp_path / "valid")
+    assert check_plan_governance.main([str(valid), "--strict-readiness"]) == 0
+    output = capsys.readouterr().out
+    assert "计划治理检查通过" in output
+
+    legacy = relation_fixture("legacy", tmp_path / "legacy")
+    assert check_plan_governance.main([str(legacy)]) == 0
+    output = capsys.readouterr().out
+    assert "计划治理检查通过" in output
+    assert check_plan_governance.main([str(legacy), "--strict-readiness"]) == 0
+    output = capsys.readouterr().out
+    assert "计划治理检查通过" in output
+    assert "阶段关系" not in output
+    assert check_plan_governance.main(["--workset", "--json", str(legacy)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert all(item["parallel"]["state"] == "unknown" for item in payload["plans"])
+
+
+def test_stage2_relation_fixture_accepts_soft_context_and_evidence(tmp_path, capsys):
+    valid = relation_fixture("valid", tmp_path / "valid")
+    assert check_plan_governance.main([str(valid), "--strict-readiness"]) == 0
+    output = capsys.readouterr().out
+    assert "计划治理检查通过" in output
+    assert "soft_context" in (valid / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
+    assert "evidence" in (valid / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
+
+
+def test_stage2_relation_fixture_invalid_default_warns_and_strict_fails(tmp_path, capsys):
+    invalid = relation_fixture("invalid-reference", tmp_path / "invalid")
+    assert check_plan_governance.main([str(invalid)]) == 0
+    output = capsys.readouterr().out
+    assert "阶段关系第" in output
+    assert "计划治理检查通过" in output
+
+    assert check_plan_governance.main([str(invalid), "--strict-readiness"]) == 1
+    output = capsys.readouterr().out
+    assert "ERROR: PLAN_MAP.md: 阶段关系第" in output
+    assert "来源阶段不存在于计划路线图" in output
+    assert "目标阶段不存在于计划路线图" in output
+    assert "证据链接不存在" in output
+    assert "缺少有效解除条件" in output
+    assert "缺少有效证据" in output
+
+    assert check_plan_governance.main(["--workset", "--json", str(invalid)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert all(item["parallel"]["state"] == "unknown" for item in payload["plans"])
+
+
+def test_stage2_relation_fixture_cycle_and_self_edge_are_rejected(tmp_path, capsys):
+    cycle = relation_fixture("cycle", tmp_path / "cycle")
+    assert check_plan_governance.main([str(cycle)]) == 0
+    output = capsys.readouterr().out
+    assert "环依赖" in output
+    assert "不能引用自身同一阶段" in output
+
+    assert check_plan_governance.main([str(cycle), "--strict-readiness"]) == 1
+    assert "ERROR: PLAN_MAP.md: 阶段关系" in capsys.readouterr().out
+
+
+def test_stage2_shared_write_contract_is_optional_but_invalid_rows_fail_strict(tmp_path, capsys):
+    invalid = relation_fixture("shared-write-invalid", tmp_path / "shared-write-invalid")
+    assert check_plan_governance.main([str(invalid)]) == 0
+    output = capsys.readouterr().out
+    assert "共享写入约束第" in output
+    assert "约束类型非法" in output
+
+    assert check_plan_governance.main([str(invalid), "--strict-readiness"]) == 1
+    assert "共享写入约束第" in capsys.readouterr().out
+
+
+def test_stage2_legacy_dependency_conflict_warns_without_overriding_old_data(tmp_path, capsys):
+    root = relation_fixture("legacy-conflict", tmp_path / "legacy-conflict")
+    assert check_plan_governance.main([str(root)]) == 0
+    output = capsys.readouterr().out
+    assert "hard_gate" in output
+    assert "计划索引依赖列未包含 alpha" in output
+    assert "gamma" in (root / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
+    assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
+    capsys.readouterr()
+    assert check_plan_governance.main(["--workset", "--json", str(root)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    beta = next(item for item in payload["plans"] if item["plan"] == "beta")
+    assert beta["parallel"]["state"] == "known"
+
+
+def test_stage2_legacy_four_column_shared_write_table_remains_compatible(tmp_path, capsys):
+    root = relation_fixture("shared-write-legacy", tmp_path / "shared-write-legacy")
+    assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
+    assert "计划治理检查通过" in capsys.readouterr().out
+
+
+def test_stage2_nine_column_shared_write_table_has_priority_over_human_summary(tmp_path, capsys):
+    root = relation_fixture("shared-write-conflict", tmp_path / "shared-write-conflict")
+    assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
+    output = capsys.readouterr().out
+    assert "计划治理检查通过" in output
+    assert "beta 先于 alpha" in (root / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
+
+
+def test_stage2_relation_queries_are_read_only(tmp_path, capsys):
+    root = relation_fixture("valid", tmp_path / "valid")
+    files = [root / "docs" / "PLAN_MAP.md", *sorted((root / "docs" / "plans").glob("*.md"))]
+    before = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+    assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
+    capsys.readouterr()
+    assert check_plan_governance.main(["--workset", "--json", str(root)]) == 0
+    capsys.readouterr()
+    after = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+    assert before == after

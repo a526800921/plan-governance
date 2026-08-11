@@ -83,6 +83,8 @@ def mask_fenced_code(text):
 
 
 def markdown_section(text, heading_names):
+    if not text:
+        return None
     heading_pattern = "|".join(re.escape(name) for name in heading_names)
     pattern = re.compile(rf"^#+\s+({heading_pattern})\b.*$", re.MULTILINE)
     match = pattern.search(mask_fenced_code(text))
@@ -183,6 +185,9 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
         return
 
     current_phase = data["phase"]
+    current_section = top_level_section(plan_text, "当前阶段")
+    summary_section = markdown_section(current_section, ["阶段准入摘要"])
+    summary = key_value_table(summary_section)
     roadmap = phase_roadmap_rows(plan_text)
     matching_rows = [row for row in roadmap if row and row[0] == current_phase]
     if not matching_rows:
@@ -195,20 +200,20 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
         )
     else:
         roadmap_status = matching_rows[-1][4] if len(matching_rows[-1]) > 4 else ""
-        if roadmap_status and roadmap_status != data["status"]:
+        phase_status = summary.get("阶段状态", "").strip()
+        expected_roadmap_status = phase_status or data["status"]
+        if roadmap_status and roadmap_status != expected_roadmap_status:
             readiness_issue(
                 warnings,
                 errors,
                 strict,
-                f"{plan_name}: 当前阶段 {current_phase} 的路线图状态 {roadmap_status} 与 PLAN_MAP 状态 {data['status']} 不一致",
+                f"{plan_name}: 当前阶段 {current_phase} 的路线图状态 {roadmap_status} 与阶段状态 {expected_roadmap_status} 不一致",
             )
 
     if markdown_section(plan_text, ["当前阶段"]) is None:
         section_hint = structural_heading_hint(plan_text, "当前阶段")
         readiness_issue(warnings, errors, strict, f"{plan_name}: 缺少 `## 当前阶段` 章节{section_hint}")
 
-    summary_section = markdown_section(plan_text, ["阶段准入摘要"])
-    summary = key_value_table(summary_section)
     missing_fields = sorted(READINESS_FIELDS - set(summary))
     if missing_fields:
         title_hint = ""
@@ -621,9 +626,658 @@ def detect_dependency_cycles(edges):
     return cycles
 
 
+def load_plan_records(root, errors):
+    """读取计划索引，供只读工作集和步骤校验入口复用。"""
+    docs = root / "docs"
+    plan_map = docs / "PLAN_MAP.md"
+    if not plan_map.exists():
+        fail(errors, "未找到 docs/PLAN_MAP.md；当前仓库尚未初始化计划治理")
+        return "", plan_map, {}
+
+    plan_map_text = read_utf8(plan_map, errors)
+    plans = {}
+    for row in table_rows(plan_map_text, "计划索引"):
+        if len(row) < 6:
+            continue
+        link = extract_plan_link(row[0])
+        if not link:
+            continue
+        name = Path(link).stem
+        plans[name] = {
+            "path": docs / link,
+            "status": row[1].strip("` "),
+            "phase": row[2].strip("` "),
+            "depends": row[4],
+        }
+    if not plans:
+        fail(errors, "docs/PLAN_MAP.md: 缺少可读取的计划索引")
+    return plan_map_text, plan_map, plans
+
+
+def plan_index_issues(plan_map_text):
+    """检查工作集入口依赖的计划索引结构，不改变既有基础检查语义。"""
+    issues = []
+    seen = set()
+    for row_index, row in enumerate(table_rows(plan_map_text, "计划索引"), start=1):
+        if len(row) < 6:
+            issues.append(f"计划索引第 {row_index} 行字段不足，无法安全派生工作集")
+            continue
+        link = extract_plan_link(row[0])
+        if not link:
+            issues.append(f"计划索引第 {row_index} 行缺少计划链接，无法安全派生工作集")
+            continue
+        name = Path(link).stem
+        if name in seen:
+            issues.append(f"计划索引存在重复计划 ID：{name}")
+        seen.add(name)
+        status = row[1].strip("` ")
+        if status not in VALID_STATUSES:
+            issues.append(f"{name}: 计划状态非法：{status}")
+    return issues
+
+
+def unresolved_current_blockers(plan_text):
+    blockers = []
+    for row in table_rows(plan_text, "未决问题"):
+        if len(row) < 4 or not re.search(r"\b(Yes|是)\b", row[2]):
+            continue
+        state = row[3].strip()
+        if state in {"已决定", "已收敛", "已完成", "无"}:
+            continue
+        blockers.append(row[0].strip() or "未命名阻塞项")
+    return blockers
+
+
+def top_level_section(text, heading):
+    pattern = re.compile(rf"^##\s+{re.escape(heading)}\s*$", re.MULTILINE)
+    match = pattern.search(text)
+    if not match:
+        return None
+    tail = text[match.end():]
+    next_heading = re.search(r"^##\s+", tail, re.MULTILINE)
+    return tail[: next_heading.start()] if next_heading else tail
+
+
+def current_summary(plan_text):
+    return key_value_table(markdown_section(top_level_section(plan_text, "当前阶段"), ["阶段准入摘要"]))
+
+
+def current_review_passes(plan_text, phase):
+    review = key_value_table(markdown_section(plan_text, ["最新独立准入复核"]))
+    return review.get("阶段") == phase and review.get("结论", "").startswith("通过")
+
+
+def structured_next_action(plan_text):
+    section = top_level_section(plan_text, "当前阶段") or ""
+    values = key_value_table(section)
+    value = values.get("下一动作", "").strip()
+    if not value:
+        match = re.search(r"(?:^|\n)\s*下一动作\s*[：:]\s*([^\n]+)", section)
+        value = match.group(1).strip() if match else ""
+    mapping = {
+        "验证": "verify",
+        "verify": "verify",
+        "同步": "sync",
+        "sync": "sync",
+        "实施": "implement",
+        "implement": "implement",
+        "无": "none",
+        "none": "none",
+    }
+    if not value:
+        return {"state": "unknown", "kind": "unknown", "reason": "缺少结构化下一动作"}
+    kind = mapping.get(value.lower(), "unknown")
+    if kind == "unknown":
+        return {"state": "unknown", "kind": "unknown", "reason": f"下一动作值无法识别：{value}"}
+    return {"state": "known", "kind": kind, "reason": "来自当前阶段结构化下一动作"}
+
+
+def parallel_summary(plan_map_text, plan_name, relation_valid=True):
+    if not relation_valid:
+        return {
+            "state": "unknown",
+            "peers": [],
+            "reason": "阶段关系存在结构错误，不能派生确定并行关系",
+        }
+    rows = table_rows(plan_map_text, "阶段关系")
+    peers = []
+    evidence = []
+    for row in rows:
+        if len(row) < 7 or row[0] == "来源计划":
+            continue
+        source, target = row[0].strip("` "), row[2].strip("` ")
+        if plan_name not in {source, target}:
+            continue
+        peer = target if source == plan_name else source
+        if peer and peer != plan_name and peer not in peers:
+            peers.append(peer)
+        if row[6] and row[6] not in evidence:
+            evidence.append(row[6])
+    if not rows or not peers:
+        return {"state": "unknown", "peers": [], "reason": "缺少当前计划的直接阶段关系证据"}
+    return {
+        "state": "known",
+        "peers": peers,
+        "reason": "只读透传阶段关系表中的直接关系；完整关系校验由后续阶段负责",
+        "evidence": evidence,
+    }
+
+
+RELATION_COLUMNS = ["来源计划", "来源阶段", "目标计划", "目标阶段", "关系类型", "解除条件", "证据"]
+RELATION_TYPES = {"hard_gate", "evidence", "soft_context"}
+SHARED_WRITE_COLUMNS = [
+    "来源计划",
+    "来源阶段",
+    "目标计划",
+    "目标阶段",
+    "约束类型",
+    "共享目标",
+    "串行顺序",
+    "解除条件",
+    "证据",
+]
+
+
+def relation_rows(plan_map_text):
+    section = markdown_section(plan_map_text, ["阶段关系"])
+    if section is None:
+        return None, []
+    rows = markdown_table_rows(section)
+    header_index = next((index for index, row in enumerate(rows) if row[: len(RELATION_COLUMNS)] == RELATION_COLUMNS), None)
+    if header_index is None:
+        return [], []
+    return RELATION_COLUMNS, rows[header_index + 1 :]
+
+
+def shared_write_rows(plan_map_text):
+    section = markdown_section(plan_map_text, ["机器可检查共享写入约束"])
+    if section is None:
+        return None, []
+    rows = markdown_table_rows(section)
+    header_index = next(
+        (index for index, row in enumerate(rows) if row[: len(SHARED_WRITE_COLUMNS)] == SHARED_WRITE_COLUMNS),
+        None,
+    )
+    if header_index is None:
+        return [], []
+    return SHARED_WRITE_COLUMNS, rows[header_index + 1 :]
+
+
+def clean_relation_value(value):
+    return (value or "").strip().strip("`").strip()
+
+
+def valid_phase_name(value):
+    return bool(re.fullmatch(r"阶段\s*[0-9][0-9]*", clean_relation_value(value)))
+
+
+def declared_plan_phases(plan_data):
+    path = plan_data.get("path") if plan_data else None
+    if not path or not path.exists():
+        return set()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return set()
+    return {
+        clean_relation_value(row[0])
+        for row in phase_roadmap_rows(text)
+        if row and clean_relation_value(row[0])
+    }
+
+
+def validate_relation_evidence(evidence, plans, row_label):
+    """仅校验 Markdown 链接形式的相对证据路径；纯文本运行记录保持兼容。"""
+    if not evidence or not plans:
+        return []
+    docs_root = next(iter(plans.values()))["path"].parent.parent
+    errors = []
+    for match in re.finditer(r"\]\(([^)#]+)(?:#[^)]+)?\)", evidence):
+        target = match.group(1).strip()
+        if not target or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", target):
+            continue
+        candidate = (docs_root / target).resolve()
+        if not candidate.exists():
+            errors.append(f"PLAN_MAP.md: {row_label} 证据链接不存在：{target}")
+    return errors
+
+
+def validate_relation_graph(plan_map_text, plans):
+    """校验阶段关系和可选机器共享写入约束；不校验业务完成结论。"""
+    errors = []
+    warnings = []
+    headers, rows = relation_rows(plan_map_text)
+    if headers is None:
+        relation_defined = False
+    elif not headers:
+        errors.append("PLAN_MAP.md: `阶段关系` 缺少固定七列表头")
+        relation_defined = True
+    else:
+        relation_defined = True
+
+    gate_pairs = set()
+    relation_graph = {}
+    phase_cache = {name: declared_plan_phases(data) for name, data in plans.items()}
+    if headers:
+        for row_index, row in enumerate(rows, start=1):
+            if not any(clean_relation_value(cell) for cell in row):
+                continue
+            if len(row) != len(RELATION_COLUMNS):
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行字段数应为 {len(RELATION_COLUMNS)}")
+                continue
+            values = [clean_relation_value(cell) for cell in row]
+            source, source_phase, target, target_phase, relation_type, unlock, evidence = values
+            for label, value in [
+                ("来源计划", source),
+                ("来源阶段", source_phase),
+                ("目标计划", target),
+                ("目标阶段", target_phase),
+                ("关系类型", relation_type),
+                ("证据", evidence),
+            ]:
+                if not value or is_placeholder(value):
+                    errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行缺少有效{label}")
+            if source not in plans:
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行来源计划不存在：{source}")
+            if target not in plans:
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行目标计划不存在：{target}")
+            if not valid_phase_name(source_phase):
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行来源阶段格式非法：{source_phase}")
+            if not valid_phase_name(target_phase):
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行目标阶段格式非法：{target_phase}")
+            if source in plans and valid_phase_name(source_phase):
+                declared = phase_cache.get(source, set())
+                if declared and source_phase not in declared:
+                    errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行来源阶段不存在于计划路线图：{source_phase}")
+            if target in plans and valid_phase_name(target_phase):
+                declared = phase_cache.get(target, set())
+                if declared and target_phase not in declared:
+                    errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行目标阶段不存在于计划路线图：{target_phase}")
+            if relation_type not in RELATION_TYPES:
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行关系类型非法：{relation_type}")
+            elif relation_type != "soft_context" and (not unlock or is_placeholder(unlock)):
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行缺少有效解除条件")
+            errors.extend(validate_relation_evidence(evidence, plans, f"阶段关系第 {row_index} 行"))
+            if source == target and source_phase == target_phase:
+                errors.append(f"PLAN_MAP.md: 阶段关系第 {row_index} 行不能引用自身同一阶段：{source}")
+            if source not in plans or target not in plans or relation_type not in RELATION_TYPES:
+                continue
+            source_node = f"{source}@{source_phase}"
+            target_node = f"{target}@{target_phase}"
+            relation_graph.setdefault(source_node, [])
+            relation_graph.setdefault(target_node, [])
+            if relation_type in {"hard_gate", "evidence"}:
+                relation_graph[source_node].append(target_node)
+            if relation_type == "hard_gate":
+                gate_pairs.add((source, target))
+
+        for cycle in detect_dependency_cycles(relation_graph):
+            errors.append(f"PLAN_MAP.md: 阶段关系存在 hard_gate/evidence 环依赖：{cycle}")
+
+        for source, target in sorted(gate_pairs):
+            declared = extract_declared_dependencies(plans[target].get("depends", ""))
+            if source not in declared:
+                warnings.append(
+                    f"PLAN_MAP.md: 阶段关系 {source} -> {target} 为 hard_gate，但计划索引依赖列未包含 {source}；以阶段关系为准"
+                )
+
+    shared_headers, shared_rows = shared_write_rows(plan_map_text)
+    if shared_headers == []:
+        errors.append("PLAN_MAP.md: `机器可检查共享写入约束` 缺少固定九列表头")
+    elif shared_headers:
+        for row_index, row in enumerate(shared_rows, start=1):
+            if not any(clean_relation_value(cell) for cell in row):
+                continue
+            if len(row) != len(SHARED_WRITE_COLUMNS):
+                errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行字段数应为 {len(SHARED_WRITE_COLUMNS)}")
+                continue
+            values = [clean_relation_value(cell) for cell in row]
+            source, source_phase, target, target_phase, constraint, target_paths, order, unlock, evidence = values
+            for label, value in [
+                ("来源计划", source),
+                ("来源阶段", source_phase),
+                ("目标计划", target),
+                ("目标阶段", target_phase),
+                ("约束类型", constraint),
+                ("共享目标", target_paths),
+                ("串行顺序", order),
+                ("解除条件", unlock),
+                ("证据", evidence),
+            ]:
+                if not value or is_placeholder(value):
+                    errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行缺少有效{label}")
+            if source not in plans:
+                errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行来源计划不存在：{source}")
+            if target not in plans:
+                errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行目标计划不存在：{target}")
+            if not valid_phase_name(source_phase):
+                errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行来源阶段格式非法：{source_phase}")
+            if not valid_phase_name(target_phase):
+                errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行目标阶段格式非法：{target_phase}")
+            if constraint != "shared_write_risk":
+                errors.append(f"PLAN_MAP.md: 共享写入约束第 {row_index} 行约束类型非法：{constraint}")
+            errors.extend(validate_relation_evidence(evidence, plans, f"共享写入约束第 {row_index} 行"))
+            expected_order = f"{source}-before-{target}"
+            if source and target and order != expected_order:
+                errors.append(
+                    f"PLAN_MAP.md: 共享写入约束第 {row_index} 行串行顺序应为 {expected_order}：{order}"
+                )
+
+    return errors, warnings
+
+
+def recent_evidence(plan_text):
+    current = top_level_section(plan_text, "当前阶段") or ""
+    section = markdown_section(current, ["最近实施/验证记录"])
+    rows = markdown_table_rows(section)
+    return [row for row in rows if len(row) >= 2 and row[0] not in {"日期", "字段", "类型"}]
+
+
+def workset_payload(root, include_history=False, strict=False):
+    errors = []
+    strict_failures = []
+    plan_map_text, _, plans = load_plan_records(root, errors)
+    output = {
+        "schema_version": 1,
+        "source": "derived",
+        "plans": [],
+        "warnings": [],
+    }
+    if errors:
+        output["warnings"] = errors
+        return output, 1
+
+    index_issues = plan_index_issues(plan_map_text)
+    relation_errors, relation_warnings = validate_relation_graph(plan_map_text, plans)
+    output["warnings"].extend(relation_warnings)
+    if relation_errors:
+        output["warnings"].extend(relation_errors)
+        strict_failures.extend(relation_errors)
+
+    for name, data in plans.items():
+        if not include_history and data["status"] not in WARNING_ACTIVE:
+            continue
+        path = data["path"]
+        if not path.exists():
+            message = f"{name}: 计划文件不存在：{path}"
+            output["warnings"].append(message)
+            strict_failures.append(message)
+            continue
+        plan_text = read_utf8(path, errors)
+        summary = current_summary(plan_text)
+        blockers = unresolved_current_blockers(plan_text)
+        if blockers:
+            readiness = "blocked"
+            action = {
+                "state": "known",
+                "kind": "resolve_blocker",
+                "reason": "当前阶段存在未解决阻塞项",
+            }
+        elif data["status"] == "待实施":
+            readiness = "ready"
+            action = {"state": "known", "kind": "implement", "reason": "计划状态为待实施"}
+        elif data["status"] == "实施中":
+            readiness = "in_progress"
+            action = structured_next_action(plan_text)
+        elif data["status"] in {"候选", "设计中"}:
+            missing = [
+                field for field in ["Step 0", "样本矩阵", "验证方式", "失败/回滚边界"]
+                if not summary.get(field) or is_placeholder(summary.get(field))
+            ]
+            if missing:
+                readiness = "design"
+                action = {
+                    "state": "known",
+                    "kind": "complete_step0",
+                    "reason": f"阶段准入摘要缺少或占位字段：{', '.join(missing)}",
+                }
+            elif not current_review_passes(plan_text, data["phase"]):
+                readiness = "design"
+                action = {
+                    "state": "known",
+                    "kind": "independent_review",
+                    "reason": "当前阶段尚无通过的最新独立准入复核",
+                }
+            else:
+                readiness = "design"
+                action = {"state": "unknown", "kind": "unknown", "reason": "缺少结构化下一动作"}
+        else:
+            readiness = "unknown"
+            action = {"state": "unknown", "kind": "unknown", "reason": "计划状态不在工作集派生范围"}
+
+        output["plans"].append(
+            {
+                "plan": name,
+                "status": data["status"],
+                "phase": data["phase"],
+                "readiness": readiness,
+                "blockers": blockers,
+                "next_action": action,
+                "parallel": parallel_summary(plan_map_text, name, relation_valid=not relation_errors),
+                "recent_evidence": recent_evidence(plan_text),
+            }
+        )
+
+    if errors:
+        output["warnings"].extend(errors)
+        strict_failures.extend(errors)
+    if index_issues:
+        output["plans"] = []
+        output["warnings"].extend(index_issues)
+        strict_failures.extend(index_issues)
+    return output, 1 if strict and strict_failures else 0
+
+
+def print_workset_text(payload, strict=False):
+    print("工作集（只读派生）")
+    for item in payload["plans"]:
+        action = item["next_action"]
+        parallel = item["parallel"]
+        print(
+            f"- {item['plan']} | {item['status']} | {item['phase']} | "
+            f"{item['readiness']} | next={action['kind']} | "
+            f"parallel={parallel['state']}"
+        )
+        if item["blockers"]:
+            print(f"  blockers: {'；'.join(item['blockers'])}")
+    for warning in payload["warnings"]:
+        print(f"{'ERROR' if strict else 'WARNING'}: {warning}")
+
+
+STEP_COLUMNS = ["步骤 ID", "前置步骤", "动作", "证据", "完成条件", "状态", "分支记录"]
+STEP_STATES = {"未开始", "执行中", "已完成", "阻塞", "不适用"}
+
+
+def split_prerequisites(value):
+    if not value or value.strip("` -") == "":
+        return []
+    return [item for item in re.split(r"[,，、\s]+", value.strip("` ")) if item and item != "-"]
+
+
+def branch_record_has_value(branch_record, marker):
+    match = re.search(rf"{re.escape(marker)}\s*[：:]\s*([^；;,，\n]+)", branch_record)
+    return bool(match and not is_placeholder(match.group(1).strip()))
+
+
+def find_execution_rows(plan_text):
+    section = markdown_section(plan_text, ["执行清单"])
+    if section is None:
+        return None, []
+    rows = markdown_table_rows(section)
+    header_index = next((index for index, row in enumerate(rows) if row[: len(STEP_COLUMNS)] == STEP_COLUMNS), None)
+    if header_index is None:
+        return [], []
+    return STEP_COLUMNS, rows[header_index + 1 :]
+
+
+def validate_step_plan(root, plan_name, strict=False):
+    errors = []
+    _, _, plans = load_plan_records(root, errors)
+    if errors:
+        payload = {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": "",
+            "enabled": False,
+            "status": "invalid",
+            "steps": [],
+            "errors": errors,
+            "warnings": [],
+        }
+        return payload, 1
+
+    data = plans.get(plan_name)
+    if data is None or not data["path"].exists():
+        payload = {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"] if data else "",
+            "enabled": False,
+            "status": "invalid",
+            "steps": [],
+            "errors": [f"{plan_name}: 未登记计划或计划文件不存在"],
+            "warnings": [],
+        }
+        return payload, 1
+
+    plan_errors = []
+    plan_text = read_utf8(data["path"], plan_errors)
+    if plan_errors:
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"],
+            "enabled": False,
+            "status": "invalid",
+            "steps": [],
+            "errors": plan_errors,
+            "warnings": [],
+        }, 1
+    parse_text = mask_fenced_code(plan_text)
+    if not re.search(r"^\s*execution_mode\s*:\s*autonomous-continuous\s*$", parse_text, re.MULTILINE):
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"],
+            "enabled": False,
+            "status": "not_enabled",
+            "steps": [],
+            "errors": [],
+            "warnings": [],
+        }, 0
+
+    errors = []
+    policy_match = re.search(r"^\s*execution_policy\s*:\s*(\S+)\s*$", parse_text, re.MULTILINE)
+    policy = policy_match.group(1).strip("`") if policy_match else "serial"
+    if policy not in {"serial", "parallel"}:
+        errors.append(f"{plan_name}: 字段 execution_policy 值非法：{policy}")
+
+    headers, rows = find_execution_rows(plan_text)
+    if headers is None:
+        errors.append(f"{plan_name}: 缺少 `### 执行清单` 章节")
+        rows = []
+    elif not headers:
+        errors.append(f"{plan_name}: 执行清单缺少固定七列表头")
+    elif not rows:
+        errors.append(f"{plan_name}: 执行清单至少需要一个步骤")
+
+    steps = []
+    ids = set()
+    dependencies = {}
+    for row_index, row in enumerate(rows, start=1):
+        if len(row) < len(STEP_COLUMNS):
+            errors.append(f"{plan_name}: 执行清单第 {row_index} 行字段不足")
+            continue
+        step = dict(zip(STEP_COLUMNS, row[: len(STEP_COLUMNS)]))
+        step_id = step["步骤 ID"].strip("` ")
+        if not step_id:
+            errors.append(f"{plan_name}: 执行清单第 {row_index} 行缺少步骤 ID")
+            continue
+        if step_id in ids:
+            errors.append(f"{plan_name}: 步骤 {step_id} 重复")
+        ids.add(step_id)
+        dependencies[step_id] = split_prerequisites(step["前置步骤"])
+        for field in ["动作", "证据", "完成条件"]:
+            if not step[field].strip("` ") or is_placeholder(step[field]):
+                errors.append(f"{plan_name}: 步骤 {step_id} 缺少字段 {field}")
+        state = step["状态"].strip("` ")
+        if state not in STEP_STATES:
+            errors.append(f"{plan_name}: 步骤 {step_id} 状态非法：{state}")
+        if state == "不适用":
+            branch_record = step["分支记录"].strip("` ")
+            if is_placeholder(branch_record):
+                errors.append(f"{plan_name}: 步骤 {step_id} 为不适用但缺少分支记录")
+            else:
+                for marker in ["触发条件", "理由", "替代证据"]:
+                    if not branch_record_has_value(branch_record, marker):
+                        errors.append(f"{plan_name}: 步骤 {step_id} 的不适用分支记录缺少有效{marker}")
+        if state in {"已完成", "不适用"} and is_placeholder(step["证据"]):
+            errors.append(f"{plan_name}: 步骤 {step_id} 为 {state} 但缺少证据")
+        steps.append(
+            {
+                "id": step_id,
+                "preconditions": dependencies[step_id],
+                "action": step["动作"],
+                "evidence": step["证据"],
+                "completion": step["完成条件"],
+                "state": state,
+                "branch_record": step["分支记录"],
+            }
+        )
+
+    for step_id, prerequisites in dependencies.items():
+        for prerequisite in prerequisites:
+            if prerequisite not in ids:
+                errors.append(f"{plan_name}: 步骤 {step_id} 引用了未知前置步骤 {prerequisite}")
+
+    graph = {step_id: [item for item in prerequisites if item in ids] for step_id, prerequisites in dependencies.items()}
+    errors.extend(f"{plan_name}: 执行清单存在环依赖：{cycle}" for cycle in detect_dependency_cycles(graph))
+    status = "invalid" if errors else "valid"
+    warnings = list(errors) if errors and not strict else []
+    return {
+        "schema_version": 1,
+        "plan": plan_name,
+        "phase": data["phase"],
+        "enabled": True,
+        "status": status,
+        "execution_policy": policy,
+        "steps": steps if not errors else [],
+        "errors": errors,
+        "warnings": warnings,
+    }, 1 if errors and strict else 0
+
+
+def run_workset(root, as_json=False, include_history=False, strict=False):
+    payload, status = workset_payload(root, include_history=include_history, strict=strict)
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print_workset_text(payload, strict=strict)
+    return status
+
+
+def run_validate_steps(root, plan_name, as_json=False, strict=False):
+    payload, status = validate_step_plan(root, plan_name, strict=strict)
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"步骤校验：{payload['plan']} | {payload['phase']} | {payload['status']}")
+        for error in payload["errors"]:
+            print(f"{'ERROR' if strict else 'WARNING'}: {error}")
+        for warning in payload["warnings"]:
+            if warning not in payload["errors"]:
+                print(f"WARNING: {warning}")
+    return status
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="检查计划治理文档的一致性。")
     parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
+    parser.add_argument("--workset", action="store_true", help="输出只读当前工作集。")
+    parser.add_argument("--validate-steps", action="store_true", help="只读校验指定计划的自主执行步骤表。")
+    parser.add_argument("--json", action="store_true", help="以 JSON 输出工作集或步骤校验结果。")
+    parser.add_argument("--include-history", action="store_true", help="工作集包含历史计划。")
+    parser.add_argument("--root", dest="mode_root", help="工作集/步骤校验的仓库根目录。")
     parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
     parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
     parser.add_argument(
@@ -646,6 +1300,20 @@ def parse_args(argv):
 
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    if args.workset:
+        return run_workset(
+            Path(args.mode_root or args.root),
+            as_json=args.json,
+            include_history=args.include_history,
+            strict=args.strict_readiness,
+        )
+    if args.validate_steps:
+        return run_validate_steps(
+            Path(args.mode_root or "."),
+            args.root,
+            as_json=args.json,
+            strict=args.strict_readiness,
+        )
     root = Path(args.root)
     docs = root / "docs"
     plan_map = docs / "PLAN_MAP.md"
@@ -692,6 +1360,13 @@ def main(argv=None):
             }
         else:
             fail(errors, f"docs/PLAN_MAP.md: 计划行缺少 docs/plans 链接：{row[0]}")
+
+    relation_errors, relation_warnings = validate_relation_graph(text, plans)
+    warnings.extend(relation_warnings)
+    if args.strict_readiness:
+        errors.extend(relation_errors)
+    else:
+        warnings.extend(relation_errors)
 
     edges = {}
     inactive = {name for name, data in plans.items() if data["status"] in INACTIVE}

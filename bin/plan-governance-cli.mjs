@@ -185,9 +185,13 @@ function main() {
   const args = process.argv.slice(2);
   const command = args[0];
   if (command === "setup") return setup(args.slice(1));
+  if (command === "workset") return runPython(checker, ["--workset", ...args.slice(1)]);
   if (command === "init") return runPython(initializer, args.slice(1));
   if (command === "hook") return runPython(hookRuntime, args.slice(1));
   if (command === "graph") return runNode(graphRuntime, args.slice(1));
+  if (command === "plan" && args[1] === "steps" && args[2] === "validate") {
+    return runPython(checker, ["--validate-steps", ...args.slice(3)]);
+  }
   if (command === "plan") return runNode(graphRuntime, args);
   if (command === "check") return runPython(checker, args.slice(1));
   return runPython(checker, args);
