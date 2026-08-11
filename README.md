@@ -164,7 +164,7 @@ plan-governance-cli check . --pre-commit
 plan-governance-cli check . --stale-days 10
 ```
 
-`--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。
+`--drift` 会检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；`--pre-commit` 会检查 staged 变更，便于用户手动接入 Git hook。两者只输出 `WARNING`，不改变退出码。活跃计划自身文件、`PLAN_MAP.md` 中可唯一归属的变更行和当前阶段 `### 阶段证据` 中声明的合法相对路径会自动覆盖；关闭窗口内，已完成计划自身也在本次变更中时，仅额外覆盖该计划自身和显式阶段证据。跨计划、非法路径或无法归属的变更继续告警。
 
 全局 CLI 是推荐入口：
 
@@ -278,7 +278,7 @@ plan-governance-cli check . --attest agent-runtime-integration
 plan-governance-cli check . --check-attestations
 ```
 
-`--attest <plan-name>` 只接受已登记到 `docs/PLAN_MAP.md` 的计划。`--check-attestations` 对计划文件 hash 变化、`PLAN_MAP.md` hash 变化、JSON 损坏、文件缺失或快照引用未登记计划输出 `WARNING`，不改变退出码。人工确认文档修正合理后，可以重新运行 `--attest <plan-name>` 覆盖快照。
+`--attest <plan-name>` 只接受已登记到 `docs/PLAN_MAP.md` 的计划。`--attest-purpose <purpose>` 可与它一起创建带 `purpose`、`snapshot_id`、`supersedes` 和 `review_status` 的关系快照，支持 `phase_completion`、`release_gate`、`compliance`；不传时保持旧 `docs/attestations/<plan-name>.json` 格式。`--supersedes <path>` 和 `--review-status <status>` 可声明替代目标和初始复核状态。`--check-attestations` 会检查 hash 漂移并派生 `current`、`superseded` 或 `needs_review`；旧 JSON 缺少 `purpose` 时按 `phase_completion` 兼容读取。漂移、缺失或 JSON 损坏默认输出 `WARNING`，严格模式才将新增结构错误提升为 `ERROR`。人工确认文档修正合理后，可以重新创建旧快照或用 `--attest-purpose` 创建带替代关系的新快照。
 
 ## 测试覆盖率
 

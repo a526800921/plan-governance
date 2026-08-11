@@ -2,7 +2,9 @@
 import argparse
 import hashlib
 import json
+import posixpath
 import re
+import secrets
 import subprocess
 import sys
 from datetime import date, datetime, timezone
@@ -26,6 +28,9 @@ ACTIVE = {"待实施", "实施中"}
 WARNING_ACTIVE = {"候选", "设计中", "待实施", "实施中"}
 IMPLEMENTING = {"实施中"}
 INACTIVE = {"已替代", "已合并", "已废弃"}
+ATTESTATION_PURPOSES = {"phase_completion", "release_gate", "compliance"}
+ATTESTATION_REVIEW_STATUSES = {"current", "superseded", "needs_review"}
+ATTESTATION_SNAPSHOT_RE = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{8}$")
 
 
 def fail(errors, message):
@@ -279,7 +284,13 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
             f"{plan_name}: 最新独立准入复核结论不是通过：{review['结论']}",
         )
 
-    history = [row for row in review_history_rows(plan_text) if len(row) >= 4 and row[2] == current_phase]
+    history = [
+        row
+        for row in review_history_rows(plan_text)
+        if len(row) >= 4
+        and row[2] == current_phase
+        and ("准入" in row[1] or "readiness" in row[1].lower())
+    ]
     if not history:
         history_hint = structural_heading_hint(plan_text, "独立复核记录")
         readiness_issue(
@@ -363,6 +374,34 @@ def extract_affected_targets(plan_text):
         if target and target not in PLACEHOLDER_VALUES:
             targets.append(target)
     return targets
+
+
+def extract_phase_evidence_targets(plan_text):
+    """读取当前阶段显式声明的证据路径，并返回合法路径和非法原文。"""
+    current = top_level_section(plan_text, "当前阶段")
+    section = markdown_section(current, ["阶段证据"])
+    valid = []
+    invalid = []
+    for item in markdown_list_items(section):
+        backtick = re.search(r"`([^`]+)`", item)
+        token = backtick.group(1).strip() if backtick else (item.strip().split(None, 1)[0] if item.strip() else "")
+        if not token or token in PLACEHOLDER_VALUES:
+            continue
+        raw = token.replace("\\", "/")
+        if (
+            raw.startswith("/")
+            or re.match(r"^[A-Za-z]:/", raw)
+            or any(part == ".." for part in raw.split("/"))
+            or any(char in raw for char in "*?[]{}")
+        ):
+            invalid.append(token)
+            continue
+        normalized = normalize_scope_path(raw)
+        if not normalized or normalized == ".":
+            invalid.append(token)
+            continue
+        valid.append(normalized)
+    return valid, invalid
 
 
 def extract_plan_references(plan_text, known_plans, current_name):
@@ -510,14 +549,110 @@ def changed_files(root, staged=False):
     return files
 
 
-def warn_uncovered_changes(warnings, mode, files, active_plan_targets):
+def changed_plan_map_lines(root, staged=False):
+    """返回 PLAN_MAP diff 中实际变更的行；无法读取时由调用方按未知归属处理。"""
+    args = ["diff"]
+    if staged:
+        args.append("--cached")
+    args.extend(["--unified=0", "--", "docs/PLAN_MAP.md"])
+    result = subprocess.run(
+        ["git", *args],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    lines = []
+    for line in result.stdout.splitlines():
+        if line.startswith(("+++", "---", "@@")):
+            continue
+        if line.startswith(("+", "-")):
+            content = line[1:].strip()
+            if content:
+                lines.append(content)
+    return lines
+
+
+def plan_map_line_candidates(line, known_plans):
+    linked_plans = sorted(
+        {
+            name
+            for name in re.findall(r"plans/([A-Za-z0-9\u4e00-\u9fff._-]+)\.md", line)
+            if name in known_plans
+        }
+    )
+    if linked_plans:
+        return linked_plans
+    candidates = []
+    for name in known_plans:
+        if re.search(rf"(?<![A-Za-z0-9_-]){re.escape(name)}(?![A-Za-z0-9_-])", line):
+            candidates.append(name)
+    return sorted(set(candidates))
+
+
+def plan_map_change_owners(root, staged, known_plans):
+    try:
+        lines = changed_plan_map_lines(root, staged=staged)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    return [plan_map_line_candidates(line, known_plans) for line in lines]
+
+
+def plan_map_change_is_covered(plan_map_owners, active_plan_names):
+    if plan_map_owners is None or not plan_map_owners:
+        return False
+    return all(len(candidates) == 1 and candidates[0] in active_plan_names for candidates in plan_map_owners)
+
+
+def warn_uncovered_changes(
+    warnings,
+    mode,
+    files,
+    plan_targets,
+    root=None,
+    known_plans=None,
+    covering_plan_names=None,
+):
     if not files:
         return
-    if not active_plan_targets:
+    if not plan_targets:
         warn(warnings, f"{mode}: 存在变更文件，但没有活跃计划声明影响范围")
         return
-    for changed_file in uncovered_changed_files(files, active_plan_targets):
+    covering_plan_names = set(covering_plan_names or plan_targets)
+    map_owners = plan_map_change_owners(root, mode == "--pre-commit", known_plans or set()) if root else None
+    uncovered = []
+    for changed_file in sorted(files):
+        normalized_file = normalize_scope_path(changed_file)
+        if normalized_file == "docs/PLAN_MAP.md":
+            if plan_map_change_is_covered(map_owners, covering_plan_names):
+                continue
+            warn(warnings, f"{mode}: PLAN_MAP.md 变更无法唯一归属到活跃计划索引行")
+            continue
+        if any(target_matches_path(target, normalized_file) for targets in plan_targets.values() for target in targets):
+            continue
+        uncovered.append(changed_file)
+    for changed_file in uncovered:
         warn(warnings, f"{mode}: 变更文件未被活跃计划影响范围覆盖：{changed_file}")
+
+
+def completed_plan_drift_targets(plans, plan_texts, root, files):
+    """关闭窗口内只覆盖已完成计划的自身和显式阶段证据。
+
+    已完成计划不再属于活跃计划，但关闭阶段时通常还要原子地同步计划、地图和
+    验收证据。只有当该计划文件本身也在本次变更中时，才开启这个窄窗口；不会
+    复用已完成计划的完整影响范围，从而避免历史计划吞掉新的未声明变更。
+    """
+    changed = {normalize_scope_path(path) for path in files}
+    targets = {}
+    for name, data in plans.items():
+        if data["status"] not in COMPLETED:
+            continue
+        plan_relative = data["path"].relative_to(root).as_posix()
+        if plan_relative not in changed:
+            continue
+        phase_evidence, _ = extract_phase_evidence_targets(plan_texts.get(name, ""))
+        targets[name] = [plan_relative, *phase_evidence]
+    return targets
 
 
 def warn_stale_plans(warnings, plans, stale_days, today=None):
@@ -545,7 +680,27 @@ def relative_to_root(path, root):
     return path.relative_to(root).as_posix()
 
 
-def create_attestation(root, plan_map, plans, plan_name, errors):
+def safe_relative_path(value):
+    raw = str(value or "").strip().replace("\\", "/")
+    if not raw or raw.startswith("/") or re.match(r"^[A-Za-z]:/", raw):
+        return None
+    parts = [part for part in raw.split("/") if part not in {"", "."}]
+    if ".." in parts:
+        return None
+    normalized = posixpath.normpath("/".join(parts))
+    return normalized if normalized not in {"", ".", "/"} else None
+
+
+def create_attestation(
+    root,
+    plan_map,
+    plans,
+    plan_name,
+    errors,
+    purpose=None,
+    supersedes="",
+    review_status="current",
+):
     data = plans.get(plan_name)
     if data is None:
         fail(errors, f"{plan_name}: 未登记计划，无法创建完成快照")
@@ -566,17 +721,51 @@ def create_attestation(root, plan_map, plans, plan_name, errors):
         "created_by": "plan-governance",
         "reason": "阶段完成快照",
     }
-    target = root / "docs" / "attestations" / f"{plan_name}.json"
+    if purpose is not None:
+        if purpose not in ATTESTATION_PURPOSES:
+            fail(errors, f"{plan_name}: attestation purpose 非法：{purpose}")
+            return None
+        if review_status not in ATTESTATION_REVIEW_STATUSES:
+            fail(errors, f"{plan_name}: attestation review_status 非法：{review_status}")
+            return None
+        normalized_supersedes = ""
+        if supersedes:
+            normalized_supersedes = safe_relative_path(supersedes)
+            if normalized_supersedes is None:
+                fail(errors, f"{plan_name}: attestation supersedes 必须是仓库内相对路径：{supersedes}")
+                return None
+        snapshot_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"-{secrets.token_hex(4)}"
+        attestation.update(
+            {
+                "purpose": purpose,
+                "snapshot_id": snapshot_id,
+                "supersedes": normalized_supersedes,
+                "review_status": review_status,
+            }
+        )
+        filename = f"{plan_name}--{purpose}--{snapshot_id}.json"
+    else:
+        filename = f"{plan_name}.json"
+    target = root / "docs" / "attestations" / filename
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(attestation, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return target
 
 
-def warn_attestation_drift(warnings, root, plans):
+def attestation_issue(warnings, errors, strict, message):
+    if strict:
+        fail(errors, message)
+    else:
+        warn(warnings, message)
+
+
+def warn_attestation_drift(warnings, root, plans, errors=None, strict=False, reports=None):
+    errors = errors if errors is not None else []
     attestations_dir = root / "docs" / "attestations"
     if not attestations_dir.exists():
         return
 
+    records = []
     for path in sorted(attestations_dir.glob("*.json")):
         try:
             attestation = json.loads(path.read_text(encoding="utf-8"))
@@ -589,8 +778,52 @@ def warn_attestation_drift(warnings, root, plans):
             warn(warnings, f"{path}: 快照引用了未登记计划：{plan_name or '<missing>'}")
             continue
 
-        plan_path = root / str(attestation.get("plan_path", ""))
-        plan_map_path = root / str(attestation.get("plan_map_path", "docs/PLAN_MAP.md"))
+        legacy = "purpose" not in attestation
+        purpose = str(attestation.get("purpose", "phase_completion")).strip()
+        if purpose not in ATTESTATION_PURPOSES:
+            attestation_issue(warnings, errors, strict, f"{path}: attestation purpose 非法：{purpose or '<missing>'}")
+            continue
+        snapshot_id = str(attestation.get("snapshot_id", "")).strip()
+        review_status = str(attestation.get("review_status", "current")).strip()
+        supersedes = attestation.get("supersedes", "")
+        invalid_structure = False
+        if not legacy:
+            for field in ["snapshot_id", "supersedes", "review_status"]:
+                if field not in attestation:
+                    attestation_issue(warnings, errors, strict, f"{path}: 新 attestation 缺少字段：{field}")
+                    invalid_structure = True
+            if not ATTESTATION_SNAPSHOT_RE.fullmatch(snapshot_id):
+                attestation_issue(warnings, errors, strict, f"{path}: snapshot_id 格式非法：{snapshot_id or '<missing>'}")
+                invalid_structure = True
+            expected_name = f"{plan_name}--{purpose}--{snapshot_id}.json"
+            if path.name != expected_name:
+                attestation_issue(warnings, errors, strict, f"{path}: 文件名应为 {expected_name}")
+                invalid_structure = True
+        if review_status not in ATTESTATION_REVIEW_STATUSES:
+            attestation_issue(warnings, errors, strict, f"{path}: review_status 非法：{review_status or '<missing>'}")
+            invalid_structure = True
+        if not isinstance(supersedes, str):
+            attestation_issue(warnings, errors, strict, f"{path}: supersedes 必须是相对路径字符串")
+            supersedes = ""
+            invalid_structure = True
+        normalized_supersedes = safe_relative_path(supersedes) if supersedes else ""
+        if supersedes and normalized_supersedes is None:
+            attestation_issue(warnings, errors, strict, f"{path}: supersedes 必须是仓库内相对路径：{supersedes}")
+            normalized_supersedes = ""
+            invalid_structure = True
+
+        plan_path_value = attestation.get("plan_path", "")
+        plan_map_path_value = attestation.get("plan_map_path", "docs/PLAN_MAP.md")
+        plan_path_rel = safe_relative_path(plan_path_value)
+        plan_map_path_rel = safe_relative_path(plan_map_path_value)
+        if plan_path_rel is None:
+            warn(warnings, f"{path}: 快照引用的计划路径非法：{plan_path_value}")
+            continue
+        if plan_map_path_rel is None:
+            warn(warnings, f"{path}: 快照引用的 PLAN_MAP 路径非法：{plan_map_path_value}")
+            continue
+        plan_path = root / plan_path_rel
+        plan_map_path = root / plan_map_path_rel
         if not plan_path.exists():
             warn(warnings, f"{path}: 快照引用的计划文件不存在：{plan_path}")
             continue
@@ -598,10 +831,93 @@ def warn_attestation_drift(warnings, root, plans):
             warn(warnings, f"{path}: 快照引用的 PLAN_MAP.md 不存在：{plan_map_path}")
             continue
 
+        drifted = False
         if sha256_file(plan_path) != attestation.get("plan_sha256"):
             warn(warnings, f"{path}: {plan_name} 计划文件 hash 已变化，需要人工复核")
+            drifted = True
         if sha256_file(plan_map_path) != attestation.get("plan_map_sha256"):
             warn(warnings, f"{path}: PLAN_MAP.md hash 已变化，需要人工复核")
+            drifted = True
+        records.append(
+            {
+                "path": path,
+                "relative_path": path.relative_to(root).as_posix(),
+                "plan": plan_name,
+                "purpose": purpose,
+                "review_status": review_status,
+                "supersedes": normalized_supersedes,
+                "drifted": drifted,
+                "legacy": legacy,
+                "invalid_structure": invalid_structure,
+            }
+        )
+
+    by_path = {record["relative_path"]: record for record in records}
+    incoming = {}
+    edges = {}
+    for record in records:
+        target = record["supersedes"]
+        if not target:
+            continue
+        target_record = by_path.get(target)
+        if target_record is None:
+            attestation_issue(warnings, errors, strict, f"{record['path']}: supersedes 目标不存在：{target}")
+            record["invalid_structure"] = True
+            continue
+        if target_record["purpose"] != record["purpose"] or target_record["plan"] != record["plan"]:
+            attestation_issue(
+                warnings,
+                errors,
+                strict,
+                f"{record['path']}: supersedes 目标必须与当前快照属于同一计划和 purpose：{target}",
+            )
+            record["invalid_structure"] = True
+            continue
+        if target == record["relative_path"]:
+            attestation_issue(warnings, errors, strict, f"{record['path']}: supersedes 不能指向自身")
+            record["invalid_structure"] = True
+            continue
+        incoming.setdefault(target, []).append(record["relative_path"])
+        edges.setdefault(record["relative_path"], []).append(target)
+
+    cycles = detect_dependency_cycles(edges)
+    for cycle in cycles:
+        attestation_issue(warnings, errors, strict, f"attestation supersedes 存在环：{cycle}")
+        for node in cycle.split(" -> "):
+            if node in by_path:
+                by_path[node]["invalid_structure"] = True
+
+    current_by_key = {}
+    for record in records:
+        effective = record["review_status"]
+        if record["invalid_structure"]:
+            effective = "needs_review"
+        elif incoming.get(record["relative_path"]):
+            effective = "superseded"
+        elif record["drifted"] or record["review_status"] == "needs_review":
+            effective = "needs_review"
+        if effective == "current":
+            key = (record["plan"], record["purpose"])
+            current_by_key.setdefault(key, []).append(record["relative_path"])
+        record["effective_status"] = effective
+
+    for key, paths in current_by_key.items():
+        if len(paths) > 1:
+            attestation_issue(
+                warnings,
+                errors,
+                strict,
+                f"attestation 同一计划/purpose 存在多个 current：{key[0]}/{key[1]}：{', '.join(paths)}",
+            )
+            for record in records:
+                if record["relative_path"] in paths:
+                    record["effective_status"] = "needs_review"
+
+    if reports is not None:
+        for record in records:
+            reports.append(
+                f"{record['relative_path']} | plan={record['plan']} | purpose={record['purpose']} | status={record['effective_status']}"
+            )
 
 
 def detect_dependency_cycles(edges):
@@ -1286,6 +1602,18 @@ def parse_args(argv):
         help="将待实施/实施中计划的阶段准入结构缺陷从 WARNING 提升为 ERROR。",
     )
     parser.add_argument("--attest", metavar="PLAN", help="为已登记计划创建或覆盖完成快照。")
+    parser.add_argument(
+        "--attest-purpose",
+        choices=sorted(ATTESTATION_PURPOSES),
+        help="创建带 purpose/snapshot_id 关系的完成快照；不传时保持旧 <plan>.json 格式。",
+    )
+    parser.add_argument("--supersedes", help="新 attestation 要替代的仓库内相对快照路径。")
+    parser.add_argument(
+        "--review-status",
+        choices=sorted(ATTESTATION_REVIEW_STATUSES),
+        default="current",
+        help="新 attestation 的初始复核状态，默认 current。",
+    )
     parser.add_argument("--check-attestations", action="store_true", help="检查完成快照 hash 是否漂移。")
     parser.add_argument(
         "--stale-days",
@@ -1396,7 +1724,20 @@ def main(argv=None):
         if data["status"] in ACTIVE and has_current_blocker(plan_text):
             fail(errors, f"{data['path']}: 活跃计划仍有未解决的当前阶段阻塞项")
         if data["status"] in WARNING_ACTIVE:
-            active_plan_targets[name] = extract_affected_targets(plan_text)
+            targets = extract_affected_targets(plan_text)
+            plan_relative = data["path"].relative_to(root).as_posix()
+            if plan_relative not in targets:
+                targets.append(plan_relative)
+            phase_evidence, invalid_evidence = extract_phase_evidence_targets(plan_text)
+            for evidence in phase_evidence:
+                if evidence not in targets:
+                    targets.append(evidence)
+            for invalid in invalid_evidence:
+                warn(
+                    warnings,
+                    f"{data['path']}: 阶段证据路径非法，未纳入 drift 覆盖：{invalid}",
+                )
+            active_plan_targets[name] = targets
 
         check_phase_readiness(
             text,
@@ -1423,10 +1764,37 @@ def main(argv=None):
             warn(warnings, f"{name}: PLAN_MAP.md 声明依赖 {unreferenced}，但计划正文未引用")
 
     try:
+        drift_files = changed_files(root) if args.drift else set()
+        pre_commit_files = changed_files(root, staged=True) if args.pre_commit else set()
+        completion_window_targets = completed_plan_drift_targets(
+            plans,
+            plan_texts,
+            root,
+            drift_files | pre_commit_files,
+        )
+        drift_plan_targets = dict(active_plan_targets)
+        drift_plan_targets.update(completion_window_targets)
+        drift_covering_plan_names = set(active_plan_targets) | set(completion_window_targets)
         if args.drift:
-            warn_uncovered_changes(warnings, "--drift", changed_files(root), active_plan_targets)
+            warn_uncovered_changes(
+                warnings,
+                "--drift",
+                drift_files,
+                drift_plan_targets,
+                root=root,
+                known_plans=set(plans),
+                covering_plan_names=drift_covering_plan_names,
+            )
         if args.pre_commit:
-            warn_uncovered_changes(warnings, "--pre-commit", changed_files(root, staged=True), active_plan_targets)
+            warn_uncovered_changes(
+                warnings,
+                "--pre-commit",
+                pre_commit_files,
+                drift_plan_targets,
+                root=root,
+                known_plans=set(plans),
+                covering_plan_names=drift_covering_plan_names,
+            )
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         warn(warnings, f"Git 变更检查不可用：{exc}")
 
@@ -1437,14 +1805,38 @@ def main(argv=None):
             warn_stale_plans(warnings, plans, args.stale_days)
 
     if args.check_attestations:
-        warn_attestation_drift(warnings, root, plans)
+        attestation_reports = []
+        warn_attestation_drift(
+            warnings,
+            root,
+            plans,
+            errors=errors,
+            strict=args.strict_readiness,
+            reports=attestation_reports,
+        )
+    else:
+        attestation_reports = []
 
     attested_path = None
+    if (args.attest_purpose or args.supersedes) and not args.attest:
+        fail(errors, "--attest-purpose/--supersedes 必须与 --attest 一起使用")
     if args.attest:
-        attested_path = create_attestation(root, plan_map, plans, args.attest, errors)
+        attested_path = create_attestation(
+            root,
+            plan_map,
+            plans,
+            args.attest,
+            errors,
+            purpose=args.attest_purpose,
+            supersedes=args.supersedes or "",
+            review_status=args.review_status,
+        )
 
     for warning in warnings:
         print(f"WARNING: {warning}")
+
+    for report in attestation_reports:
+        print(f"ATTESTATION: {report}")
 
     if errors:
         for error in errors:

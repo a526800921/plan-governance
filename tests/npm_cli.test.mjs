@@ -114,6 +114,9 @@ test("package manifest contains the distributable skill resources", () => {
   assert.match(skill, /需求探索与 grilling/);
   assert.match(skill, /grill-me/);
   assert.match(planTemplate, /^## 需求探索$/m);
+  assert.match(planTemplate, /^### 阶段证据$/m);
+  assert.match(planTemplate, /^### 最近实施\/验证记录$/m);
+  assert.match(planTemplate, /purpose.*snapshot_id.*supersedes.*review_status/);
   assert.match(planTemplate, /^## 最新独立准入复核$/m);
   assert.match(planTemplate, /^## 独立复核记录$/m);
   assert.doesNotMatch(planTemplate, /^### 最新独立准入复核$/m);
@@ -165,6 +168,9 @@ test("packed package runs from a temporary installation", () => {
     assert.equal(initialized.status, 0, initialized.stderr);
     const plan = readFileSync(join(projectRoot, "docs", "plans", "installed-demo.md"), "utf8");
     assert.match(plan, /^## 需求探索$/m);
+    assert.match(plan, /^### 阶段证据$/m);
+    assert.match(plan, /^### 最近实施\/验证记录$/m);
+    assert.match(plan, /purpose.*snapshot_id.*supersedes.*review_status/);
     assert.match(plan, /^## 最新独立准入复核$/m);
     assert.match(plan, /验证安装后的模板资源/);
     assert.doesNotMatch(plan, /\/Users\/jafish\/Documents\/work\/plan-governance/);

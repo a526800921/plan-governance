@@ -206,7 +206,7 @@ docs/
 - `assets/adr.template.md`：可选 ADR 模板。
 - `assets/migration.template.md`：可选迁移模板。
 - `scripts/init_plan_governance.py`：初始化 Git 仓库、`docs/PLAN_MAP.md` 和首个 `docs/plans/<plan>.md`；也可升级已有项目的代理规则和检查脚本。
-- `scripts/check_plan_governance.py`：检查状态、最后更新、计划链接、依赖、阻塞项、完成证据、测试覆盖率证据，并提供可选漂移、pre-commit 和停滞检查。
+- `scripts/check_plan_governance.py`：检查状态、最后更新、计划链接、依赖、阻塞项、完成证据、测试覆盖率证据，并提供可选漂移、pre-commit、停滞和 attestation 生命周期检查。
 - `scripts/plan_governance_hook.py`：只读 hook runtime，可由项目级 Agent hooks 手动调用；只输出短提示和检查结果，不修改治理文档、不更新状态、不安装 hooks。
 
 初始化一个项目：
@@ -265,12 +265,15 @@ plan-governance-cli check . --stale-days
 plan-governance-cli check . --stale-days 10
 ```
 
-- `--drift`：检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖。
+- `--drift`：检查工作区变更是否被活跃计划的 `影响模块或文件` 覆盖；关闭窗口内，若已完成计划自身也在本次变更中，则额外覆盖该计划自身和 `阶段证据` 中的显式路径。
 - `--pre-commit`：检查 staged 变更是否被活跃计划的 `影响模块或文件` 覆盖，可由用户手动接入 Git hook。
+- drift 会自动覆盖活跃计划自身文件、`PLAN_MAP.md` 中可唯一归属的变更行和当前阶段 `### 阶段证据` 中声明的合法相对路径；关闭窗口内，已完成计划自身也在本次变更中时，仅额外覆盖该计划自身和显式阶段证据。跨计划、非法路径或无法归属的变更继续输出 `WARNING`。
 - `--stale-days`：检查活跃计划是否超过阈值未更新；默认 10 天。
 - 这些可选检查输出 `WARNING`，不改变退出码。
 - `--attest <plan-name>`：为已登记计划创建或覆盖 `docs/attestations/<plan-name>.json` 完成快照。
-- `--check-attestations`：检查完成快照中的计划文件和 `PLAN_MAP.md` hash 是否漂移；漂移、缺失或 JSON 损坏只输出 `WARNING`，不改变退出码。
+- `--attest-purpose <purpose>`：与 `--attest` 一起创建带 `purpose`、`snapshot_id`、`supersedes` 和 `review_status` 的关系快照；支持 `phase_completion`、`release_gate`、`compliance`。不传时保持旧 JSON 路径和格式。
+- `--supersedes <path>`、`--review-status <status>`：创建关系快照时声明替代目标和初始复核状态。
+- `--check-attestations`：检查完成快照中的计划文件和 `PLAN_MAP.md` hash 是否漂移，并派生 `current`、`superseded` 或 `needs_review`；旧 JSON 缺少 `purpose` 时按 `phase_completion` 兼容读取。漂移、缺失或 JSON 损坏默认只输出 `WARNING`，严格模式才将新增结构错误提升为 `ERROR`。
 
 ## 图谱与计划前置影响分析
 
@@ -302,7 +305,7 @@ GitNexus 只在需要代码定位时使用。CLI 不自动执行 `gitnexus analy
 
 `影响模块或文件` 的作用域匹配规则：
 
-- `--drift`、`--pre-commit` 和 `plan_governance_hook.py --event pre-write` 使用同一语义。
+- `--drift`、`--pre-commit` 和 `plan_governance_hook.py --event pre-write` 使用同一语义；已完成计划的关闭窗口只适用于 drift/pre-commit，不扩大 pre-write 的活跃计划门禁。
 - 优先提取列表项中的第一个反引号路径，例如 ``- `./scripts/`: 检查脚本``。
 - 没有反引号时提取第一个纯文本 token，例如 `- README.md`。
 - 匹配前归一化前导 `./`、尾随 `/` 和重复斜杠。

@@ -22,6 +22,37 @@ def write(path, text):
     path.write_text(text, encoding="utf-8")
 
 
+def git_commit(root):
+    subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-m", "baseline"], cwd=root, check=True, capture_output=True)
+
+
+def phase_evidence_plan_text(evidence="docs/evidence.md"):
+    return f"""# 计划：demo
+
+## 影响模块或文件
+
+- `src/`
+
+## 当前阶段
+
+### 阶段证据
+
+- `{evidence}`
+
+## Step 0 证据
+
+现状基线见 `tests/fixtures/demo.md`。
+
+## 验证方式
+
+运行 `python3 -m pytest`。
+"""
+
+
 def plan_map(row):
     rows = []
     for line in row.splitlines():
@@ -277,6 +308,21 @@ def test_conflicting_latest_review_warns_and_strict_fails(tmp_path, capsys):
     assert "结论冲突" in capsys.readouterr().out
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
     assert "结论冲突" in capsys.readouterr().out
+
+
+def test_completion_review_record_does_not_replace_latest_readiness_review(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 实施中 | 阶段 1 | 2026-08-11 | - | - |"),
+    )
+    plan = readiness_plan_text(status="实施中")
+    plan = plan.replace(
+        "## Step 0 证据",
+        "| 2026-08-11 | 阶段完成验收 | 阶段 1 | 未通过：治理同步尚未完成 | `docs/review.md` | Reviewer |\n\n## Step 0 证据",
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan)
+    assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
+    assert "历史记录最后一条结论冲突" not in capsys.readouterr().out
 
 
 def test_phase_pointer_mismatch_warns_and_strict_fails(tmp_path, capsys):
@@ -745,6 +791,288 @@ def test_pre_commit_covered_changed_file_does_not_warn(tmp_path, monkeypatch, ca
     output = capsys.readouterr().out
     assert "变更文件未被活跃计划影响范围覆盖" not in output
     assert "检查通过" in output
+
+
+def test_drift_covers_plan_map_row_plan_file_and_phase_evidence(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2026-08-11 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", phase_evidence_plan_text())
+    write(tmp_path / "docs" / "evidence.md", "baseline\n")
+    git_commit(tmp_path)
+
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    plan.write_text(plan.read_text(encoding="utf-8") + "\n实施记录。\n", encoding="utf-8")
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_map_path.write_text(
+        plan_map_path.read_text(encoding="utf-8").replace("阶段 1", "阶段 2"),
+        encoding="utf-8",
+    )
+    evidence = tmp_path / "docs" / "evidence.md"
+    evidence.write_text(evidence.read_text(encoding="utf-8") + "updated\n", encoding="utf-8")
+    write(tmp_path / "unrelated.txt", "should warn\n")
+
+    assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
+    output = capsys.readouterr().out
+    assert "PLAN_MAP.md 变更无法唯一归属" not in output
+    assert "docs/plans/demo.md" not in output
+    assert "docs/evidence.md" not in output
+    assert "unrelated.txt" in output
+
+
+def test_drift_completed_plan_closing_window_is_narrow(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | 2026-08-11 | - | - |"),
+    )
+    write(
+        tmp_path / "docs" / "plans" / "demo.md",
+        phase_evidence_plan_text() + "\n## 测试覆盖率\n\npytest 通过，覆盖率 98%。\n",
+    )
+    write(tmp_path / "docs" / "evidence.md", "baseline\n")
+    git_commit(tmp_path)
+
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    plan.write_text(plan.read_text(encoding="utf-8") + "\n完成记录。\n", encoding="utf-8")
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_map_path.write_text(
+        plan_map_path.read_text(encoding="utf-8").replace("阶段 1", "阶段 2"),
+        encoding="utf-8",
+    )
+    evidence = tmp_path / "docs" / "evidence.md"
+    evidence.write_text(evidence.read_text(encoding="utf-8") + "updated\n", encoding="utf-8")
+    write(tmp_path / "src" / "new.py", "new work\n")
+
+    assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
+    output = capsys.readouterr().out
+    assert "PLAN_MAP.md 变更无法唯一归属" not in output
+    assert "docs/plans/demo.md" not in output
+    assert "docs/evidence.md" not in output
+    assert "src/new.py" in output
+
+
+def test_pre_commit_uses_the_same_plan_map_and_phase_evidence_ownership(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2026-08-11 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", phase_evidence_plan_text())
+    write(tmp_path / "docs" / "evidence.md", "baseline\n")
+    git_commit(tmp_path)
+
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    plan.write_text(plan.read_text(encoding="utf-8") + "\nstaged implementation\n", encoding="utf-8")
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_map_path.write_text(
+        plan_map_path.read_text(encoding="utf-8").replace("阶段 1", "阶段 2"),
+        encoding="utf-8",
+    )
+    evidence = tmp_path / "docs" / "evidence.md"
+    evidence.write_text(evidence.read_text(encoding="utf-8") + "staged evidence\n", encoding="utf-8")
+    subprocess.run(["git", "add", "docs/PLAN_MAP.md", "docs/plans/demo.md", "docs/evidence.md"], cwd=tmp_path, check=True)
+
+    assert check_plan_governance.main([str(tmp_path), "--pre-commit"]) == 0
+    output = capsys.readouterr().out
+    assert "PLAN_MAP.md 变更无法唯一归属" not in output
+    assert "docs/evidence.md" not in output
+
+
+def test_phase_evidence_rejects_absolute_glob_and_parent_paths(tmp_path, capsys):
+    text = phase_evidence_plan_text("/tmp/evidence.md")
+    text = text.replace("- `/tmp/evidence.md`", "- `/tmp/evidence.md`\n- `docs/*.md`\n- `../outside.md`")
+    valid, invalid = check_plan_governance.extract_phase_evidence_targets(text)
+    assert valid == []
+    assert invalid == ["/tmp/evidence.md", "docs/*.md", "../outside.md"]
+    write(tmp_path / "docs" / "PLAN_MAP.md", plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"))
+    write(tmp_path / "docs" / "plans" / "demo.md", text)
+
+    # 直接验证非法声明不会成为覆盖目标；Git 变更获取由现有临时项目测试覆盖。
+    assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
+    output = capsys.readouterr().out
+    assert "阶段证据路径非法" in output
+
+
+def test_plan_map_line_with_two_linked_plans_is_ambiguous():
+    line = "| [alpha](plans/alpha.md) | [beta](plans/beta.md) |"
+    assert check_plan_governance.plan_map_line_candidates(line, {"alpha", "beta"}) == ["alpha", "beta"]
+    assert check_plan_governance.plan_map_change_is_covered([["alpha", "beta"]], {"alpha", "beta"}) is False
+
+
+def test_attest_purpose_creates_relation_snapshot_and_reports_current(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo", "--attest-purpose", "release_gate"]) == 0
+    capsys.readouterr()
+    snapshots = list((tmp_path / "docs" / "attestations").glob("demo--release_gate--*.json"))
+    assert len(snapshots) == 1
+    data = json.loads(snapshots[0].read_text(encoding="utf-8"))
+    assert data["purpose"] == "release_gate"
+    assert data["review_status"] == "current"
+    assert data["supersedes"] == ""
+    assert check_plan_governance.ATTESTATION_SNAPSHOT_RE.fullmatch(data["snapshot_id"])
+
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "purpose=release_gate" in output
+    assert "status=current" in output
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    plan.write_text(plan.read_text(encoding="utf-8") + "\n人工复核前的文档修订。\n", encoding="utf-8")
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "计划文件 hash 已变化" in output
+    assert "status=needs_review" in output
+
+
+def test_attestation_supersedes_old_snapshot_and_duplicate_current_is_strict_error(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo", "--attest-purpose", "release_gate"]) == 0
+    capsys.readouterr()
+    first = next((tmp_path / "docs" / "attestations").glob("demo--release_gate--*.json"))
+    first_rel = first.relative_to(tmp_path).as_posix()
+    assert check_plan_governance.main(
+        [str(tmp_path), "--attest", "demo", "--attest-purpose", "release_gate", "--supersedes", first_rel]
+    ) == 0
+    capsys.readouterr()
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 0
+    capsys.readouterr()
+
+    duplicate = tmp_path / "docs" / "attestations" / "demo--release_gate--20260811T010203Z-deadbeef.json"
+    first_data = json.loads(first.read_text(encoding="utf-8"))
+    first_data.update(
+        {
+            "snapshot_id": "20260811T010203Z-deadbeef",
+            "supersedes": "",
+            "review_status": "current",
+        }
+    )
+    duplicate.write_text(json.dumps(first_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
+    assert "多个 current" in capsys.readouterr().out
+
+
+def test_attestation_supersedes_cycle_is_warning_by_default_and_error_in_strict_mode(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    write(plan, plan_text(with_coverage=True))
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    base = {
+        "plan": "demo",
+        "phase": "阶段 1",
+        "status": "已完成",
+        "plan_path": "docs/plans/demo.md",
+        "plan_map_path": "docs/PLAN_MAP.md",
+        "plan_sha256": hashlib.sha256(plan.read_bytes()).hexdigest(),
+        "plan_map_sha256": hashlib.sha256(plan_map_path.read_bytes()).hexdigest(),
+        "created_at": "2026-08-11T01:02:03Z",
+        "created_by": "test",
+        "reason": "测试",
+        "purpose": "release_gate",
+        "review_status": "current",
+    }
+    a = "docs/attestations/demo--release_gate--20260811T010203Z-aaaaaaaa.json"
+    b = "docs/attestations/demo--release_gate--20260811T010204Z-bbbbbbbb.json"
+    base_a = {**base, "snapshot_id": "20260811T010203Z-aaaaaaaa", "supersedes": b}
+    base_b = {**base, "snapshot_id": "20260811T010204Z-bbbbbbbb", "supersedes": a}
+    write(tmp_path / a, json.dumps(base_a, ensure_ascii=False, indent=2) + "\n")
+    write(tmp_path / b, json.dumps(base_b, ensure_ascii=False, indent=2) + "\n")
+
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    assert "supersedes 存在环" in capsys.readouterr().out
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
+    assert "supersedes 存在环" in capsys.readouterr().out
+
+
+def test_attestation_missing_supersedes_target_is_strict_error(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    plan = tmp_path / "docs" / "plans" / "demo.md"
+    write(plan, plan_text(with_coverage=True))
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    data = {
+        "plan": "demo",
+        "phase": "阶段 1",
+        "status": "已完成",
+        "plan_path": "docs/plans/demo.md",
+        "plan_map_path": "docs/PLAN_MAP.md",
+        "plan_sha256": hashlib.sha256(plan.read_bytes()).hexdigest(),
+        "plan_map_sha256": hashlib.sha256(plan_map_path.read_bytes()).hexdigest(),
+        "created_at": "2026-08-11T01:02:03Z",
+        "created_by": "test",
+        "reason": "测试",
+        "purpose": "compliance",
+        "snapshot_id": "20260811T010203Z-cccccccc",
+        "supersedes": "docs/attestations/missing.json",
+        "review_status": "current",
+    }
+    write(
+        tmp_path / "docs" / "attestations" / "demo--compliance--20260811T010203Z-cccccccc.json",
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+    )
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    output = capsys.readouterr().out
+    assert "supersedes 目标不存在" in output
+    assert "status=needs_review" in output
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
+    assert "supersedes 目标不存在" in capsys.readouterr().out
+
+
+def test_recent_evidence_remains_separate_from_independent_review():
+    text = """# 计划：demo
+
+## 当前阶段
+
+### 最近实施/验证记录
+
+| 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
+|---|---|---|---|---|---|
+| 2026-08-11 | 验证 | 运行回归 | `tests/test_demo.py` | 通过 | Codex |
+
+## 最新独立准入复核
+
+| 字段 | 内容 |
+|---|---|
+| 日期 | 2026-08-10 |
+| 阶段 | 阶段 1 |
+| 结论 | 通过 |
+| 证据 | `docs/review.md` |
+| 复核者 | Reviewer |
+"""
+    rows = check_plan_governance.recent_evidence(text)
+    assert rows == [["2026-08-11", "验证", "运行回归", "`tests/test_demo.py`", "通过", "Codex"]]
+    assert "最新独立准入复核" not in "|".join(rows[0])
+
+
+def test_check_attestations_is_read_only(tmp_path, capsys):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
+    before = {
+        path.relative_to(tmp_path).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in [tmp_path / "docs" / "PLAN_MAP.md", tmp_path / "docs" / "plans" / "demo.md"]
+    }
+    assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
+    capsys.readouterr()
+    after = {
+        path.relative_to(tmp_path).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in [tmp_path / "docs" / "PLAN_MAP.md", tmp_path / "docs" / "plans" / "demo.md"]
+    }
+    assert after == before
 
 
 def test_optional_git_change_check_warns_when_git_is_unavailable(tmp_path, monkeypatch, capsys):

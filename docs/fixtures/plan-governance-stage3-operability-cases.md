@@ -31,12 +31,25 @@
 
 | 案例 | 输入或基线 | 可执行命令 | 预期退出码/输出 | 失败判定 | 输出位置 |
 |---|---|---|---|---|---|
-| S1 Drift 精确覆盖 | 阶段证据含合法相对路径；变更包含计划自身、可唯一归属的地图行、显式证据文件和无关文件 | `test -f docs/fixtures/plan-governance-stage0-design-cases.md && rg -n '案例 D|显式阶段证据|unrelated|WARNING' docs/fixtures/plan-governance-stage0-design-cases.md` | 0；前三类可归属，无关文件保留 WARNING | 全局忽略 `docs/`、把跨计划地图变更自动覆盖或漏报无关文件 | fixture stdout |
-| S2 Drift 非法归属 | 阶段证据含绝对路径、通配符、仓库外路径，或地图变更无法唯一归属 | `test -f docs/fixtures/plan-governance-stage3-operability-cases.md && rg -n 'S2|绝对路径|通配符|越界|无法唯一归属' docs/fixtures/plan-governance-stage3-operability-cases.md` | 0；非法证据不被接受，歧义变更保留 WARNING | 把非法路径当作覆盖证据或静默吞掉歧义 | fixture stdout |
-| S3 状态与进展分层 | 同一计划含通过的准入复核、追加式实施记录和状态字段变化 | `test -f docs/fixtures/plan-governance-stage0-design-cases.md && rg -n '案例 C|最新独立准入复核|最近实施|不能覆盖' docs/fixtures/plan-governance-stage0-design-cases.md` | 0；三类信息分别输出，实施记录不替代准入结论 | 用最近实施记录覆盖准入复核或自动改变生命周期 | fixture stdout |
-| S4 Attestation 生命周期 | 旧 JSON、新 purpose 快照、合法 supersedes、hash 漂移、重复 current、缺失目标和替代环 | `test -f docs/fixtures/plan-governance-stage0-design-cases.md && rg -n '案例 C|purpose=|supersedes|review_status|替代环|重复' docs/fixtures/plan-governance-stage0-design-cases.md` | 0；旧格式兼容，漂移 WARNING，结构错误可定位且不产生有效 current | 把漂移快照继续当 current、自动接受 release_gate 或接受非法替代关系 | fixture stdout |
-| S5 模板/旧计划兼容 | 阶段 3 实施前的现有模板、旧六列计划索引和无新增可选字段的历史计划 | `test -f resources/skill/assets/plan.template.md && test -f resources/skill/assets/PLAN_MAP.template.md && ! rg -n '阶段证据|最近实施/验证记录|purpose' resources/skill/assets/plan.template.md resources/skill/assets/PLAN_MAP.template.md && rg -n 'S5|阶段 3 实施后|旧计划' docs/fixtures/plan-governance-stage3-operability-cases.md` | 0；明确记录当前模板尚未实施新增字段，旧计划兼容规则已冻结；阶段 3 实施后必须拆分命令，分别断言模板字段和临时初始化输出 | 用样本文档中的文字伪造模板字段已存在，或强制历史计划迁移、覆盖真实用户目录、删除旧快照 | fixture/stdout |
-| S6 只读和回滚 | 合法查询前后文件 hash、目标项目和全局环境状态 | `test -f docs/fixtures/plan-governance-stage3-operability-cases.md && rg -n 'S6|SHA-256|只读|不修改|回滚' docs/fixtures/plan-governance-stage3-operability-cases.md` | 0；查询不写回，失败可移除新增可选段和测试恢复旧行为 | 生成快照/迁移时无授权写入目标项目或全局环境 | fixture stdout |
+| S1 Drift 精确覆盖 | 阶段证据含合法相对路径；变更包含活跃/已完成计划自身、可唯一归属的地图行、显式证据文件和无关文件 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k 'drift_completed_plan_closing_window_is_narrow or drift_covers_plan_map_row_plan_file_and_phase_evidence or pre_commit_uses_the_same_plan_map_and_phase_evidence_ownership'` | 0；活跃计划和完成计划关闭窗口的前三类可归属，无关文件和完成计划影响范围外的文件保留 WARNING | 全局忽略 `docs/`、把跨计划地图变更自动覆盖或漏报无关文件 | pytest stdout |
+| S2 Drift 非法归属 | 阶段证据含绝对路径、通配符、仓库外路径，或地图变更无法唯一归属 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k phase_evidence_rejects_absolute_glob_and_parent_paths` | 0；非法证据不被接受，歧义变更保留 WARNING | 把非法路径当作覆盖证据或静默吞掉歧义 | pytest stdout |
+| S3 状态与进展分层 | 同一计划含通过的准入复核、追加式实施记录和状态字段变化 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k recent_evidence_remains_separate_from_independent_review` | 0；三类信息分别输出，实施记录不替代准入结论 | 用最近实施记录覆盖准入复核或自动改变生命周期 | pytest stdout |
+| S4 Attestation 生命周期 | 旧 JSON、新 purpose 快照、合法 supersedes、hash 漂移、重复 current、缺失目标和替代环 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k 'attest_purpose or attestation_supersedes or attestation_missing'` | 0；旧格式兼容，漂移 WARNING，结构错误可定位且不产生有效 current | 把漂移快照继续当 current、自动接受 release_gate 或接受非法替代关系 | pytest stdout |
+| S5 模板/旧计划兼容 | 新模板、旧六列计划索引和无新增可选字段的历史计划 | `npm test -- --test-name-pattern 'package manifest|packed package|init uses'` | 0；新模板字段和临时初始化输出可定位，旧计划不强制迁移 | 用样本文档中的文字伪造模板行为，或强制历史计划迁移、覆盖真实用户目录、删除旧快照 | npm stdout |
+| S6 只读和回滚 | 合法查询前后文件 hash、目标项目和全局环境状态 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k check_attestations_is_read_only` | 0；查询不写回，失败可移除新增可选段和测试恢复旧行为 | 生成快照/迁移时无授权写入目标项目或全局环境 | pytest stdout |
+
+## 阶段 3 实施后行为证据
+
+S1—S6 已由真实临时目录或测试行为覆盖，命令和输出位置如下；这些证据不替代阶段 3 最终独立完成验收。
+
+| 案例 | 可执行命令 | 结果 |
+|---|---|---|
+| S1 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k 'drift_completed_plan_closing_window_is_narrow or drift_covers_plan_map_row_plan_file_and_phase_evidence or pre_commit_uses_the_same_plan_map_and_phase_evidence_ownership'` | 通过；drift/pre-commit 的活跃计划和完成计划关闭窗口的计划自身、唯一归属地图行和阶段证据不告警，无关文件及完成计划影响范围外的文件保留 WARNING |
+| S2 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k phase_evidence_rejects_absolute_glob_and_parent_paths` | 通过；绝对路径、通配符和越界路径不进入覆盖范围 |
+| S3 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k recent_evidence_remains_separate_from_independent_review` | 通过；实施/验证记录与独立准入复核分层保留 |
+| S4 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k 'attest_purpose or attestation_supersedes or attestation_missing'` | 通过；旧 JSON 兼容，新关系、漂移、重复 current、缺失目标和替代环均有证据 |
+| S5 | `npm test -- --test-name-pattern 'package manifest|packed package|init uses'` | 通过；新模板和临时初始化可定位，旧计划不强制迁移 |
+| S6 | `python3 -m pytest --no-cov -q tests/test_check_plan_governance.py -k check_attestations_is_read_only` | 通过；查询前后治理文件 SHA-256 一致 |
 
 ## 阶段 3 实施前基线
 
@@ -50,6 +63,6 @@
 
 ## 证据层级
 
-S1—S6 当前命令只确认阶段 3 设计样本、候选边界和实施前基线存在，不构成阶段 3 完成验收。阶段 3 实施后必须把这些设计命令替换或补充为临时目录的真实 `--drift`、`--pre-commit`、`--check-attestations`、模板初始化、旧计划兼容和前后 hash 回放；不得用 `rg` 命中文档替代行为证据。
+实施前的设计命令和实施后的行为命令均保留，前者只说明候选边界，后者才构成真实行为证据；不得用 `rg` 命中文档替代行为验证。
 
-阶段 3 实现前必须由独立复核者确认上述候选契约、S1—S6 命令和失败边界；通过前不得切换 `PLAN_MAP.md` 当前阶段或修改 drift/attestation 生产逻辑。
+阶段 3 实现前已由 Aristotle 独立复核者确认候选契约、S1—S6 命令和失败边界；实施后行为命令已执行。它们仍不替代阶段 3 最终独立完成验收。
