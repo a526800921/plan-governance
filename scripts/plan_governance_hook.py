@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.util
 import re
 import subprocess
 import sys
@@ -134,6 +135,16 @@ def active_plans(root):
     return [plan for plan in plans if plan["status"] in ACTIVE_STATUSES], blockers
 
 
+def load_next_checker():
+    checker_path = Path(__file__).with_name("check_plan_governance.py")
+    spec = importlib.util.spec_from_file_location("plan_governance_next_checker", checker_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def target_matches_path(target, path):
     normalized_target = normalize_scope_path(target)
     normalized_path = normalize_scope_path(path)
@@ -178,7 +189,25 @@ def print_session_start(root):
             print(f"- {row[0]}: {row[4]}")
     else:
         print("[plan-governance] 当前阻塞项：无。")
-    return 0
+
+    checker = load_next_checker()
+    if checker is None:
+        return 0
+    hook_status = 0
+    for plan in active:
+        payload, status = checker.plan_next_payload(root, plan["name"])
+        if payload["status"] == "not_enabled":
+            continue
+        ready = ",".join(item["id"] for item in payload.get("ready_steps", [])) or "-"
+        blocked = ",".join(item["id"] for item in payload.get("blocked_steps", [])) or "-"
+        action = payload["next_action"]
+        print(
+            f"[plan-governance] autonomous next: {plan['name']} | "
+            f"{payload['status']} | ready={ready} | blocked={blocked} | "
+            f"next={action['kind']}:{action['reason']}"
+        )
+        hook_status = max(hook_status, status)
+    return hook_status
 
 
 def print_pre_write(root, paths):

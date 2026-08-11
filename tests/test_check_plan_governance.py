@@ -1849,3 +1849,148 @@ def test_stage2_relation_queries_are_read_only(tmp_path, capsys):
     capsys.readouterr()
     after = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
     assert before == after
+
+
+def next_plan_map(root, plan="demo", phase="阶段 1"):
+    write(
+        root / "docs" / "PLAN_MAP.md",
+        plan_map(f"| [{plan}](plans/{plan}.md) | 实施中 | {phase} | - | - |"),
+    )
+
+
+def next_plan_text(rows, policy="serial", enabled=True, roadmap="" , constraints=""):
+    mode = "execution_mode: autonomous-continuous\n" if enabled else ""
+    return f"""# 计划：demo
+
+{mode}execution_policy: {policy}
+
+## 阶段路线图
+
+| 阶段 | 目标 | 进入条件 | 验证方向 | 状态 |
+|---|---|---|---|---|
+{roadmap or '| 阶段 1 | 当前阶段 | - | 测试 | 实施中 |'}
+
+## 当前阶段
+
+### 执行清单
+
+| 步骤 ID | 前置步骤 | 动作 | 证据 | 完成条件 | 状态 | 分支记录 |
+|---|---|---|---|---|---|---|
+{rows}
+
+{constraints}
+"""
+
+
+def write_next_case(root, rows, policy="serial", enabled=True, phase="阶段 1", roadmap="", constraints=""):
+    next_plan_map(root, phase=phase)
+    write(
+        root / "docs" / "plans" / "demo.md",
+        next_plan_text(rows, policy=policy, enabled=enabled, roadmap=roadmap, constraints=constraints),
+    )
+
+
+def test_plan_next_reports_ready_blocked_parallel_gate_complete_and_not_enabled(tmp_path):
+    serial = tmp_path / "serial"
+    write_next_case(
+        serial,
+        "| S1 | - | 建立基线 | tests/s1.log | 基线存在 | 未开始 | - |\n"
+        "| S2 | S1 | 执行后续 | tests/s2.log | 后续完成 | 未开始 | - |",
+    )
+    payload, status = check_plan_governance.plan_next_payload(serial, "demo")
+    assert status == 0
+    assert payload["status"] == "ready"
+    assert [item["id"] for item in payload["ready_steps"]] == ["S1"]
+    assert payload["blocked_steps"][0]["reasons"][0]["kind"] == "missing_predecessor"
+
+    parallel = tmp_path / "parallel"
+    write_next_case(
+        parallel,
+        "| S1 | - | 建立基线 | tests/s1.log | 基线存在 | 已完成 | - |\n"
+        "| S2 | S1 | 分支 A | tests/s2.log | A 完成 | 未开始 | - |\n"
+        "| S3 | S1 | 分支 B | tests/s3.log | B 完成 | 未开始 | - |",
+        policy="parallel",
+    )
+    payload, status = check_plan_governance.plan_next_payload(parallel, "demo")
+    assert status == 0
+    assert [item["id"] for item in payload["ready_steps"]] == ["S2", "S3"]
+
+    legacy = tmp_path / "legacy"
+    write_next_case(legacy, "| S1 | - | 旧动作 | tests/s1.log | 完成 | 未开始 | - |", enabled=False)
+    payload, status = check_plan_governance.plan_next_payload(legacy, "demo")
+    assert status == 0
+    assert payload["status"] == "not_enabled"
+    assert payload["next_action"]["reason"] == "plan_not_enabled"
+
+    gate = tmp_path / "gate"
+    write_next_case(
+        gate,
+        "| S1 | - | 收口阶段 | tests/s1.log | 阶段完成 | 已完成 | - |",
+        roadmap="| 阶段 1 | 已收口 | Step 0 | 回归 | 已完成 |\n| 阶段 2 | 下一阶段 | Step 0 | 回归 | 设计中 |",
+    )
+    payload, status = check_plan_governance.plan_next_payload(gate, "demo")
+    assert status == 0
+    assert payload["status"] == "phase_gate"
+    assert payload["next_action"]["reason"] == "next_phase_not_admitted"
+
+    complete = tmp_path / "complete"
+    write_next_case(
+        complete,
+        "| S1 | - | 完成终态 | tests/s1.log | 阶段完成 | 已完成 | - |",
+        roadmap="| 阶段 1 | 终态 | Step 0 | 验收 | 已完成 |",
+    )
+    payload, status = check_plan_governance.plan_next_payload(complete, "demo")
+    assert status == 0
+    assert payload["status"] == "complete"
+    assert payload["next_action"]["kind"] == "await_independent_acceptance"
+
+
+def test_plan_next_reports_constraints_failures_and_invalid_inputs(tmp_path):
+    constrained = tmp_path / "constrained"
+    write_next_case(
+        constrained,
+        "| S1 | - | 分支 A | tests/s1.log | A 完成 | 未开始 | - |\n"
+        "| S2 | - | 分支 B | tests/s2.log | B 完成 | 未开始 | - |",
+        policy="parallel",
+        constraints="""## 执行约束
+
+| 约束 ID | 类型 | 步骤 | 共享目标 | 建议顺序 | 说明 |
+|---|---|---|---|---|---|
+| C1 | shared_write_risk | S1,S2 | docs/PLAN_MAP.md | S1 -> S2 | 共享地图写入 |
+""",
+    )
+    payload, status = check_plan_governance.plan_next_payload(constrained, "demo")
+    assert status == 0
+    assert payload["status"] == "ready"
+    assert payload["next_action"]["kind"] == "review_shared_write_order"
+    assert payload["constraints"][0]["recommended_order"] == ["S1", "S2"]
+
+    blocked = tmp_path / "blocked"
+    write_next_case(blocked, "| S1 | - | 失败步骤 | tests/s1.log | 修复 | 阻塞 | - |")
+    payload, status = check_plan_governance.plan_next_payload(blocked, "demo")
+    assert status == 0
+    assert payload["status"] == "blocked"
+    assert payload["next_action"]["reason"] == "failed_step"
+
+    invalid = tmp_path / "invalid"
+    write_next_case(invalid, "| S1 | MISSING | 无效前置 | tests/s1.log | 修复 | 未开始 | - |")
+    payload, status = check_plan_governance.plan_next_payload(invalid, "demo")
+    assert status == 1
+    assert payload["status"] == "blocked"
+    assert payload["blocked_steps"][0]["reasons"][0]["kind"] == "invalid_structure"
+
+    missing = tmp_path / "missing"
+    payload, status = check_plan_governance.plan_next_payload(missing, "missing")
+    assert status == 2
+    assert payload["next_action"]["reason"] == "plan_not_found"
+
+
+def test_plan_next_and_text_output_are_read_only(tmp_path, capsys):
+    write_next_case(tmp_path, "| S1 | - | 建立基线 | tests/s1.log | 基线存在 | 未开始 | - |")
+    files = [tmp_path / "docs" / "PLAN_MAP.md", tmp_path / "docs" / "plans" / "demo.md"]
+    before = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+    assert check_plan_governance.run_plan_next(tmp_path, "demo") == 0
+    output = capsys.readouterr().out
+    assert "ready" in output
+    after = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+    assert before == after

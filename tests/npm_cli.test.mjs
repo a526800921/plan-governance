@@ -97,6 +97,32 @@ test("plan steps validate checks valid and invalid autonomous plans", () => {
   }
 });
 
+test("plan next returns ready steps and preserves the plan files", () => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-next-"));
+  try {
+    writeProjectFile(tempRoot, "docs/PLAN_MAP.md", `# PLAN_MAP\n\n## 计划索引\n\n| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |\n|---|---|---|---|---|---|\n| [demo](plans/demo.md) | 实施中 | 阶段 1 | 2026-08-11 | - | - |\n`);
+    writeProjectFile(
+      tempRoot,
+      "docs/plans/demo.md",
+      stepPlan("| S1 | - | 建立基线 | tests/s1.log | 基线存在 | 未开始 | - |\n| S2 | S1 | 执行后续 | tests/s2.log | 后续完成 | 未开始 | - |"),
+    );
+    const before = readFileSync(resolve(tempRoot, "docs/plans/demo.md"), "utf8");
+    const result = run("plan", "next", "demo", "--json", "--root", tempRoot);
+    assert.equal(result.status, 0, result.stderr);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.status, "ready");
+    assert.deepEqual(payload.ready_steps.map((item) => item.id), ["S1"]);
+    assert.equal(payload.blocked_steps[0].reasons[0].kind, "missing_predecessor");
+    assert.equal(readFileSync(resolve(tempRoot, "docs/plans/demo.md"), "utf8"), before);
+
+    const legacy = run("plan", "next", "missing", "--json", "--root", tempRoot);
+    assert.equal(legacy.status, 2);
+    assert.equal(JSON.parse(legacy.stdout).next_action.reason, "plan_not_found");
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("CLI resolves the checker from the package directory", () => {
   const checker = resolve(root, "scripts", "check_plan_governance.py");
   accessSync(checker, constants.R_OK);
@@ -200,6 +226,18 @@ test("packed package runs from a temporary installation", () => {
     ], { cwd: root, encoding: "utf8" });
     assert.equal(installedStepValidation.status, 0, installedStepValidation.stderr);
     assert.equal(JSON.parse(installedStepValidation.stdout).status, "not_enabled");
+
+    const installedNext = spawnSync(process.execPath, [
+      installedCli,
+      "plan",
+      "next",
+      "installed-demo",
+      "--json",
+      "--root",
+      projectRoot,
+    ], { cwd: root, encoding: "utf8" });
+    assert.equal(installedNext.status, 0, installedNext.stderr);
+    assert.equal(JSON.parse(installedNext.stdout).status, "not_enabled");
 
     const destination = join(tempRoot, "codex", "skills", "plan-governance");
     const dryRun = spawnSync(process.execPath, [

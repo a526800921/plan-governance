@@ -192,6 +192,9 @@ function main() {
   if (command === "plan" && args[1] === "steps" && args[2] === "validate") {
     return runPython(checker, ["--validate-steps", ...args.slice(3)]);
   }
+  if (command === "plan" && args[1] === "next") {
+    return runPython(checker, ["--next-plan", args[2], ...args.slice(3)]);
+  }
   if (command === "plan") return runNode(graphRuntime, args);
   if (command === "check") return runPython(checker, args.slice(1));
   return runPython(checker, args);

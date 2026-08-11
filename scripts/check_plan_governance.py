@@ -1402,6 +1402,7 @@ def print_workset_text(payload, strict=False):
 
 STEP_COLUMNS = ["步骤 ID", "前置步骤", "动作", "证据", "完成条件", "状态", "分支记录"]
 STEP_STATES = {"未开始", "执行中", "已完成", "阻塞", "不适用"}
+CONSTRAINT_COLUMNS = ["约束 ID", "类型", "步骤", "共享目标", "建议顺序", "说明"]
 
 
 def split_prerequisites(value):
@@ -1586,11 +1587,287 @@ def run_validate_steps(root, plan_name, as_json=False, strict=False):
     return status
 
 
+def split_constraint_values(value):
+    if not value or value.strip("` -") == "":
+        return []
+    return [
+        item.strip("` ")
+        for item in re.split(r"\s*->\s*|[,，、\s]+", value.strip("` "))
+        if item and item != "-"
+    ]
+
+
+def parse_execution_constraints(plan_text, step_ids):
+    section = markdown_section(plan_text, ["执行约束"])
+    if section is None:
+        return [], []
+    rows = markdown_table_rows(section)
+    header_index = next(
+        (index for index, row in enumerate(rows) if row[: len(CONSTRAINT_COLUMNS)] == CONSTRAINT_COLUMNS),
+        None,
+    )
+    if header_index is None:
+        return [], ["执行约束缺少固定六列表头"]
+
+    constraints = []
+    errors = []
+    seen = set()
+    for row_index, row in enumerate(rows[header_index + 1 :], start=1):
+        if len(row) < len(CONSTRAINT_COLUMNS):
+            errors.append(f"执行约束第 {row_index} 行字段不足")
+            continue
+        constraint = dict(zip(CONSTRAINT_COLUMNS, row[: len(CONSTRAINT_COLUMNS)]))
+        constraint_id = constraint["约束 ID"].strip("` ")
+        kind = constraint["类型"].strip("` ")
+        step_values = split_constraint_values(constraint["步骤"])
+        targets = split_constraint_values(constraint["共享目标"])
+        recommended_order = split_constraint_values(constraint["建议顺序"])
+        if not constraint_id or constraint_id in seen:
+            errors.append(f"执行约束第 {row_index} 行约束 ID 缺失或重复：{constraint_id or '-'}")
+        seen.add(constraint_id)
+        if kind != "shared_write_risk":
+            errors.append(f"执行约束 {constraint_id or row_index} 类型非法：{kind}")
+        if not step_values:
+            errors.append(f"执行约束 {constraint_id or row_index} 缺少步骤")
+        unknown_steps = [item for item in step_values if item not in step_ids]
+        if unknown_steps:
+            errors.append(
+                f"执行约束 {constraint_id or row_index} 引用了未知步骤：{', '.join(unknown_steps)}"
+            )
+        if not targets:
+            errors.append(f"执行约束 {constraint_id or row_index} 缺少共享目标")
+        if recommended_order and any(item not in step_values for item in recommended_order):
+            errors.append(f"执行约束 {constraint_id or row_index} 建议顺序引用了约束外步骤")
+        constraints.append(
+            {
+                "id": constraint_id,
+                "kind": kind,
+                "step_ids": step_values,
+                "targets": targets,
+                "recommended_order": recommended_order,
+                "description": constraint["说明"],
+            }
+        )
+    return constraints, errors
+
+
+def phase_gate_is_blocked(plan_text, current_phase):
+    roadmap = phase_roadmap_rows(plan_text)
+    current_index = next(
+        (index for index, row in enumerate(roadmap) if row and row[0] == current_phase),
+        None,
+    )
+    if current_index is None:
+        return False
+    current_row = roadmap[current_index]
+    current_status = current_row[4].strip() if len(current_row) > 4 else ""
+    if current_status != "已完成":
+        return False
+    following = roadmap[current_index + 1 :]
+    if not following:
+        return False
+    next_status = following[0][4].strip() if len(following[0]) > 4 else ""
+    return next_status not in {"待实施", "实施中", "已完成"}
+
+
+def plan_next_payload(root, plan_name):
+    errors = []
+    _, _, plans = load_plan_records(root, errors)
+    data = plans.get(plan_name)
+    if errors or data is None or not data["path"].exists():
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"] if data else "",
+            "execution_mode": None,
+            "status": "blocked",
+            "ready_steps": [],
+            "blocked_steps": [
+                {
+                    "id": "__plan__",
+                    "reasons": [{"kind": "plan_not_found", "detail": f"未登记计划或计划文件不存在：{plan_name}"}],
+                }
+            ],
+            "constraints": [],
+            "next_action": {"kind": "resolve_blocked", "reason": "plan_not_found"},
+        }, 2
+
+    plan_errors = []
+    plan_text = read_utf8(data["path"], plan_errors)
+    if plan_errors:
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"],
+            "execution_mode": None,
+            "status": "blocked",
+            "ready_steps": [],
+            "blocked_steps": [
+                {"id": "__plan__", "reasons": [{"kind": "invalid_structure", "detail": item} for item in plan_errors]},
+            ],
+            "constraints": [],
+            "next_action": {"kind": "resolve_blocked", "reason": "invalid_structure"},
+        }, 1
+
+    validated, validation_status = validate_step_plan(root, plan_name, strict=True)
+    if validated["status"] == "not_enabled":
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"],
+            "execution_mode": None,
+            "status": "not_enabled",
+            "ready_steps": [],
+            "blocked_steps": [],
+            "constraints": [],
+            "next_action": {"kind": "none", "reason": "plan_not_enabled"},
+        }, 0
+
+    if validated["status"] != "valid":
+        reasons = [
+            {"kind": "invalid_structure", "detail": error}
+            for error in validated.get("errors", [])
+        ] or [{"kind": "invalid_structure", "detail": "步骤表无法安全解析"}]
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"],
+            "execution_mode": "autonomous-continuous",
+            "execution_policy": validated.get("execution_policy", "serial"),
+            "status": "blocked",
+            "ready_steps": [],
+            "blocked_steps": [{"id": "__plan__", "reasons": reasons}],
+            "constraints": [],
+            "next_action": {"kind": "resolve_blocked", "reason": "invalid_structure"},
+        }, 1
+
+    steps = validated["steps"]
+    step_ids = {step["id"] for step in steps}
+    constraints, constraint_errors = parse_execution_constraints(plan_text, step_ids)
+    if constraint_errors:
+        return {
+            "schema_version": 1,
+            "plan": plan_name,
+            "phase": data["phase"],
+            "execution_mode": "autonomous-continuous",
+            "execution_policy": validated.get("execution_policy", "serial"),
+            "status": "blocked",
+            "ready_steps": [],
+            "blocked_steps": [
+                {
+                    "id": "__plan__",
+                    "reasons": [{"kind": "invalid_structure", "detail": error} for error in constraint_errors],
+                }
+            ],
+            "constraints": constraints,
+            "next_action": {"kind": "resolve_blocked", "reason": "invalid_structure"},
+        }, 1
+
+    terminal_states = {"已完成", "不适用"}
+    terminal_ids = {step["id"] for step in steps if step["state"] in terminal_states}
+    ready = []
+    blocked = []
+    for step in steps:
+        if step["state"] in terminal_states:
+            continue
+        if step["state"] == "阻塞":
+            blocked.append(
+                {"id": step["id"], "reasons": [{"kind": "failed_step", "detail": "步骤处于阻塞状态"}]}
+            )
+            continue
+        if step["state"] == "执行中":
+            blocked.append(
+                {"id": step["id"], "reasons": [{"kind": "step_in_progress", "detail": "步骤已处于执行中"}]}
+            )
+            continue
+        missing = [item for item in step["preconditions"] if item not in terminal_ids]
+        if missing:
+            blocked.append(
+                {
+                    "id": step["id"],
+                    "reasons": [
+                        {
+                            "kind": "missing_predecessor",
+                            "step_ids": missing,
+                        }
+                    ],
+                }
+            )
+            continue
+        ready.append(
+            {
+                "id": step["id"],
+                "reason": {"kind": "dependencies_satisfied"},
+            }
+        )
+
+    policy = validated.get("execution_policy", "serial")
+    if policy == "serial" and ready:
+        ready = ready[:1]
+
+    all_terminal = all(step["state"] in terminal_states for step in steps)
+    if ready:
+        status = "ready"
+        action_kind = "review_shared_write_order" if constraints else "run_ready_steps"
+        action_reason = "shared_write_risk_present" if constraints else "steps_ready"
+        exit_status = 0
+    elif all_terminal and phase_gate_is_blocked(plan_text, data["phase"]):
+        status = "phase_gate"
+        action_kind = "await_phase_gate"
+        action_reason = "next_phase_not_admitted"
+        exit_status = 0
+    elif all_terminal:
+        status = "complete"
+        action_kind = "await_independent_acceptance"
+        action_reason = "implementation_complete_acceptance_pending"
+        exit_status = 0
+    else:
+        status = "blocked"
+        action_kind = "resolve_blocked"
+        action_reason = blocked[0]["reasons"][0]["kind"] if blocked else "no_ready_steps"
+        exit_status = 0
+
+    return {
+        "schema_version": 1,
+        "plan": plan_name,
+        "phase": data["phase"],
+        "execution_mode": "autonomous-continuous",
+        "execution_policy": policy,
+        "status": status,
+        "ready_steps": ready,
+        "blocked_steps": blocked,
+        "constraints": constraints,
+        "next_action": {"kind": action_kind, "reason": action_reason},
+    }, exit_status
+
+
+def print_plan_next_text(payload):
+    print(f"下一步骤：{payload['plan']} | {payload['phase']} | {payload['status']}")
+    if payload.get("ready_steps"):
+        print("  ready: " + ", ".join(item["id"] for item in payload["ready_steps"]))
+    if payload.get("blocked_steps"):
+        print("  blocked: " + ", ".join(item["id"] for item in payload["blocked_steps"]))
+    if payload.get("constraints"):
+        print("  constraints: " + ", ".join(item["id"] for item in payload["constraints"]))
+    action = payload["next_action"]
+    print(f"  next: {action['kind']} ({action['reason']})")
+
+
+def run_plan_next(root, plan_name, as_json=False):
+    payload, status = plan_next_payload(root, plan_name)
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print_plan_next_text(payload)
+    return status
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="检查计划治理文档的一致性。")
     parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
     parser.add_argument("--workset", action="store_true", help="输出只读当前工作集。")
     parser.add_argument("--validate-steps", action="store_true", help="只读校验指定计划的自主执行步骤表。")
+    parser.add_argument("--next-plan", metavar="PLAN", help="只读查询指定计划的下一步骤集合。")
     parser.add_argument("--json", action="store_true", help="以 JSON 输出工作集或步骤校验结果。")
     parser.add_argument("--include-history", action="store_true", help="工作集包含历史计划。")
     parser.add_argument("--root", dest="mode_root", help="工作集/步骤校验的仓库根目录。")
@@ -1642,6 +1919,8 @@ def main(argv=None):
             as_json=args.json,
             strict=args.strict_readiness,
         )
+    if args.next_plan:
+        return run_plan_next(Path(args.mode_root or "."), args.next_plan, as_json=args.json)
     root = Path(args.root)
     docs = root / "docs"
     plan_map = docs / "PLAN_MAP.md"
