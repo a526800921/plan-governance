@@ -1,6 +1,6 @@
 # autonomous-plan-execution 阶段 2：next 样本
 
-本文件是阶段 2 的 Step 0 设计 fixture。它描述 `plan-governance-cli plan next <plan> [--json]` 的候选输入、预期逻辑状态和失败判定；当前不证明 `plan next` 已经实现，也不授权自动执行、状态写回或阶段自动准入。
+本文件是阶段 2 的 Step 0 与行为 fixture。它描述 `plan-governance-cli plan next <plan> [--json]` 的输入、预期逻辑状态和失败判定；查询只读，不授权自动执行、状态写回或阶段自动准入。
 
 ## 公共约束
 
@@ -131,6 +131,8 @@ steps:
 ```
 
 候选预期：状态为 `blocked`，指出 `S1` 的阻塞和证据缺失，`S2` 不能成为 ready step。
+
+另一种缺证据输入是步骤声明为 `已完成` 但证据列为 `-`；`plan next` 必须返回 `blocked`，原因码为 `missing_evidence`，而不是把它作为可推进完成或无定位的结构错误吞掉。
 
 失败判定：自动补证据、自动改状态、把 `S2` 返回为 ready，或只返回无定位原因的笼统提示。
 

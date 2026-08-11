@@ -289,7 +289,12 @@ def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, war
         for row in review_history_rows(plan_text)
         if len(row) >= 4
         and row[2] == current_phase
-        and ("准入" in row[1] or "readiness" in row[1].lower())
+        and (
+            "准入" in row[1]
+            or ("完成验收" in row[1] and row[3].startswith("通过"))
+            or ("完成复核" in row[1] and row[3].startswith("通过"))
+            or "readiness" in row[1].lower()
+        )
     ]
     if not history:
         history_hint = structural_heading_hint(plan_text, "独立复核记录")
@@ -1724,6 +1729,39 @@ def plan_next_payload(root, plan_name):
         }, 0
 
     if validated["status"] != "valid":
+        evidence_errors = [
+            error
+            for error in validated.get("errors", [])
+            if "缺少证据" in error or "缺少字段 证据" in error
+        ]
+        other_errors = [
+            error
+            for error in validated.get("errors", [])
+            if "缺少证据" not in error and "缺少字段 证据" not in error
+        ]
+        if evidence_errors and not other_errors:
+            blocked_steps = []
+            for error in evidence_errors:
+                match = re.search(r"步骤\s+([^： ]+)", error)
+                step_id = match.group(1).strip("` ") if match else "__plan__"
+                blocked_steps.append(
+                    {
+                        "id": step_id,
+                        "reasons": [{"kind": "missing_evidence", "detail": error}],
+                    }
+                )
+            return {
+                "schema_version": 1,
+                "plan": plan_name,
+                "phase": data["phase"],
+                "execution_mode": "autonomous-continuous",
+                "execution_policy": validated.get("execution_policy", "serial"),
+                "status": "blocked",
+                "ready_steps": [],
+                "blocked_steps": blocked_steps,
+                "constraints": [],
+                "next_action": {"kind": "resolve_blocked", "reason": "missing_evidence"},
+            }, 0
         reasons = [
             {"kind": "invalid_structure", "detail": error}
             for error in validated.get("errors", [])

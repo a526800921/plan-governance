@@ -1972,6 +1972,13 @@ def test_plan_next_reports_constraints_failures_and_invalid_inputs(tmp_path):
     assert payload["status"] == "blocked"
     assert payload["next_action"]["reason"] == "failed_step"
 
+    missing_evidence = tmp_path / "missing-evidence"
+    write_next_case(missing_evidence, "| S1 | - | 缺证据步骤 | - | 完成条件 | 已完成 | - |")
+    payload, status = check_plan_governance.plan_next_payload(missing_evidence, "demo")
+    assert status == 0
+    assert payload["status"] == "blocked"
+    assert payload["blocked_steps"][0]["reasons"][0]["kind"] == "missing_evidence"
+
     invalid = tmp_path / "invalid"
     write_next_case(invalid, "| S1 | MISSING | 无效前置 | tests/s1.log | 修复 | 未开始 | - |")
     payload, status = check_plan_governance.plan_next_payload(invalid, "demo")

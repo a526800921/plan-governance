@@ -103,6 +103,7 @@
 - `docs/fixtures/autonomous-plan-execution-stage1-validation-cases.md`
 - `docs/fixtures/autonomous-plan-execution-stage2-next-cases.md`
 - `docs/reviews/autonomous-plan-execution-stage2-independent-review-20260811.md`
+- `docs/reviews/autonomous-plan-execution-stage2-completion-review-20260811.md`
 - `docs/plans/autonomous-plan-execution.md`
 
 ## 公共契约变化
@@ -168,7 +169,7 @@
 |---|---|---|---|---|
 | 阶段 0 | 冻结可选步骤模型、状态语义、失败分支和兼容策略 | 上游计划的相关契约已足以复用；Step 0 样本齐备 | 顺序、分支、证据、阶段门、ready steps 集合和旧计划兼容的设计复核 | 已完成 |
 | 阶段 1 | 增加自主模式的步骤解析与只读校验 | 阶段 0 独立准入通过 | 正反 fixture、warning 语义、默认检查兼容和严格检查边界 | 已完成 |
-| 阶段 2 | 提供下一步骤只读查询与 hook 提示 | 阶段 1 完成；阶段 2 候选输出契约经自身独立准入复核冻结 | `next` 输出、暂停条件、无写入保证和安装包回归 | 实施中 |
+| 阶段 2 | 提供下一步骤只读查询与 hook 提示 | 阶段 1 完成；阶段 2 输出契约已冻结并通过实施后独立验收 | `next` 输出、暂停条件、无写入保证和安装包回归 | 已完成 |
 | 阶段 3 | 同步模板、skill、说明文档并以真实样本做独立验收 | 阶段 2 完成；自愿试点计划已独立准入 | 端到端回放、反向引用、独立验收和回滚演练 | 设计中 |
 
 ## 阶段 0 设计记录
@@ -315,7 +316,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 范围
 
-当前为阶段 2；阶段 2 Step 0 已通过独立准入复核，进入实施中。阶段 3 仍保持设计中：
+当前为阶段 2；阶段 2 已完成实施和独立验收，阶段 3 仍保持设计中：
 
 1. 提供只读 `plan-governance-cli plan next <plan> [--json]`，返回当前可推进步骤集合或明确暂停原因。
 2. 复用阶段 1 的步骤解析和校验结果，不重新定义步骤字段、状态和证据边界。
@@ -327,13 +328,13 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 实施中 |
-| 阶段状态 | 实施中 |
+| 阶段状态 | 已完成 |
 | Step 0 | [阶段 2 Step 0 证据](#阶段2-step-0-证据) |
 | 样本矩阵 | [阶段 2 next 样本](../fixtures/autonomous-plan-execution-stage2-next-cases.md)；[阶段 2 样本矩阵](#阶段2样本矩阵) |
 | 验证方式 | [阶段2验证方式、完成条件和失败边界](#阶段2验证方式完成条件和失败边界) |
 | 失败/回滚边界 | [阶段2验证方式、完成条件和失败边界](#阶段2验证方式完成条件和失败边界) |
-| 当前阻塞项 | 无；阶段 2 正在实施，阶段 3 仍需自身 Step 0、验证方式、完成条件和独立准入复核 |
-| 最新独立准入复核 | [2026-08-11 阶段 2 独立准入复核：通过，达到待实施标准](../reviews/autonomous-plan-execution-stage2-independent-review-20260811.md) |
+| 当前阻塞项 | 无；阶段 2 已完成，阶段 3 仍需自身 Step 0、验证方式、完成条件和独立准入复核 |
+| 最新独立准入复核 | [2026-08-11 阶段 2 完成验收：通过](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md) |
 
 ### 实施步骤
 
@@ -341,7 +342,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 2. 实现 `plan next` 的只读解析与查询；结构错误、缺证据和未满足前置条件不得返回 ready steps。
 3. 为 N1—N8 增加真实正反行为测试、无写入 hash 测试、hook 提示测试和安装包入口回归。
 4. 运行阶段 1 `plan steps validate` 兼容回归、npm/Python 全量测试、严格治理、停滞、drift、pre-commit、反向引用和事实源扫描。
-5. 由未参与阶段 2 实施的复核者独立验收；通过后关闭阶段 2，阶段 3 不自动放行。
+5. 由未参与阶段 2 实施的复核者独立验收；阶段 2 已关闭，阶段 3 不自动放行。
 
 ### 阶段 2 实施授权记录
 
@@ -351,12 +352,13 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 - `docs/fixtures/autonomous-plan-execution-stage2-next-cases.md`
 - `docs/reviews/autonomous-plan-execution-stage2-independent-review-20260811.md`
+- `docs/reviews/autonomous-plan-execution-stage2-completion-review-20260811.md`
 
 ### 阶段1历史实施记录
 
 #### 阶段1历史范围
 
-当前为阶段 1；阶段 1 已完成自主模式步骤表解析与只读校验的实现、验证和独立复核，阶段 2/3 仍保持设计中：
+历史快照对应阶段 1；阶段 1 已完成自主模式步骤表解析与只读校验的实现、验证和独立复核。当前阶段指针以文档前面的“当前阶段”和 `PLAN_MAP.md` 为准，阶段 2 已完成，阶段 3 仍保持设计中：
 
 1. 解析显式声明 `execution_mode: autonomous-continuous` 的专项计划步骤表，校验字段、ID、前置关系、状态、证据和分支记录。
 2. 提供只读校验入口 `plan-governance-cli plan steps validate <plan> [--json]`；本阶段不提供 `next`，下一步骤集合由阶段 2 承载。
@@ -479,7 +481,7 @@ git diff --check
 
 ## 阶段2设计与实施契约
 
-本节保留阶段 2 的 Step 0、候选契约、样本和实施边界。阶段 2 已于 2026-08-11 通过未参与设计的独立准入复核并进入实施中；阶段 3 仍为设计中，不因阶段 2 的准入或完成自动放行。
+本节保留阶段 2 的 Step 0、冻结契约、样本、实施结果和边界。阶段 2 已于 2026-08-11 通过未参与实施的独立完成验收并关闭；阶段 3 仍为设计中，不因阶段 2 完成自动放行。
 
 ### 目标、范围和非目标
 
@@ -605,14 +607,18 @@ node bin/plan-governance-cli.mjs check . --drift
 node bin/plan-governance-cli.mjs check . --pre-commit
 ```
 
-当前阶段 2 实施快照：npm 40/40；Python 126 passed，总覆盖率 90.46%；阶段 2 定向 `plan next`、hook、JSON、串行/并行、执行约束、阶段门、完成边界、未知计划和无写入测试均通过。当前专项计划本身按兼容规则返回 `not_enabled`，启用计划的行为由临时目录测试覆盖。
+当前阶段 2 实施快照：npm 40/40；Python 126 passed，总覆盖率 90.67%；阶段 2 定向 `plan next`、hook、JSON、串行/并行、执行约束、缺证据/阻塞、阶段门、完成边界、未知计划和无写入测试均通过。当前专项计划本身按兼容规则返回 `not_enabled`，启用计划的行为由临时目录测试覆盖。
 
 ### 最近实施/验证记录
 
 | 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
 |---|---|---|---|---|---|
 | 2026-08-11 | 实施 | 增加 `plan next` 只读查询、执行约束解析、五类状态/退出码和 session-start hook 提示；不执行动作、不写回状态 | `scripts/check_plan_governance.py`；`bin/plan-governance-cli.mjs`；`scripts/plan_governance_hook.py` | 通过 | Codex |
-| 2026-08-11 | 验证 | 临时启用计划的 N1—N8 行为、CLI JSON/文本、hook、无写入 hash、打包安装兼容通过；npm 40/40、Python 126 passed、覆盖率 90.46% | `tests/test_check_plan_governance.py`；`tests/npm_cli.test.mjs`；`tests/test_plan_governance_hooks.py`；`npm test`；`python3 -m pytest -q` | 通过 | Codex |
+| 2026-08-11 | 验证 | 临时启用计划的 N1—N8 行为、CLI JSON/文本、hook、无写入 hash、打包安装兼容通过；npm 40/40、Python 126 passed、覆盖率 90.67% | `tests/test_check_plan_governance.py`；`tests/npm_cli.test.mjs`；`tests/test_plan_governance_hooks.py`；`npm test`；`python3 -m pytest -q` | 通过 | Codex |
+
+### 阶段2完成证据
+
+阶段 2 已完成：N1—N8 真实行为、缺证据 `missing_evidence`、串行/并行 ready 集合、执行约束、阶段门、完成边界、旧计划兼容、hook、退出码、无写入 hash、安装包回归和治理检查均通过；npm 40/40、Python 126 passed、覆盖率 90.67%；最新独立完成验收已通过。计划级状态仍为 `实施中`，阶段 3 不自动放行。
 
 阶段 2 的完成条件为：五类逻辑状态、稳定 JSON 字段结构和退出码、串行/并行 ready 集合、专项计划 `执行约束` 表中的共享写入约束、失败/缺证据阻塞、阶段门、完成边界和无写入行为均有真实正反测试；旧计划和阶段 1 的 `plan steps validate` 回归通过；hook 只提示不执行；安装包入口和反向引用检查通过；独立复核明确阶段 2 已达到完成标准。阶段 3 不因阶段 2 完成自动放行。
 
@@ -624,9 +630,9 @@ node bin/plan-governance-cli.mjs check . --pre-commit
 |---|---|
 | 日期 | 2026-08-11 |
 | 阶段 | 阶段 2 |
-| 结论 | 通过：达到阶段 2 `待实施` 标准；允许切换当前阶段并开始阶段 2 实施，阶段 3 不自动放行 |
-| 证据 | [阶段 2 独立准入复核报告](../reviews/autonomous-plan-execution-stage2-independent-review-20260811.md)；[阶段 2 Step 0 证据](#阶段2-step-0-证据)；[阶段 2 样本矩阵](#阶段2样本矩阵) |
-| 复核者 | Aristotle（独立只读复核 subagent） |
+| 结论 | 通过：阶段 2 完成验收通过；阶段 2 已关闭，阶段 3 不自动放行 |
+| 证据 | [阶段 2 完成验收复核报告](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 2 完成证据](#阶段2完成证据)；[阶段 2 样本矩阵](#阶段2样本矩阵) |
+| 复核者 | Schrodinger（独立只读复核 subagent） |
 
 ## 独立复核记录
 
@@ -636,6 +642,7 @@ node bin/plan-governance-cli.mjs check . --pre-commit
 | 2026-08-10 | 阶段 1 Step 0 独立准入复核 | 阶段 1 | 未通过：只有实现前基线和设计案例，尚无新入口行为测试，未达到 `待实施` 标准 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Kepler（独立只读复核 subagent） |
 | 2026-08-10 | 阶段 1 实现后独立准入复核 | 阶段 1 | 通过 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Locke（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 通过：达到阶段 2 `待实施` 标准；允许切换当前阶段并开始阶段 2 实施，阶段 3 不自动放行 | [阶段 2 独立准入复核报告](../reviews/autonomous-plan-execution-stage2-independent-review-20260811.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 实施后完成验收 | 阶段 2 | 通过：阶段 2 完成验收通过；阶段 2 已关闭，阶段 3 不自动放行 | [阶段 2 完成验收复核报告](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
 
 ## 未决问题
 
