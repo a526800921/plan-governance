@@ -116,7 +116,9 @@
 - `docs/fixtures/plan-governance-stage0-design-cases.md`
 - `docs/fixtures/plan-governance-stage1-workset-cases.md`
 - `docs/fixtures/plan-governance-stage2-relation-cases.md`
+- `docs/fixtures/plan-governance-stage3-operability-cases.md`
 - `docs/reviews/plan-governance-stage2-readiness-review-20260811.md`
+- `docs/reviews/plan-governance-stage3-readiness-review-20260811.md`
 - `docs/reviews/plan-governance-stage0-independent-review-20260810.md`
 - `docs/plans/plan-governance-operability-optimization.md`
 
@@ -509,6 +511,8 @@ git diff --check
 | 2026-08-11 | 阶段 2 修订后最终独立准入复核 | 阶段 2 | 通过：阶段 2 达到 `待实施` 标准；R1—R7、完成条件和 R6 命令覆盖均已确认 | [阶段 2 准入复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Boyle（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 2 首次完成验收 | 阶段 2 | 未通过：技术项已通过，但完成后的阶段状态、PLAN_MAP 完成证据和独立验收记录尚未同步 | [阶段 2 完成验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Banach（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 2 完成验收复核 | 阶段 2 | 通过：阶段 2 已完成；R1—R7、完成条件、实施回归和独立验收均通过，阶段 3 未放行 | [阶段 2 完成验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Banach（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 Step 0 独立准入复核 | 阶段 3 | 未通过：Step 0 的工作区基线表述不准确，S5 模板命令存在假阳性；已记录修订边界，阶段 3 未提前切换 | [阶段 3 准入复核报告](../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 修订后最终独立准入复核 | 阶段 3 | 通过：阶段 3 达到 `待实施` 标准；S1—S6、基线、兼容边界和回滚条件已确认 | [阶段 3 准入复核报告](../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
 
 ## 未决问题
 
@@ -587,6 +591,52 @@ git diff --check
 ### 阶段 2 完成验收
 
 阶段 2 技术验收已完成：R1—R7、全量 Python/npm 测试、覆盖率、严格治理、停滞检查、语法/格式、反向引用、事实源扫描、直接 fixture 回放和只读 hash 均通过。独立验收者确认没有计划外行为变化，指出的唯一收口项是将阶段完成状态、完成证据和独立验收记录同步到本计划及 `PLAN_MAP.md`；本次已完成该同步，最终独立确认记录见[阶段 2 验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md)。
+
+## 阶段 3 准入准备（未启用）
+
+阶段 2 已完成；`PLAN_MAP.md` 当前阶段仍指向阶段 2，阶段 3 保持 `设计中`。本节只补齐阶段 3 的 Step 0、候选契约、样本矩阵、验证方式、完成条件和回滚边界，不切换当前阶段，不实施 drift/attestation 生产逻辑。
+
+### 目标与非目标
+
+- 目标：精确覆盖计划自身、可唯一归属的 `PLAN_MAP.md` 变更和显式阶段证据，降低 `--drift`/`--pre-commit` 对正常治理变更的噪音。
+- 目标：并列输出准入结论、最近实施/验证记录和 attestation 有效性；为旧快照增加可选 purpose/supersedes/review_status 关系，并保持 hash 漂移 WARNING 语义。
+- 目标：更新新模板和文档说明，验证旧计划、旧快照和默认检查入口兼容；不强制迁移历史计划。
+- 非目标：不全量移动或重写历史文档，不自动接受 release gate/compliance，不自动修改计划生命周期，不同步真实用户目录或本机全局环境。
+
+### 阶段 3 Step 0 证据
+
+基线类型为“当前 drift/attestation 只读回放 + 现有历史快照兼容观察 + 阶段 3 S1—S6 设计样本”。已确认：
+
+- 当前 `--drift` 和 `--pre-commit` 已有统一入口，但治理文件、计划自身和显式阶段证据的精确归属规则仍需阶段 3 机器校验收口。
+- 当前 `--check-attestations` 已对旧快照 hash 漂移输出 WARNING，已有旧 JSON 缺少 purpose 的兼容事实；purpose、supersedes、review_status 和有效 current 派生尚未实现。
+- 阶段 0 已冻结“准入、最近实施/验证记录、attestation 三者分层”以及不强制历史迁移的原则；阶段 3 只把该原则转换为可执行 fixture 和回归，不重新定义生命周期语义。
+- 阶段 3 S1—S6 的输入、命令、预期、失败判定和输出位置见[阶段 3 可操作性收口样本](../fixtures/plan-governance-stage3-operability-cases.md)。
+
+### 阶段 3 候选契约和兼容边界
+
+阶段 3 复用现有 `check --drift`、`--pre-commit`、`--check-attestations` 和模板初始化入口，不新增独立治理命令。Drift 归属不明确时保留 WARNING；attestation 旧格式按 `phase_completion` 兼容读取；新 purpose 关系只在结构合法且有效 current 唯一时输出，hash 漂移仍为 WARNING；模板新增字段均为可选，不要求旧计划迁移。
+
+候选字段、快照命名、`snapshot_id` 格式、替代关系和状态优先级以阶段 0 技术收敛稿和[阶段 3 样本](../fixtures/plan-governance-stage3-operability-cases.md)为准；在阶段 3 独立准入复核通过前，不将其视为已冻结公共契约。
+
+### 阶段 3 验证和回滚边界
+
+- 验证必须覆盖 S1—S6、正常/失败 drift 归属、旧/新 attestation、重复 current、替代环、hash 漂移、模板临时初始化和旧计划兼容。
+- 普通检查和 `--check-attestations` 默认保持兼容，WARNING 不改变退出码；只有结构错误或严格准入结构问题才按既有规则提升为 ERROR。
+- 阶段证据非法路径、跨计划地图变更和无法归属变更不得被静默覆盖；不能通过全局忽略 `docs/` 降低告警。
+- 如果 warning 信噪比、旧快照兼容、模板冲突保护或只读边界不满足 S1—S6，回滚新增 drift/attestation 解析、模板可选段和测试，保留阶段 2 关系校验、既有 drift 和旧快照 WARNING 行为。
+
+### 阶段 3 完成条件
+
+- S1—S6 均有可执行正反样本；drift 精确归属、状态/进展/attestation 分层、旧快照兼容和模板行为均有测试证据。
+- `--drift`、`--pre-commit`、`--check-attestations` 的退出码和 WARNING/ERROR 语义保持兼容；合法查询和临时模板初始化无写入越界。
+- 旧计划和旧 JSON 不因新增可选字段被强制迁移；新模板、README、skill 资源和安装包清单之间无事实漂移。
+- 全量 Python/npm 测试、严格治理、停滞检查、反向引用、事实源扫描、格式检查和独立阶段验收通过；`PLAN_MAP.md` 完成证据同步后才关闭阶段 3。
+
+### 阶段 3 准入动作
+
+1. 由未参与阶段 2 实现的复核者只读复核 S1—S6、候选字段、兼容边界、Step 0 和回滚边界。
+2. 只有复核明确达到阶段 3 `待实施` 标准后，才把 `PLAN_MAP.md` 当前阶段切换到阶段 3，并开始生产逻辑实施。
+3. 阶段 3 完成后再做独立验收和完成快照评估；不自动修改历史计划，不自动放行后续能力。
 
 ## 当前阶段
 
