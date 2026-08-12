@@ -377,6 +377,17 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 本次仅更新分发文档、skill 和版本元数据，不修改项目治理文档、图谱 YAML 或 GitNexus 索引。
 
+## 2026-08-12 发布维护
+
+本次维护发布自主连续执行计划完成后的分发资源和版本元数据：
+
+- `package.json`、`package-lock.json` 和 README 锁定版本示例更新为 `0.3.1`。
+- `plan-governance-cli@0.3.1` 已发布到公共 npm registry，并成为 `latest`；registry shasum 与本地 `npm pack --dry-run` 结果一致，tarball 包含 14 项生产资源。
+- `npm test` 通过 41/41；公共包 npx smoke test 的 `plan next autonomous-plan-execution --json` 返回预期 `not_enabled`。
+- 全局 CLI 已切换为 npm registry 安装的 `0.3.1`；`setup --target codex --dry-run` 显示全部 manifest 资源最新，未覆盖其他项目或全局 hook 配置。
+
+本次仅更新版本元数据和分发记录，不改变已完成计划的治理契约、状态语义或执行边界。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
