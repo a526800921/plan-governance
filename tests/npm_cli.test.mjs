@@ -135,11 +135,21 @@ test("package manifest contains the distributable skill resources", () => {
     accessSync(resolve(root, resource), constants.R_OK);
   }
   const skill = readFileSync(resolve(root, "resources", "skill", "SKILL.md"), "utf8");
+  const agent = readFileSync(resolve(root, "resources", "skill", "agents", "openai.yaml"), "utf8");
   const planTemplate = readFileSync(resolve(root, "resources", "skill", "assets", "plan.template.md"), "utf8");
+  const readme = readFileSync(resolve(root, "README.md"), "utf8");
   assert.doesNotMatch(skill, /\/Users\/jafish\//);
   assert.match(skill, /需求探索与 grilling/);
   assert.match(skill, /grill-me/);
+  assert.match(skill, /模板与只读查询协同/);
+  assert.match(skill, /plan-governance-cli plan next/);
+  assert.match(agent, /推进到完成/);
+  assert.match(readme, /^## 自主连续执行（可选）$/m);
+  assert.match(readme, /默认关闭/);
   assert.match(planTemplate, /^## 需求探索$/m);
+  assert.match(planTemplate, /^## 自主连续执行（可选）$/m);
+  assert.match(planTemplate, /execution_mode: autonomous-continuous/);
+  assert.match(planTemplate, /默认不启用自主连续执行/);
   assert.match(planTemplate, /^### 阶段证据$/m);
   assert.match(planTemplate, /^### 最近实施\/验证记录$/m);
   assert.match(planTemplate, /purpose.*snapshot_id.*supersedes.*review_status/);
@@ -324,6 +334,56 @@ test("init uses the package initializer without copying a local checker by defau
     assert.equal(existsSync(join(projectRoot, "docs", "PLAN_MAP.md")), true);
     assert.equal(existsSync(join(projectRoot, "docs", "plans", "demo-plan.md")), true);
     assert.equal(existsSync(join(projectRoot, "scripts", "check_plan_governance.py")), false);
+    const validate = run("plan", "steps", "validate", "demo-plan", "--json", "--root", projectRoot);
+    assert.equal(validate.status, 0, validate.stderr);
+    assert.equal(JSON.parse(validate.stdout).status, "not_enabled");
+    const next = run("plan", "next", "demo-plan", "--json", "--root", projectRoot);
+    assert.equal(next.status, 0, next.stderr);
+    assert.equal(JSON.parse(next.stdout).status, "not_enabled");
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("template autonomous example stays disabled until explicitly enabled", () => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-template-autonomous-"));
+  const projectRoot = join(tempRoot, "project");
+  try {
+    const initialized = spawnSync(process.execPath, [
+      cli,
+      "init",
+      "--root",
+      projectRoot,
+      "--plan",
+      "demo-plan",
+      "--title",
+      "Demo Plan",
+      "--goal",
+      "验证自主模板兼容性",
+    ], { cwd: root, encoding: "utf8" });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    const planPath = resolve(projectRoot, "docs", "plans", "demo-plan.md");
+    const original = readFileSync(planPath, "utf8");
+    const disabled = run("plan", "steps", "validate", "demo-plan", "--json", "--root", projectRoot);
+    assert.equal(disabled.status, 0, disabled.stderr);
+    assert.equal(JSON.parse(disabled.stdout).status, "not_enabled");
+
+    const match = original.match(/```markdown\n([\s\S]*?)\n```/);
+    assert.ok(match, "模板应包含自主模式代码示例");
+    const enabledBlock = match[1]
+      .replaceAll("<动作>", "建立基线")
+      .replaceAll("<可复现证据定位>", "tests/baseline.log")
+      .replaceAll("<可验证完成条件>", "基线命令通过");
+    writeFileSync(planPath, original.replace(match[0], enabledBlock), "utf8");
+
+    const enabled = run("plan", "steps", "validate", "demo-plan", "--json", "--root", projectRoot);
+    assert.equal(enabled.status, 0, enabled.stderr);
+    assert.equal(JSON.parse(enabled.stdout).status, "valid");
+    const next = run("plan", "next", "demo-plan", "--json", "--root", projectRoot);
+    assert.equal(next.status, 0, next.stderr);
+    const nextPayload = JSON.parse(next.stdout);
+    assert.equal(nextPayload.status, "ready");
+    assert.deepEqual(nextPayload.ready_steps.map((item) => item.id), ["S1"]);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

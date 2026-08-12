@@ -92,6 +92,7 @@
 - `scripts/plan_governance_hook.py`
 - `bin/plan-governance-cli.mjs`
 - `resources/skill/SKILL.md`
+- `resources/skill/agents/openai.yaml`
 - `resources/skill/assets/plan.template.md`
 - `README.md`
 - `plan-governance-design.md`
@@ -102,8 +103,11 @@
 - `docs/fixtures/autonomous-plan-execution-stage0-design-cases.md`
 - `docs/fixtures/autonomous-plan-execution-stage1-validation-cases.md`
 - `docs/fixtures/autonomous-plan-execution-stage2-next-cases.md`
+- `docs/fixtures/autonomous-plan-execution-stage3-template-cases.md`
 - `docs/reviews/autonomous-plan-execution-stage2-independent-review-20260811.md`
 - `docs/reviews/autonomous-plan-execution-stage2-completion-review-20260811.md`
+- `docs/reviews/autonomous-plan-execution-stage3-readiness-review-20260812.md`
+- `docs/reviews/autonomous-plan-execution-stage3-completion-review-20260812.md`
 - `docs/plans/autonomous-plan-execution.md`
 
 ## 公共契约变化
@@ -170,7 +174,7 @@
 | 阶段 0 | 冻结可选步骤模型、状态语义、失败分支和兼容策略 | 上游计划的相关契约已足以复用；Step 0 样本齐备 | 顺序、分支、证据、阶段门、ready steps 集合和旧计划兼容的设计复核 | 已完成 |
 | 阶段 1 | 增加自主模式的步骤解析与只读校验 | 阶段 0 独立准入通过 | 正反 fixture、warning 语义、默认检查兼容和严格检查边界 | 已完成 |
 | 阶段 2 | 提供下一步骤只读查询与 hook 提示 | 阶段 1 完成；阶段 2 输出契约已冻结并通过实施后独立验收 | `next` 输出、暂停条件、无写入保证和安装包回归 | 已完成 |
-| 阶段 3 | 同步模板、skill、说明文档并以真实样本做独立验收 | 阶段 2 完成；自愿试点计划已独立准入 | 端到端回放、反向引用、独立验收和回滚演练 | 设计中 |
+| 阶段 3 | 同步模板、skill、说明文档并以真实样本做独立验收 | 阶段 2 完成；阶段 3 Step 0、兼容样本和独立准入复核通过 | 端到端回放、反向引用、独立验收和回滚演练 | 已完成 |
 
 ## 阶段 0 设计记录
 
@@ -316,33 +320,33 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 范围
 
-当前为阶段 2；阶段 2 已完成实施和独立验收，阶段 3 仍保持设计中：
+当前为阶段 3；阶段 2 已完成实施和独立验收，阶段 3 已完成实施和独立完成验收：
 
-1. 提供只读 `plan-governance-cli plan next <plan> [--json]`，返回当前可推进步骤集合或明确暂停原因。
-2. 复用阶段 1 的步骤解析和校验结果，不重新定义步骤字段、状态和证据边界。
-3. 支持串行/显式并行 ready 集合、专项计划 `执行约束` 表中的 `shared_write_risk` 提示、阶段门和完成边界。
-4. 接入只读 hook 提示；不执行动作、不更新状态、不写计划/地图/Git/外部系统，不替代独立验收。
+1. 将可选的自主连续执行入口写入计划模板，默认关闭，显式启用后才使用阶段 1/2 的步骤校验和 `plan next` 查询。
+2. 同步 skill、代理元数据和 README，明确“推进到完成计划”的连续执行语义：每一步都执行，不逐步请求继续，异常或治理门禁才暂停。
+3. 用当前仓库真实计划和临时生成/启用计划回放模板兼容、`not_enabled`、ready/blocked 和只读边界。
+4. 不修改阶段 1/2 的 CLI JSON 契约，不执行命令、不写回步骤状态、不自动验收、不同步全局环境。
 
 ### 阶段准入摘要
 
 | 字段 | 内容 |
 |---|---|
-| 准入状态 | 实施中 |
+| 准入状态 | 已完成 |
 | 阶段状态 | 已完成 |
-| Step 0 | [阶段 2 Step 0 证据](#阶段2-step-0-证据) |
-| 样本矩阵 | [阶段 2 next 样本](../fixtures/autonomous-plan-execution-stage2-next-cases.md)；[阶段 2 样本矩阵](#阶段2样本矩阵) |
-| 验证方式 | [阶段2验证方式、完成条件和失败边界](#阶段2验证方式完成条件和失败边界) |
-| 失败/回滚边界 | [阶段2验证方式、完成条件和失败边界](#阶段2验证方式完成条件和失败边界) |
-| 当前阻塞项 | 无；阶段 2 已完成，阶段 3 仍需自身 Step 0、验证方式、完成条件和独立准入复核 |
-| 最新独立准入复核 | [2026-08-11 阶段 2 完成验收：通过](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md) |
+| Step 0 | [阶段 3 Step 0 证据](#阶段3-step-0-证据) |
+| 样本矩阵 | [阶段 3 模板/skill 样本](../fixtures/autonomous-plan-execution-stage3-template-cases.md)；[阶段 3 样本矩阵](#阶段3样本矩阵) |
+| 验证方式 | [阶段3验证方式、完成条件和失败/回滚边界](#阶段3验证方式完成条件和失败回滚边界) |
+| 失败/回滚边界 | [阶段3验证方式、完成条件和失败/回滚边界](#阶段3验证方式完成条件和失败回滚边界) |
+| 当前阻塞项 | 无；阶段 3 已完成，当前计划没有后续阶段 |
+| 最新独立准入复核 | [2026-08-12 阶段 3 完成验收：通过](../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md) |
 
 ### 实施步骤
 
-1. 冻结已通过复核的 `next` 输入/输出、状态优先级、退出码、执行约束和 hook 只读边界。
-2. 实现 `plan next` 的只读解析与查询；结构错误、缺证据和未满足前置条件不得返回 ready steps。
-3. 为 N1—N8 增加真实正反行为测试、无写入 hash 测试、hook 提示测试和安装包入口回归。
-4. 运行阶段 1 `plan steps validate` 兼容回归、npm/Python 全量测试、严格治理、停滞、drift、pre-commit、反向引用和事实源扫描。
-5. 由未参与阶段 2 实施的复核者独立验收；阶段 2 已关闭，阶段 3 不自动放行。
+1. 固定模板、skill、README、分发清单和临时初始化器生成计划的实现前基线。
+2. 冻结阶段 3 的默认关闭、显式启用、运行时提示、真实样本和回滚契约。
+3. 由未参与阶段 3 设计的复核者独立核对 Step 0、样本矩阵、兼容边界和验证命令；已通过并切换为 `待实施`。
+4. 按本阶段范围同步模板、skill、代理元数据和 README，并执行 T1—T6 回放。
+5. 完成全量测试、安装包/临时 setup、反向引用、事实源、无写入和独立完成验收；阶段 3 已完成并同步计划状态。
 
 ### 阶段 2 实施授权记录
 
@@ -350,9 +354,90 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 阶段证据
 
+- `README.md`
+- `resources/skill/SKILL.md`
+- `resources/skill/agents/openai.yaml`
+- `resources/skill/assets/plan.template.md`
+- `tests/npm_cli.test.mjs`
+- `docs/fixtures/autonomous-plan-execution-stage3-template-cases.md`
 - `docs/fixtures/autonomous-plan-execution-stage2-next-cases.md`
 - `docs/reviews/autonomous-plan-execution-stage2-independent-review-20260811.md`
 - `docs/reviews/autonomous-plan-execution-stage2-completion-review-20260811.md`
+- `docs/reviews/autonomous-plan-execution-stage3-readiness-review-20260812.md`
+- `docs/reviews/autonomous-plan-execution-stage3-completion-review-20260812.md`
+
+### 阶段 3 Step 0 证据
+
+基线类型为“源资源快照 + 包内初始化器生成计划的兼容回放 + 当前仓库真实计划只读回放”。阶段 2 已完成，但其完成证据不替代阶段 3 的 Step 0：
+
+- `resources/skill/assets/plan.template.md` 当前没有自主模式示例；新建计划只有通用治理章节，不能直接被步骤解析器当作已启用计划。
+- `resources/skill/SKILL.md` 已有“推进到完成计划”“不跳步”和阶段门禁规则，但模板启用方式、`plan next` 使用顺序和异常暂停提示尚未形成一套面向用户的说明。
+- `README.md` 当前没有完整的自主模式使用章节，不能独立说明什么时候使用、如何显式启用和什么时候停止。
+- `resources/manifest.json` 已声明 skill、模板和代理元数据为可分发资源；阶段 3 只在临时目标验证 setup，不同步全局目录。
+- 当前真实计划 `autonomous-plan-execution` 未声明自主模式；阶段 1/2 的 `plan steps validate` 和 `plan next` 均应返回 `not_enabled`，这是旧计划兼容和无写入基线。
+- 2026-08-12 实现前基线：Python 126 passed、总覆盖率 90.67%、npm 40/40；基础治理、停滞检查和 `git diff --check` 通过。
+
+可复现的完整基线命令和输出边界见[阶段 3 模板/skill 样本](../fixtures/autonomous-plan-execution-stage3-template-cases.md)中的 B1—B4；这些命令只使用临时目录或当前仓库，不修改全局安装资源。
+
+### 阶段 3 实施授权记录
+
+2026-08-12，Aristotle 的独立准入复核明确阶段 3 达到 `待实施` 标准，本记录授权开始阶段 3 的模板、skill、代理元数据、README 和对应测试/fixture 实施。授权范围不包括阶段 1/2 CLI 或检查器契约修改、自动执行器、状态写回、全局 CLI/skill 同步、hook 安装或其他项目改动。
+
+### 阶段3样本矩阵
+
+| 样本 | 输入或基线 | 可执行命令 | 预期结果 | 失败判定 | 输出位置 |
+|---|---|---|---|---|---|
+| T1 默认关闭 | 用更新后的模板初始化普通 `demo` 计划 | `python3 scripts/init_plan_governance.py ...; node bin/plan-governance-cli.mjs plan steps validate demo --json --root <tmp>; node bin/plan-governance-cli.mjs plan next demo --json --root <tmp>` | 创建成功；返回 `not_enabled`；无 ready steps | 普通计划被强制启用或结构无效 | 临时目录 CLI JSON |
+| T2 显式启用 | 临时计划去掉模板示例代码围栏，保留真实 `execution_mode` 和七列表 | `plan steps validate demo --json; plan next demo --json` | `valid`，按状态返回 ready/blocked，不执行动作 | 复制模板就启用、字段误解析或跳过前置 | 临时目录 CLI JSON |
+| T3 当前真实计划 | 当前 `autonomous-plan-execution` 计划 | `node bin/plan-governance-cli.mjs plan next autonomous-plan-execution --json` | 保持 `not_enabled`；不生成阶段 3 ready step | 模板变更意外改变真实计划状态 | 当前仓库输出与 Git 状态 |
+| T4 运行时规则 | 更新后的 skill、代理元数据和 README | `rg -n '推进到完成|不跳步|plan next|独立复核|自动执行' resources/skill README.md resources/skill/agents/openai.yaml` | 说明连续推进、逐步执行、异常暂停且不自动验收 | 说明缺失、矛盾或鼓励跳过门禁 | 反向引用搜索输出 |
+| T5 分发回归 | npm 包资源清单和临时 setup 目标 | `npm pack --dry-run --json; node bin/plan-governance-cli.mjs setup --target codex --dry-run --destination <tmp>` | 资源可分发且只写临时目标 | 漏资源、写全局或静默覆盖 | npm 输出与临时目标 |
+| T6 回滚演练 | 临时复制的阶段 3 资源 | `git diff --check; git show HEAD:<path> > <tmp>/before` 或等价临时对照 | 可恢复阶段 3 资源，不影响阶段 1/2 和旧计划 | 无法定位边界或回滚破坏旧兼容 | 临时 hash 与 Git 状态 |
+
+### 阶段3验证方式、完成条件和失败/回滚边界
+
+Step 0 与独立准入前执行：
+
+```bash
+test -f docs/fixtures/autonomous-plan-execution-stage3-template-cases.md
+rg -n 'B[1-4]|T[1-6]|默认关闭|显式启用|真实计划|回滚' docs/fixtures/autonomous-plan-execution-stage3-template-cases.md
+python3 -m pytest -q
+npm test
+node bin/plan-governance-cli.mjs check .
+node bin/plan-governance-cli.mjs check . --stale-days 10
+git diff --check
+```
+
+准入标准：阶段目标、默认关闭与显式启用边界、模板/skill/README 影响范围、T1—T6 样本、失败策略和临时目标回滚方式均已明确；当前没有需要用户额外取舍的阻塞项；最新独立准入复核必须明确写出“达到阶段 3 `待实施` 标准”。
+
+准入通过后的实施验证：
+
+```bash
+python3 -m pytest -q
+npm test
+npm pack --dry-run --json
+node bin/plan-governance-cli.mjs check . --strict-readiness
+node bin/plan-governance-cli.mjs check . --drift
+node bin/plan-governance-cli.mjs check . --stale-days 10
+node bin/plan-governance-cli.mjs check . --pre-commit
+git diff --check
+```
+
+阶段 3 完成条件：更新后的模板默认不启用自主模式；显式启用样本可被阶段 1/2 入口正确识别；当前真实计划保持 `not_enabled`；skill、代理元数据和 README 对短指令、逐步执行、异常暂停、阶段门和独立验收的描述一致；包内资源和临时 setup 回归通过；T1—T6、全量测试、反向引用、事实源和无写入检查通过；未参与实施的复核者明确阶段 3 完成验收通过。
+
+失败/回滚：普通计划兼容失败时撤回模板/skill/README/代理元数据变更，保留阶段 1/2 CLI 和检查器；运行时说明若使 `plan next` 被误解为自动执行器或 `complete` 被误解为独立验收，撤回说明变更；分发验证只允许临时目标，不以全局同步作为完成条件。阶段 3 不修改其他项目，不创建 ADR/migration，不改变现有步骤字段、状态语义、退出码或 hook 写入边界。
+
+### 阶段 3 实施/验证记录
+
+| 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
+|---|---|---|---|---|---|
+| 2026-08-12 | 实施 | 更新计划模板的默认关闭自主示例；同步 skill 的运行时协同规则、README 使用说明和代理默认提示；未修改阶段 1/2 CLI、检查器或全局环境 | `resources/skill/assets/plan.template.md`；`resources/skill/SKILL.md`；`README.md`；`resources/skill/agents/openai.yaml` | 通过 | Codex |
+| 2026-08-12 | 验证 | T1/T2 模板默认关闭与显式启用、T3 当前真实计划 `not_enabled`、T4 规则反向引用、T5 临时 setup、T6 回滚对照均通过；npm 41/41、Python 126 passed、覆盖率 90.67% | `tests/npm_cli.test.mjs`；阶段 3 fixture；`npm test`；`python3 -m pytest -q`；`npm pack --dry-run --json`；临时 setup/回滚输出 | 通过 | Codex |
+| 2026-08-12 | 治理验证 | 严格准入、drift、停滞、pre-commit 和 diff 检查通过；drift 仅保留共享 `PLAN_MAP.md` 索引无法唯一归属的 WARNING，不改变退出码 | `node bin/plan-governance-cli.mjs check . --strict-readiness`；`--drift`；`--stale-days 10`；`--pre-commit`；`git diff --check` | 通过 | Codex |
+
+### 阶段 3 完成证据
+
+阶段 3 已完成：模板默认关闭与显式启用、skill/代理元数据/README 运行时说明、T1—T6、当前真实计划兼容、临时 setup、npm 打包、无写入、回滚对照、全量测试和治理检查均通过；Python 126 passed、覆盖率 90.67%、npm 41/41；最新独立完成验收已通过。计划级状态和当前阶段均已同步为 `已完成`。
 
 ### 阶段1历史实施记录
 
@@ -628,10 +713,10 @@ node bin/plan-governance-cli.mjs check . --pre-commit
 
 | 字段 | 内容 |
 |---|---|
-| 日期 | 2026-08-11 |
-| 阶段 | 阶段 2 |
-| 结论 | 通过：阶段 2 完成验收通过；阶段 2 已关闭，阶段 3 不自动放行 |
-| 证据 | [阶段 2 完成验收复核报告](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 2 完成证据](#阶段2完成证据)；[阶段 2 样本矩阵](#阶段2样本矩阵) |
+| 日期 | 2026-08-12 |
+| 阶段 | 阶段 3 |
+| 结论 | 通过：阶段 3 完成验收通过 |
+| 证据 | [阶段 3 完成验收复核报告](../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](#阶段3完成证据)；[阶段 3 样本矩阵](#阶段3样本矩阵) |
 | 复核者 | Schrodinger（独立只读复核 subagent） |
 
 ## 独立复核记录
@@ -643,6 +728,8 @@ node bin/plan-governance-cli.mjs check . --pre-commit
 | 2026-08-10 | 阶段 1 实现后独立准入复核 | 阶段 1 | 通过 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Locke（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 通过：达到阶段 2 `待实施` 标准；允许切换当前阶段并开始阶段 2 实施，阶段 3 不自动放行 | [阶段 2 独立准入复核报告](../reviews/autonomous-plan-execution-stage2-independent-review-20260811.md) | Aristotle（独立只读复核 subagent） |
 | 2026-08-11 | 阶段 2 实施后完成验收 | 阶段 2 | 通过：阶段 2 完成验收通过；阶段 2 已关闭，阶段 3 不自动放行 | [阶段 2 完成验收复核报告](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-12 | 阶段 3 Step 0 独立准入复核 | 阶段 3 | 通过：达到阶段 3 `待实施` 标准；允许开始阶段 3 实施 | [阶段 3 独立准入复核报告](../reviews/autonomous-plan-execution-stage3-readiness-review-20260812.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-12 | 阶段 3 实施后完成验收 | 阶段 3 | 通过：阶段 3 完成验收通过 | [阶段 3 完成验收复核报告](../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md) | Schrodinger（独立只读复核 subagent） |
 
 ## 未决问题
 
