@@ -120,31 +120,6 @@ def test_session_start_outputs_active_plan_summary_without_full_body(tmp_path, c
     assert "当前阶段不得修改全局 hook 配置" not in output
 
 
-def test_session_start_prompts_autonomous_next_without_executing(tmp_path, capsys):
-    setup_runtime_fixture(tmp_path)
-    plan = tmp_path / "docs" / "plans" / "active-runtime-plan.md"
-    plan.write_text(
-        plan.read_text(encoding="utf-8")
-        + """
-execution_mode: autonomous-continuous
-execution_policy: serial
-
-### 执行清单
-
-| 步骤 ID | 前置步骤 | 动作 | 证据 | 完成条件 | 状态 | 分支记录 |
-|---|---|---|---|---|---|---|
-| S1 | - | 运行检查 | tests/s1.log | 检查通过 | 未开始 | - |
-| S2 | S1 | 汇总结果 | tests/s2.log | 汇总完成 | 未开始 | - |
-""",
-        encoding="utf-8",
-    )
-
-    result, output = run_hook(tmp_path, "--event", "session-start", capsys=capsys)
-
-    assert result == 0
-    assert "autonomous next: active-runtime-plan" in output
-    assert "ready=S1" in output
-    assert "next=run_ready_steps:steps_ready" in output
 
 
 def test_pre_write_matches_active_plan_by_directory_target(tmp_path, capsys):

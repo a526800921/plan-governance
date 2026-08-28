@@ -27,12 +27,12 @@
 | [agent-runtime-integration](plans/agent-runtime-integration.md) | 已完成 | 阶段 3 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/agent-runtime-integration.md#验证方式) |
 | [phase-entry-gate-hardening](plans/phase-entry-gate-hardening.md) | 已完成 | 阶段 3 | 2026-07-13 | agent-runtime-integration, independent-acceptance-rules | [验证方式](plans/phase-entry-gate-hardening.md#验证方式) |
 | [plan-governance-npm-cli](plans/plan-governance-npm-cli.md) | 已完成 | 阶段 2 | 2026-07-13 | phase-entry-gate-hardening | [阶段 2 完成证据](plans/plan-governance-npm-cli.md#阶段-2-完成证据) |
-| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-08-12 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) / [2026-08-12 发布维护](plans/plan-governance-distribution-setup.md#2026-08-12-发布维护) |
+| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-08-28 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) / [2026-08-28 发布维护](plans/plan-governance-distribution-setup.md#2026-08-28-发布维护) |
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
 | [architecture-graph-governance](plans/architecture-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
 | [plan-governance-operability-optimization](plans/plan-governance-operability-optimization.md) | 已完成 | 阶段 3 | 2026-08-11 | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | [阶段 3 完成验收复核](reviews/plan-governance-stage3-completion-review-20260811.md)；[阶段 3 可操作性收口样本](fixtures/plan-governance-stage3-operability-cases.md)；[阶段 2 完成验收](plans/plan-governance-operability-optimization.md#阶段-2-完成验收)；[阶段 1 独立复核报告](reviews/plan-governance-stage1-independent-review-20260810.md) |
-| [autonomous-plan-execution](plans/autonomous-plan-execution.md) | 已完成 | 阶段 3 | 2026-08-12 | plan-governance-operability-optimization, phase-entry-gate-hardening, agent-runtime-integration, plan-governance-npm-cli | [阶段 3 完成验收复核报告](reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](plans/autonomous-plan-execution.md#阶段3完成证据)；[阶段 3 独立准入复核报告](reviews/autonomous-plan-execution-stage3-readiness-review-20260812.md)；[阶段 3 Step 0 证据](plans/autonomous-plan-execution.md#阶段3-step-0-证据)；[阶段 3 模板/skill 样本](fixtures/autonomous-plan-execution-stage3-template-cases.md)；[阶段 2 完成验收复核报告](reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 2 完成证据](plans/autonomous-plan-execution.md#阶段2完成证据)；[阶段 2 独立准入复核报告](reviews/autonomous-plan-execution-stage2-independent-review-20260811.md)；[阶段 2 Step 0 证据](plans/autonomous-plan-execution.md#阶段2-step-0-证据)；[阶段 2 样本矩阵](plans/autonomous-plan-execution.md#阶段2样本矩阵)；[阶段 1 完成证据](plans/autonomous-plan-execution.md#完成证据)；[阶段 1 独立复核报告](reviews/plan-governance-stage1-independent-review-20260810.md)；[阶段 0 独立复核报告](reviews/plan-governance-stage0-independent-review-20260810.md) |
+| [autonomous-plan-execution](plans/autonomous-plan-execution.md) | 已废弃 | 阶段 3 | 2026-08-28 | - | [废弃记录](plans/autonomous-plan-execution.md#废弃记录)；历史：[阶段 3 完成验收复核报告](reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](plans/autonomous-plan-execution.md#阶段3完成证据)；[阶段 2 完成验收复核报告](reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 1 完成证据](plans/autonomous-plan-execution.md#完成证据) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
@@ -52,7 +52,7 @@
 12. `functional-graph-governance` ✅（阶段 0-3：契约、CLI、分发和 ModelPad 试点全部完成）
 13. `architecture-graph-governance` ✅（阶段 0-3：三层契约、ModelPad 架构/代码映射、计划前置影响分析和独立验收全部完成）
 14. `plan-governance-operability-optimization` ✅（阶段 1—3 已完成）
-15. `autonomous-plan-execution` ✅（阶段 0—3：自主连续执行模板、skill、说明文档、只读查询和独立验收全部完成）
+15. `autonomous-plan-execution`（已废弃；仅保留历史证据，不再推荐）
 
 ## 依赖关系
 
@@ -72,37 +72,31 @@
 | functional-graph-governance | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | 复用已确认需求探索、阶段准入和只读 runtime 边界，已完成通用 CLI、Schema、分发和 ModelPad 试点交接 |
 | architecture-graph-governance | functional-graph-governance | 在已完成的功能图谱试点基础上，重新冻结功能层、架构层和代码层边界，并收缩 GitNexus 引用维护范围 |
 | plan-governance-operability-optimization | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | 复用 drift/pre-commit、严格准入、完成快照、只读 hook 与图谱查询边界；基于真实项目评审补齐当前工作集、阶段关系、证据状态和治理文件覆盖的可操作性缺口 |
-| autonomous-plan-execution | plan-governance-operability-optimization, phase-entry-gate-hardening, agent-runtime-integration, plan-governance-npm-cli | 依赖上游冻结当前工作集、阶段关系与证据状态边界，并复用严格准入、完成快照、只读 hook 和已发布 CLI 的安全语义；上游阶段 0 已通过独立复核，两个阶段 1 已完成但共享实现文件写入仍须串行；新增可选步骤模型与下一步骤集合只读查询，不构建自动操作引擎 |
 
 ## 阶段关系
 
-阶段关系的表头、方向和关系类型由上游计划的阶段 0 技术收敛稿定义；本表是唯一关系事实源。上游阶段 0 已通过独立复核，两个计划阶段 1 可以逻辑并行设计，但共享实现写入必须串行。计划索引中的依赖列只是计划级兼容摘要；本表明确了阶段 0 的 `soft_context` 与阶段 1 的 `hard_gate` 不矛盾。
+阶段关系的表头、方向和关系类型由上游计划的阶段 0 技术收敛稿定义；本表是唯一关系事实源。已废弃计划不再参与当前阶段关系或实施排序。
 
 | 来源计划 | 来源阶段 | 目标计划 | 目标阶段 | 关系类型 | 解除条件 | 证据 |
 |---|---|---|---|---|---|---|
-| plan-governance-operability-optimization | 阶段 0 | autonomous-plan-execution | 阶段 0 | soft_context | 设计可并行，实际共享文档写入串行 | [上游需求探索](plans/plan-governance-operability-optimization.md#需求探索) |
-| plan-governance-operability-optimization | 阶段 0 | autonomous-plan-execution | 阶段 1 | hard_gate | 上游阶段 0 完成独立准入复核并冻结关系/证据边界（已满足） | [上游阶段路线图](plans/plan-governance-operability-optimization.md#阶段路线图) |
 
 ## 并行与共享写入约束
 
 | 范围 | 允许并行 | 串行边界 | 依据 |
 |---|---|---|---|
-| 两个优化计划阶段 1 | 阶段 1 已完成；后续阶段的设计可以并行讨论 | 共享 CLI、检查器、模板、skill、测试和 `PLAN_MAP.md` 的实际写入仍必须串行 | 阶段 1 独立复核已通过；影响模块仍存在重叠 |
-| 阶段 0/1 设计案例 | 上游计划拥有各自的 `plan-governance-stage0-*`、`plan-governance-stage1-*`；自主执行计划拥有各自的 `autonomous-plan-execution-stage0-*`、`autonomous-plan-execution-stage1-*` | 不共享案例文件；跨计划引用只读 | 通过拆分文件明确单一写入者 |
-| 上游计划阶段 1 及以后与自主执行计划阶段 1 及以后 | 不允许对共享 CLI、检查器、模板、skill、测试或地图同时实施 | 先完成并复核上游契约，再进入自主执行计划的共享文件实施 | `autonomous-plan-execution` 依赖上游计划 |
 | `shared_write_risk` 关系 | 可提示冲突和写入所有权 | 不自动转换为硬门禁依赖；实际写入按单一写入者或串行队列执行 | 共享风险是并行约束，不是业务先后关系 |
 
 ## 替代、合并和废弃
 
 | 计划 | 关系 | 目标 | 原因 |
 |---|---|---|---|
-| - | - | - | - |
+| autonomous-plan-execution | 已废弃 | Codex `goal` | 原生 goal 已覆盖跨轮持续推进，移除 skill 内重复的自主连续执行能力 |
 
 ## 当前阻塞项
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
-| 阶段 3 实施和独立完成验收已通过；本计划没有后续阶段 | 保留完成证据和兼容边界；后续若扩展自动执行器或外部分发，另立新计划 | autonomous-plan-execution 阶段 3 | 否 | 已解决 |
+| 自主连续执行能力已废弃；当前没有需要继续推进的该计划阶段 | 使用 Codex `goal` 管理跨轮持续工作；保留历史设计与验收记录供追溯 | autonomous-plan-execution | 否 | 已解决 |
 
 ## 完成证据
 
@@ -131,6 +125,7 @@
 | plan-governance-distribution-setup | 阶段 3 | hook runtime 可分发和手动调用；无稳定目标 Schema，未自动写入 hook 配置；最终验收和事实源扫描通过 |
 | plan-governance-distribution-setup | 发布维护 | `plan-governance-cli@0.3.0` 已发布并成为 `latest`；skill/README 已同步图谱 CLI 与 `plan impact`；37/37 npm 测试、严格治理、公共包 ModelPad 图谱校验/影响分析和 Codex setup 二次 dry-run 通过 |
 | plan-governance-distribution-setup | 发布维护 | `plan-governance-cli@0.3.1` 已发布并成为 `latest`；41/41 npm 测试、14 项生产资源打包、全局 registry 安装、npx smoke test 和 Codex setup 二次 dry-run 通过 |
+| plan-governance-distribution-setup | 发布维护（2026-08-28） | `plan-governance-cli@0.3.3` 已发布并成为 `latest`；14 项生产资源打包、npm registry 版本查询、Codex skill setup 二次 dry-run、Python 回归、定向 Node CLI 测试和严格治理检查通过；临时安装 smoke test 未形成通过证据 |
 | requirements-grilling-integration | 阶段 1 | 需求探索规则、唯一计划模板、初始化器、受管代理规则和 README 已同步；27 项针对性 Python 测试、87 项全量测试/91.95% 覆盖率、npm 7 项、严格治理、打包清单和反向引用检查通过 |
 | requirements-grilling-integration | 阶段 2 | `plan-governance-cli@0.2.4` 已发布并成为 latest；已安装 tarball 的 `init` 与临时 Codex `setup` 回归通过；dry-run、同步、冲突保护和探索/准入边界均已验证；npm 7 项、Python 87 项/91.95%、严格治理、13 个生产资源、反向引用和格式检查通过 |
 | functional-graph-governance | 阶段 0-3 | `npm test` 15/15 通过；通用 `graph validate/impact`、npm 打包清单、正反例 fixture、ModelPad 图谱校验和三个场景 fixture 全部通过。 |
@@ -140,4 +135,4 @@
 | plan-governance-operability-optimization | 阶段 3 | S1—S6 真实 drift/pre-commit、完成计划关闭窗口、attestation 生命周期、模板/旧计划兼容、覆盖率补强、Python 122 passed/91.36%、npm 39/39、严格治理、停滞、反向引用、只读 hash 和独立完成验收通过；未同步全局环境或其他项目。 |
 | autonomous-plan-execution | 阶段 1 | `plan steps validate` 合法/未启用/结构错误、不适用分支、空表、默认/严格退出码、旧计划兼容、阶段状态与计划状态分离和无写入行为通过；npm 39/39、Python 97 passed、覆盖率 91.39%、打包安装 smoke test、严格治理、反向引用和第三轮独立复核通过；曾将当前 `0.3.0` tarball 安装并同步到本机，随后按用户要求恢复同步前状态。 |
 | autonomous-plan-execution | 阶段 2 | 阶段 2 Step 0、N1—N8、`next` 冻结契约、执行约束、缺证据分支、退出码、hook/安装包/无写入边界、全量回归和独立完成验收通过；阶段 2 已完成，阶段 3 随后完成。 |
-| autonomous-plan-execution | 阶段 3 | 模板默认关闭与显式启用、skill/代理元数据/README 运行时说明、T1—T6、当前真实计划兼容、临时 setup、npm 打包、无写入、回滚对照、Python 126 passed/90.67%、npm 41/41、严格治理和独立完成验收通过；计划已完成。 |
+| autonomous-plan-execution | 阶段 3（历史） | 模板默认关闭与显式启用、skill/代理元数据/README 运行时说明、T1—T6、当前真实计划兼容、临时 setup、npm 打包、无写入、回滚对照、Python 126 passed/90.67%、npm 41/41、严格治理和独立完成验收通过；2026-08-28 起计划已废弃。 |

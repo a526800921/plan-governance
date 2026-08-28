@@ -27,10 +27,6 @@ function worksetPlan(status, review = "尚未进行") {
   return `# 计划\n\n## 当前阶段\n\n### 阶段准入摘要\n\n| 字段 | 内容 |\n|---|---|\n| 准入状态 | ${status} |\n| Step 0 | 已有基线 |\n| 样本矩阵 | fixture |\n| 验证方式 | npm test |\n| 失败/回滚边界 | 失败停止 |\n| 当前阻塞项 | 无 |\n| 最新独立准入复核 | ${review} |\n\n## 最新独立准入复核\n\n| 字段 | 内容 |\n|---|---|\n| 日期 | 2026-08-10 |\n| 阶段 | 阶段 1 |\n| 结论 | ${review === "通过" ? "通过" : "尚未进行"} |\n| 证据 | fixture |\n| 复核者 | tester |\n\n## 未决问题\n\n| 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |\n|---|---|---|---|\n| - | - | 否 | 已决定 |\n`;
 }
 
-function stepPlan(statusRows) {
-  return `# 计划\n\nexecution_mode: autonomous-continuous\nexecution_policy: serial\n\n## 当前阶段\n\n### 执行清单\n\n| 步骤 ID | 前置步骤 | 动作 | 证据 | 完成条件 | 状态 | 分支记录 |\n|---|---|---|---|---|---|---|\n${statusRows}\n`;
-}
-
 test("CLI forwards help output from the Python checker", () => {
   const result = run("--help");
   assert.equal(result.status, 0);
@@ -42,6 +38,16 @@ test("CLI forwards a successful strict readiness check", () => {
   const result = run(".", "--strict-readiness");
   assert.equal(result.status, 0);
   assert.match(result.stdout, /计划治理检查通过。/);
+});
+
+test("removed autonomous execution commands point to Codex goals", () => {
+  const next = run("plan", "next", "demo");
+  assert.equal(next.status, 1);
+  assert.match(next.stderr, /goal/);
+
+  const validate = run("plan", "steps", "validate", "demo");
+  assert.equal(validate.status, 1);
+  assert.match(validate.stderr, /goal/);
 });
 
 test("workset derives active plans without writing history", () => {
@@ -72,57 +78,6 @@ test("workset derives active plans without writing history", () => {
   }
 });
 
-test("plan steps validate checks valid and invalid autonomous plans", () => {
-  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-steps-"));
-  try {
-    writeProjectFile(tempRoot, "docs/PLAN_MAP.md", `# PLAN_MAP\n\n## 计划索引\n\n| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |\n|---|---|---|---|---|---|\n| [demo](plans/demo.md) | 设计中 | 阶段 1 | 2026-08-10 | - | - |\n`);
-    writeProjectFile(tempRoot, "docs/plans/demo.md", stepPlan("| `S1` | - | 建立基线 | 测试输出 | 基线存在 | 已完成 | - |\n| `S2` | S1 | 校验方案 | 测试输出 | 校验通过 | 未开始 | - |"));
-
-    const planBefore = readFileSync(resolve(tempRoot, "docs/plans/demo.md"), "utf8");
-    const valid = run("plan", "steps", "validate", "demo", "--json", "--root", tempRoot);
-    assert.equal(valid.status, 0, valid.stderr);
-    const validPayload = JSON.parse(valid.stdout);
-    assert.equal(validPayload.status, "valid");
-    assert.equal(validPayload.steps.length, 2);
-    assert.equal(readFileSync(resolve(tempRoot, "docs/plans/demo.md"), "utf8"), planBefore);
-
-    writeProjectFile(tempRoot, "docs/plans/demo.md", stepPlan("| `S1` | - | 建立基线 | 测试输出 | 基线存在 | 取消 | - |\n| `S1` | - | 重复步骤 | 测试输出 | 条件满足 | 未开始 | - |"));
-    const invalid = run("plan", "steps", "validate", "demo", "--json", "--strict-readiness", "--root", tempRoot);
-    assert.equal(invalid.status, 1);
-    const invalidPayload = JSON.parse(invalid.stdout);
-    assert.equal(invalidPayload.status, "invalid");
-    assert.match(invalidPayload.errors.join("\n"), /重复|状态非法/);
-  } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
-  }
-});
-
-test("plan next returns ready steps and preserves the plan files", () => {
-  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-next-"));
-  try {
-    writeProjectFile(tempRoot, "docs/PLAN_MAP.md", `# PLAN_MAP\n\n## 计划索引\n\n| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |\n|---|---|---|---|---|---|\n| [demo](plans/demo.md) | 实施中 | 阶段 1 | 2026-08-11 | - | - |\n`);
-    writeProjectFile(
-      tempRoot,
-      "docs/plans/demo.md",
-      stepPlan("| S1 | - | 建立基线 | tests/s1.log | 基线存在 | 未开始 | - |\n| S2 | S1 | 执行后续 | tests/s2.log | 后续完成 | 未开始 | - |"),
-    );
-    const before = readFileSync(resolve(tempRoot, "docs/plans/demo.md"), "utf8");
-    const result = run("plan", "next", "demo", "--json", "--root", tempRoot);
-    assert.equal(result.status, 0, result.stderr);
-    const payload = JSON.parse(result.stdout);
-    assert.equal(payload.status, "ready");
-    assert.deepEqual(payload.ready_steps.map((item) => item.id), ["S1"]);
-    assert.equal(payload.blocked_steps[0].reasons[0].kind, "missing_predecessor");
-    assert.equal(readFileSync(resolve(tempRoot, "docs/plans/demo.md"), "utf8"), before);
-
-    const legacy = run("plan", "next", "missing", "--json", "--root", tempRoot);
-    assert.equal(legacy.status, 2);
-    assert.equal(JSON.parse(legacy.stdout).next_action.reason, "plan_not_found");
-  } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
-  }
-});
-
 test("CLI resolves the checker from the package directory", () => {
   const checker = resolve(root, "scripts", "check_plan_governance.py");
   accessSync(checker, constants.R_OK);
@@ -141,15 +96,14 @@ test("package manifest contains the distributable skill resources", () => {
   assert.doesNotMatch(skill, /\/Users\/jafish\//);
   assert.match(skill, /需求探索与 grilling/);
   assert.match(skill, /grill-me/);
-  assert.match(skill, /模板与只读查询协同/);
-  assert.match(skill, /plan-governance-cli plan next/);
-  assert.match(agent, /推进到完成/);
-  assert.match(readme, /^## 自主连续执行（可选）$/m);
-  assert.match(readme, /默认关闭/);
+  assert.match(skill, /goal/);
+  assert.doesNotMatch(skill, /^## 自主连续执行$/m);
+  assert.doesNotMatch(skill, /plan next|execution_mode|execution_policy/);
+  assert.doesNotMatch(agent, /推进到完成/);
+  assert.match(readme, /^## 持续推进$/m);
+  assert.match(readme, /goal/);
   assert.match(planTemplate, /^## 需求探索$/m);
-  assert.match(planTemplate, /^## 自主连续执行（可选）$/m);
-  assert.match(planTemplate, /execution_mode: autonomous-continuous/);
-  assert.match(planTemplate, /默认不启用自主连续执行/);
+  assert.doesNotMatch(planTemplate, /自主连续执行|执行清单|execution_mode|execution_policy/);
   assert.match(planTemplate, /^### 阶段证据$/m);
   assert.match(planTemplate, /^### 最近实施\/验证记录$/m);
   assert.match(planTemplate, /purpose.*snapshot_id.*supersedes.*review_status/);
@@ -334,56 +288,6 @@ test("init uses the package initializer without copying a local checker by defau
     assert.equal(existsSync(join(projectRoot, "docs", "PLAN_MAP.md")), true);
     assert.equal(existsSync(join(projectRoot, "docs", "plans", "demo-plan.md")), true);
     assert.equal(existsSync(join(projectRoot, "scripts", "check_plan_governance.py")), false);
-    const validate = run("plan", "steps", "validate", "demo-plan", "--json", "--root", projectRoot);
-    assert.equal(validate.status, 0, validate.stderr);
-    assert.equal(JSON.parse(validate.stdout).status, "not_enabled");
-    const next = run("plan", "next", "demo-plan", "--json", "--root", projectRoot);
-    assert.equal(next.status, 0, next.stderr);
-    assert.equal(JSON.parse(next.stdout).status, "not_enabled");
-  } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
-  }
-});
-
-test("template autonomous example stays disabled until explicitly enabled", () => {
-  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-template-autonomous-"));
-  const projectRoot = join(tempRoot, "project");
-  try {
-    const initialized = spawnSync(process.execPath, [
-      cli,
-      "init",
-      "--root",
-      projectRoot,
-      "--plan",
-      "demo-plan",
-      "--title",
-      "Demo Plan",
-      "--goal",
-      "验证自主模板兼容性",
-    ], { cwd: root, encoding: "utf8" });
-    assert.equal(initialized.status, 0, initialized.stderr);
-    const planPath = resolve(projectRoot, "docs", "plans", "demo-plan.md");
-    const original = readFileSync(planPath, "utf8");
-    const disabled = run("plan", "steps", "validate", "demo-plan", "--json", "--root", projectRoot);
-    assert.equal(disabled.status, 0, disabled.stderr);
-    assert.equal(JSON.parse(disabled.stdout).status, "not_enabled");
-
-    const match = original.match(/```markdown\n([\s\S]*?)\n```/);
-    assert.ok(match, "模板应包含自主模式代码示例");
-    const enabledBlock = match[1]
-      .replaceAll("<动作>", "建立基线")
-      .replaceAll("<可复现证据定位>", "tests/baseline.log")
-      .replaceAll("<可验证完成条件>", "基线命令通过");
-    writeFileSync(planPath, original.replace(match[0], enabledBlock), "utf8");
-
-    const enabled = run("plan", "steps", "validate", "demo-plan", "--json", "--root", projectRoot);
-    assert.equal(enabled.status, 0, enabled.stderr);
-    assert.equal(JSON.parse(enabled.stdout).status, "valid");
-    const next = run("plan", "next", "demo-plan", "--json", "--root", projectRoot);
-    assert.equal(next.status, 0, next.stderr);
-    const nextPayload = JSON.parse(next.stdout);
-    assert.equal(nextPayload.status, "ready");
-    assert.deepEqual(nextPayload.ready_steps.map((item) => item.id), ["S1"]);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

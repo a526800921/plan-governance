@@ -1,5 +1,17 @@
 # 计划：自主连续执行
 
+> 生命周期：本计划于 2026-08-28 标记为“已废弃”。阶段 0—3 的设计、实现与历史验收记录仍保留供追溯；当前持续推进统一由 Codex `goal` 机制承载。
+
+## 废弃记录
+
+- **日期**：2026-08-28
+- **原因**：Codex 已提供 `goal` 作为跨轮持续工作的原生机制，skill 内重复维护自主连续执行语义、步骤清单和下一步骤查询没有必要。
+- **处理范围**：移除 skill、模板、代理提示、README、CLI、检查器和 hook 中的当前入口及对应测试；不删除本计划、fixture 或独立复核记录。
+- **替代方式**：需要跨轮持续推进时使用 Codex `goal`；`plan-governance` 继续负责计划事实源、阶段准入、证据和治理检查。
+- **兼容边界**：普通计划治理、`workset`、图谱查询、drift/pre-commit、attestation 和阶段准入检查保持不变。
+- **验证**：`python3 -m pytest -q` 通过（120 passed，覆盖率 91.63%）；skill quick validation、`plan-governance-cli check . --strict-readiness` 和定向 Node CLI 测试（15 passed）通过；旧 `plan next` 与 `plan steps validate` 入口均以退出码 1 指向 Codex `goal`。
+- **环境限制**：完整 npm 打包安装 smoke test 及 `npm pack --dry-run` 受本机 root-owned npm cache（`/Users/jafish/.npm`）阻塞，不属于本次功能回归失败。
+
 ## 背景
 
 `plan-governance` 已加入“按计划自主推进至完成，不跳步”的 skill 行为约定：执行者不必为例行步骤逐次请求继续，但必须逐项执行、留证并遵守阶段准入。

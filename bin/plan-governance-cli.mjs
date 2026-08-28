@@ -189,11 +189,11 @@ function main() {
   if (command === "init") return runPython(initializer, args.slice(1));
   if (command === "hook") return runPython(hookRuntime, args.slice(1));
   if (command === "graph") return runNode(graphRuntime, args.slice(1));
-  if (command === "plan" && args[1] === "steps" && args[2] === "validate") {
-    return runPython(checker, ["--validate-steps", ...args.slice(3)]);
-  }
   if (command === "plan" && args[1] === "next") {
-    return runPython(checker, ["--next-plan", args[2], ...args.slice(3)]);
+    return fail("plan next 已移除；在 Codex 中请使用 goal 管理跨轮持续推进。");
+  }
+  if (command === "plan" && args[1] === "steps" && args[2] === "validate") {
+    return fail("自主执行步骤校验已移除；在 Codex 中请使用 goal 管理跨轮持续推进。");
   }
   if (command === "plan") return runNode(graphRuntime, args);
   if (command === "check") return runPython(checker, args.slice(1));

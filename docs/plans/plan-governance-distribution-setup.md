@@ -388,6 +388,17 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 本次仅更新版本元数据和分发记录，不改变已完成计划的治理契约、状态语义或执行边界。
 
+## 2026-08-28 发布维护
+
+本次维护移除 skill 内重复的自主连续执行能力，并准备新的 npm 分发版本：
+
+- `package.json`、`package-lock.json` 和 README 锁定版本示例更新为 `0.3.3`。
+- 资源源文件已同步到当前 Codex skill 安装副本，覆盖前先经过用户明确授权；未修改其他项目或全局 hook 配置。
+- `plan-governance-cli@0.3.3` 已发布到公共 npm registry，并成为 `latest`；`npm view plan-governance-cli version dist-tags --json` 返回版本 `0.3.3` 和 `latest: 0.3.3`。
+- Python 回归、定向 Node CLI 测试、skill 校验、严格治理检查、diff 检查和 `npm pack --dry-run` 通过；完整 npm 打包安装 smoke test 在临时安装阶段长时间无输出后停止，未形成通过证据。
+
+本次仅更新分发资源、版本元数据和维护记录，不改变普通计划治理、workset、图谱查询、drift/pre-commit、attestation 或阶段准入检查。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |

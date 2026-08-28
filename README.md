@@ -188,36 +188,14 @@ plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCor
 
 `plan impact` 是计划治理的前置只读查询：输入文件声明 `graph_scope`、`change_kind`，默认只查询功能层；API 契约、数据、安全、外部边界或明确代码定位才升级到架构层或代码候选。输出查询层级、升级原因、行动分级、测试映射和未查询层级；失败不伪装成“无影响”，也不会触发 `gitnexus analyze`。
 
-## 自主连续执行（可选）
+## 持续推进
 
-适合目标明确、步骤边界清楚、希望执行者连续推进的计划。用户可以直接说“推进到完成计划”，执行者不必每一步请求继续，但必须逐项执行、记录证据、运行验证，并在失败、阶段门、独立复核或其他治理边界处暂停。
-
-自主模式默认关闭。`plan-governance-cli init` 生成的计划仍按普通计划运行；只有在计划当前阶段明确启用以下结构后，才会进入步骤校验和下一步骤查询：
-
-```markdown
-execution_mode: autonomous-continuous
-execution_policy: serial
-
-### 执行清单
-
-| 步骤 ID | 前置步骤 | 动作 | 证据 | 完成条件 | 状态 | 分支记录 |
-|---|---|---|---|---|---|---|
-| `S1` | `-` | 建立基线 | `tests/baseline.log` | 基线命令通过 | `未开始` | `-` |
-```
-
-启用后建议先运行：
-
-```bash
-plan-governance-cli plan steps validate <plan> --json
-plan-governance-cli plan next <plan> --json
-```
-
-`plan next` 只读返回 `ready`、`blocked`、`phase_gate`、`not_enabled` 或 `complete`。它不会执行 shell、修改计划或状态、自动批准独立复核，也不会把 `complete` 当作验收通过；`blocked`、`phase_gate`、`complete` 和 `not_enabled` 都是停止或等待信号。
+在 Codex 中需要跨轮持续推进时使用 `goal`。`plan-governance` skill 和 CLI 只负责计划、证据、阶段准入与检查，不提供自主连续执行模式或步骤级下一步查询。
 
 也可以不全局安装，直接使用锁定版本：
 
 ```bash
-npx --yes --package plan-governance-cli@0.3.1 plan-governance-cli check . --strict-readiness
+npx --yes --package plan-governance-cli@0.3.3 plan-governance-cli check . --strict-readiness
 ```
 
 npm 包内部仍使用版本化的 Python 检查器，但用户不需要直接调用或复制该脚本。旧项目已有本地脚本时仍可保留作为兼容或回滚路径。
