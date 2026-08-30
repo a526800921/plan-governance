@@ -13,8 +13,16 @@
 - 验收治理文档时，必须用 `rg` 搜索同名计划、P 编号、状态名和关键字段，检查是否存在重复定义或漂移。
 - 如果同一事实在多个文档中重复，保留一个事实源，其他文档改为链接引用。
 - 启用治理后，已有草案、历史设计、归档计划和临时分析文档默认只作为背景材料，不再作为规范事实源；后续新规范默认进入 `docs/plans/*.md`、ADR、migration、正式 spec 或 `docs/PLAN_MAP.md`。
+- 计划索引固定分为 `未完成`、`已完成`、`已废弃` 三张表；`已替代`、`已合并`等不再推进的终态归入 `已废弃` 表，但保留真实状态值。
 
 ## 计划索引
+
+### 未完成
+
+| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
+|---|---|---|---|---|---|
+
+### 已完成
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
@@ -27,11 +35,16 @@
 | [agent-runtime-integration](plans/agent-runtime-integration.md) | 已完成 | 阶段 3 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/agent-runtime-integration.md#验证方式) |
 | [phase-entry-gate-hardening](plans/phase-entry-gate-hardening.md) | 已完成 | 阶段 3 | 2026-07-13 | agent-runtime-integration, independent-acceptance-rules | [验证方式](plans/phase-entry-gate-hardening.md#验证方式) |
 | [plan-governance-npm-cli](plans/plan-governance-npm-cli.md) | 已完成 | 阶段 2 | 2026-07-13 | phase-entry-gate-hardening | [阶段 2 完成证据](plans/plan-governance-npm-cli.md#阶段-2-完成证据) |
-| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-08-28 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) / [2026-08-28 发布维护](plans/plan-governance-distribution-setup.md#2026-08-28-发布维护) |
+| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-08-30 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) / [2026-08-28 发布维护](plans/plan-governance-distribution-setup.md#2026-08-28-发布维护) / [2026-08-30 测试维护](plans/plan-governance-distribution-setup.md#2026-08-30-测试维护) / [2026-08-30 发布流程维护](plans/plan-governance-distribution-setup.md#2026-08-30-发布流程维护) / [2026-08-30 0.3.4 发布维护](plans/plan-governance-distribution-setup.md#2026-08-30-034-发布维护) |
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
 | [architecture-graph-governance](plans/architecture-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
 | [plan-governance-operability-optimization](plans/plan-governance-operability-optimization.md) | 已完成 | 阶段 3 | 2026-08-11 | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | [阶段 3 完成验收复核](reviews/plan-governance-stage3-completion-review-20260811.md)；[阶段 3 可操作性收口样本](fixtures/plan-governance-stage3-operability-cases.md)；[阶段 2 完成验收](plans/plan-governance-operability-optimization.md#阶段-2-完成验收)；[阶段 1 独立复核报告](reviews/plan-governance-stage1-independent-review-20260810.md) |
+
+### 已废弃
+
+| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
+|---|---|---|---|---|---|
 | [autonomous-plan-execution](plans/autonomous-plan-execution.md) | 已废弃 | 阶段 3 | 2026-08-28 | - | [废弃记录](plans/autonomous-plan-execution.md#废弃记录)；历史：[阶段 3 完成验收复核报告](reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](plans/autonomous-plan-execution.md#阶段3完成证据)；[阶段 2 完成验收复核报告](reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 1 完成证据](plans/autonomous-plan-execution.md#完成证据) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
@@ -126,6 +139,9 @@
 | plan-governance-distribution-setup | 发布维护 | `plan-governance-cli@0.3.0` 已发布并成为 `latest`；skill/README 已同步图谱 CLI 与 `plan impact`；37/37 npm 测试、严格治理、公共包 ModelPad 图谱校验/影响分析和 Codex setup 二次 dry-run 通过 |
 | plan-governance-distribution-setup | 发布维护 | `plan-governance-cli@0.3.1` 已发布并成为 `latest`；41/41 npm 测试、14 项生产资源打包、全局 registry 安装、npx smoke test 和 Codex setup 二次 dry-run 通过 |
 | plan-governance-distribution-setup | 发布维护（2026-08-28） | `plan-governance-cli@0.3.3` 已发布并成为 `latest`；14 项生产资源打包、npm registry 版本查询、Codex skill setup 二次 dry-run、Python 回归、定向 Node CLI 测试和严格治理检查通过；临时安装 smoke test 未形成通过证据 |
+| plan-governance-distribution-setup | 发布维护（2026-08-30） | 修复临时 npm 安装测试的独立 cache、audit/fund 和超时边界，统一已移除命令断言；Tencent registry 下 `npm test` 39/39 通过，临时包安装及安装后 CLI/init/workset/setup 回归通过 |
+| plan-governance-distribution-setup | 发布流程维护（2026-08-30） | 新增 `npm run release:npm` 统一执行测试、版本升级、官方 npm 发布和 registry 恢复；支持 `--dry-run`，脚本语法及 dry-run 验证通过；尚未执行版本升级或发布 |
+| plan-governance-distribution-setup | 发布维护（2026-08-30） | `plan-governance-cli@0.3.4` 已发布并成为 `latest`；发布脚本运行 `npm test` 39/39 通过，官方 registry 查询返回 `version: 0.3.4`、`latest: 0.3.4`，发布后 registry 已恢复为 Tencent |
 | requirements-grilling-integration | 阶段 1 | 需求探索规则、唯一计划模板、初始化器、受管代理规则和 README 已同步；27 项针对性 Python 测试、87 项全量测试/91.95% 覆盖率、npm 7 项、严格治理、打包清单和反向引用检查通过 |
 | requirements-grilling-integration | 阶段 2 | `plan-governance-cli@0.2.4` 已发布并成为 latest；已安装 tarball 的 `init` 与临时 Codex `setup` 回归通过；dry-run、同步、冲突保护和探索/准入边界均已验证；npm 7 项、Python 87 项/91.95%、严格治理、13 个生产资源、反向引用和格式检查通过 |
 | functional-graph-governance | 阶段 0-3 | `npm test` 15/15 通过；通用 `graph validate/impact`、npm 打包清单、正反例 fixture、ModelPad 图谱校验和三个场景 fixture 全部通过。 |

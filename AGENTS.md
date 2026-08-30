@@ -1,3 +1,12 @@
+## npm 包发布流程
+
+- 项目发布统一使用 `npm run release:npm -- <version-spec>`，不要手动组合 `nrm use npm`、`npm version` 和 `npm publish`。
+- `<version-spec>` 支持 `patch`、`minor`、`major` 或明确的 SemVer 版本号；当前 `0.3.4` 已发布，下一次修复发布使用 `patch` 自动生成下一个补丁版本。
+- 发布脚本依次执行 `npm test`、切换官方 npm registry、执行 `npm version <version-spec> --no-git-tag-version` 和公共包发布，并在成功或失败后恢复执行前的 registry。
+- 实际发布前先运行 `npm run release:npm -- --dry-run patch`；dry-run 不切换源、不修改版本、不发布。
+- 发布完成后核对官方 registry 的版本和 dist-tag，并将发布证据追加到 [plan-governance-distribution-setup](docs/plans/plan-governance-distribution-setup.md)；不得重复发布已经存在的版本。
+- 发布流程的实现位于 [`scripts/release_npm.mjs`](scripts/release_npm.mjs)，分发维护记录是该流程的详细事实源。
+
 <!-- plan-governance:start -->
 ## 计划治理
 

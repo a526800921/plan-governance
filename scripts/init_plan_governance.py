@@ -192,6 +192,10 @@ def update_agent_rules(root):
 
 def plan_map_content(plan_slug, title, status, phase):
     today = date.today().isoformat()
+    row = f"| [{title}](plans/{plan_slug}.md) | {status} | {phase} | {today} | - | - |"
+    unfinished_row = row if status in {"候选", "设计中", "待实施", "实施中"} else ""
+    completed_row = row if status == "已完成" else ""
+    deprecated_row = row if status in {"已废弃", "已替代", "已合并"} else ""
     return f"""# PLAN_MAP
 
 ## 治理范围
@@ -208,12 +212,27 @@ def plan_map_content(plan_slug, title, status, phase):
 - `PLAN_MAP.md` 的 `状态` 是计划级生命周期，`当前阶段` 是阶段身份指针；阶段 N 完成后，阶段 N+1 默认保持 `设计中`。
 - 阶段准入摘要、样本矩阵和独立复核记录只写入专项计划，不复制到本索引。
 - 启用治理后，已有草案、历史设计、归档计划和临时分析文档默认只作为背景材料，不再作为规范事实源；后续新规范默认进入 `docs/plans/*.md`、ADR、migration、正式 spec 或 `docs/PLAN_MAP.md`。
+- 计划索引固定分为 `未完成`、`已完成`、`已废弃` 三张表；`已替代`、`已合并`等不再推进的终态归入 `已废弃` 表，但保留真实状态值。
 
 ## 计划索引
 
+### 未完成
+
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
-| [{title}](plans/{plan_slug}.md) | {status} | {phase} | {today} | - | - |
+{unfinished_row}
+
+### 已完成
+
+| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
+|---|---|---|---|---|---|
+{completed_row}
+
+### 已废弃
+
+| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
+|---|---|---|---|---|---|
+{deprecated_row}
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 

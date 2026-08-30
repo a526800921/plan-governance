@@ -116,20 +116,29 @@ test("package manifest contains the distributable skill resources", () => {
 test("packed package runs from a temporary installation", () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-cli-"));
   const installRoot = join(tempRoot, "install");
+  const npmOptions = {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 60_000,
+    env: {
+      ...process.env,
+      npm_config_cache: join(tempRoot, "npm-cache"),
+      npm_config_audit: "false",
+      npm_config_fund: "false",
+    },
+  };
   try {
-    const packed = spawnSync("npm", ["pack", "--json", "--pack-destination", tempRoot], {
-      cwd: root,
-      encoding: "utf8",
-    });
-    assert.equal(packed.status, 0, packed.stderr);
+    const packed = spawnSync("npm", ["pack", "--json", "--pack-destination", tempRoot], npmOptions);
+    assert.equal(packed.status, 0, packed.error?.message || packed.stderr);
     const tarball = JSON.parse(packed.stdout)[0].filename;
     const tarballPath = resolve(tempRoot, tarball);
 
-    const installed = spawnSync("npm", ["install", "--ignore-scripts", "--prefix", installRoot, tarballPath], {
-      cwd: root,
-      encoding: "utf8",
-    });
-    assert.equal(installed.status, 0, installed.stderr);
+    const installed = spawnSync(
+      "npm",
+      ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", installRoot, tarballPath],
+      npmOptions,
+    );
+    assert.equal(installed.status, 0, installed.error?.message || installed.stderr);
 
     const installedCli = resolve(installRoot, "node_modules", "plan-governance-cli", "bin", "plan-governance-cli.mjs");
     const result = spawnSync(process.execPath, [installedCli, "--help"], {
@@ -188,8 +197,8 @@ test("packed package runs from a temporary installation", () => {
       "--root",
       projectRoot,
     ], { cwd: root, encoding: "utf8" });
-    assert.equal(installedStepValidation.status, 0, installedStepValidation.stderr);
-    assert.equal(JSON.parse(installedStepValidation.stdout).status, "not_enabled");
+    assert.equal(installedStepValidation.status, 1, installedStepValidation.stderr);
+    assert.match(installedStepValidation.stderr, /goal/);
 
     const installedNext = spawnSync(process.execPath, [
       installedCli,
@@ -200,8 +209,8 @@ test("packed package runs from a temporary installation", () => {
       "--root",
       projectRoot,
     ], { cwd: root, encoding: "utf8" });
-    assert.equal(installedNext.status, 0, installedNext.stderr);
-    assert.equal(JSON.parse(installedNext.stdout).status, "not_enabled");
+    assert.equal(installedNext.status, 1, installedNext.stderr);
+    assert.match(installedNext.stderr, /goal/);
 
     const destination = join(tempRoot, "codex", "skills", "plan-governance");
     const dryRun = spawnSync(process.execPath, [

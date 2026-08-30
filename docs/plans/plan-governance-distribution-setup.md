@@ -399,6 +399,32 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 本次仅更新分发资源、版本元数据和维护记录，不改变普通计划治理、workset、图谱查询、drift/pre-commit、attestation 或阶段准入检查。
 
+## 2026-08-30 测试维护
+
+本次修复 0.3.3 临时安装 smoke test 的环境隔离和已移除命令断言：
+
+- `tests/npm_cli.test.mjs` 为 `npm pack` 和临时 `npm install` 使用测试专属 cache，关闭 audit/fund，并设置 60 秒超时，避免依赖用户目录缓存导致 `EPERM` 或无限等待。
+- 已安装包的 `plan steps validate` 和 `plan next` 断言与当前 0.3.3 契约一致：返回非零并提示使用 Codex `goal`，不再期待已移除命令返回 `not_enabled`。
+- 使用 Tencent npm registry 和外部网络运行 `npm test`，39/39 通过；临时包安装和安装后 CLI、init、workset、setup 回归均通过。
+- 本次只修复测试与验证边界，不发布新版本，不恢复自主连续执行命令。
+
+## 2026-08-30 发布流程维护
+
+本次将版本升级、测试、公共 npm 发布和 registry 恢复收敛为项目内的显式发布脚本：
+
+- `package.json` 新增 `npm run release:npm`，默认按 `patch` 升级版本，也支持 `minor`、`major` 或明确的 SemVer 版本号。
+- `scripts/release_npm.mjs` 在发布前运行 `npm test`，使用 `nrm use npm` 切换官方源，执行 `npm version <版本> --no-git-tag-version` 和 `npm publish --access public`。
+- 发布成功或失败后，脚本都会恢复执行前读取到的 registry；`--dry-run` 只输出动作，不切换源、不修改版本、不发布。
+- 本次只新增可复现发布入口，未执行版本升级或 npm 发布；当前 `0.3.3` 仍是工作区版本，下一次修复发布可使用 `npm run release:npm -- patch` 生成 `0.3.4`。
+
+## 2026-08-30 0.3.4 发布维护
+
+本次使用项目发布脚本完成修复版本发布：
+
+- `npm run release:npm -- patch` 运行 `npm test`，39/39 项通过。
+- 脚本将版本从 `0.3.3` 升级为 `0.3.4`，切换官方 npm registry 并发布公共包；官方查询确认 `version` 和 `latest` 均为 `0.3.4`。
+- 发布完成后 registry 已恢复为 `https://mirrors.tencent.com/npm/`；`package.json`、`package-lock.json` 和 README 的锁定版本示例已同步。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |

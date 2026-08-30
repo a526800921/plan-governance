@@ -1,6 +1,6 @@
 {
   "name": "plan-governance-cli",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "统一入口的计划治理检查 CLI",
   "private": false,
   "type": "module",
@@ -23,7 +23,8 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test tests/npm_cli.test.mjs tests/graph_cli.test.mjs tests/architecture_graph_cli.test.mjs tests/plan_impact_step0.test.mjs tests/plan_impact_cli.test.mjs"
+    "test": "node --test tests/npm_cli.test.mjs tests/graph_cli.test.mjs tests/architecture_graph_cli.test.mjs tests/plan_impact_step0.test.mjs tests/plan_impact_cli.test.mjs",
+    "release:npm": "node scripts/release_npm.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.0"
