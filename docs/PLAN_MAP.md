@@ -21,6 +21,7 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
+| [phase-local-review-dispatch](plans/phase-local-review-dispatch.md) | 待实施 | 阶段 0 | 2026-09-05 | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | [阶段准入摘要](plans/phase-local-review-dispatch.md#阶段-准入摘要) |
 
 ### 已完成
 
@@ -65,7 +66,7 @@
 12. `functional-graph-governance` ✅（阶段 0-3：契约、CLI、分发和 ModelPad 试点全部完成）
 13. `architecture-graph-governance` ✅（阶段 0-3：三层契约、ModelPad 架构/代码映射、计划前置影响分析和独立验收全部完成）
 14. `plan-governance-operability-optimization` ✅（阶段 1—3 已完成）
-15. `autonomous-plan-execution`（已废弃；仅保留历史证据，不再推荐）
+15. `phase-local-review-dispatch`
 
 ## 依赖关系
 
@@ -85,6 +86,7 @@
 | functional-graph-governance | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | 复用已确认需求探索、阶段准入和只读 runtime 边界，已完成通用 CLI、Schema、分发和 ModelPad 试点交接 |
 | architecture-graph-governance | functional-graph-governance | 在已完成的功能图谱试点基础上，重新冻结功能层、架构层和代码层边界，并收缩 GitNexus 引用维护范围 |
 | plan-governance-operability-optimization | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | 复用 drift/pre-commit、严格准入、完成快照、只读 hook 与图谱查询边界；基于真实项目评审补齐当前工作集、阶段关系、证据状态和治理文件覆盖的可操作性缺口 |
+| phase-local-review-dispatch | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | 复用阶段准入、独立复核、当前工作集和证据状态边界，补齐阶段内复核派发、恢复和高影响停止策略 |
 
 ## 阶段关系
 
