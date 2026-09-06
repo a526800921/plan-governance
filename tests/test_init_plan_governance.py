@@ -54,6 +54,10 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert "### 用户确认的探索结论" in plan.read_text(encoding="utf-8")
     assert "## 最新独立准入复核" in plan.read_text(encoding="utf-8")
     assert "## 独立复核记录" in plan.read_text(encoding="utf-8")
+    docs = tmp_path / "docs"
+    assert {path.relative_to(docs).as_posix() for path in docs.rglob("*")} == {
+        "PLAN_MAP.md", "plans", "plans/api-migration.md",
+    }
     assert "初始化完成" in capsys.readouterr().out
 
 
@@ -117,6 +121,10 @@ def test_main_can_create_claude_md(tmp_path):
     assert "需求探索与 grilling" in text
     assert "grill-me" in text
     assert "用户确认结构化总结" in text
+    assert "阶段内独立复核调度" in text
+    assert "不为每个微小动作单独复核" in text
+    assert "复核入口不可用" in text
+    assert "高影响" in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
     assert init_plan_governance.CLAUDE_SECTION_END in text
 
@@ -142,6 +150,10 @@ def test_main_can_create_agents_md(tmp_path):
     assert "需求探索与 grilling" in text
     assert "grill-me" in text
     assert "用户确认结构化总结" in text
+    assert "阶段内独立复核调度" in text
+    assert "不为每个微小动作单独复核" in text
+    assert "复核入口不可用" in text
+    assert "高影响" in text
     assert init_plan_governance.AGENTS_SECTION_BEGIN in text
     assert init_plan_governance.AGENTS_SECTION_END in text
 
@@ -158,6 +170,8 @@ def test_main_can_create_all_agent_rules(tmp_path):
     assert "验收独立性" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "需求探索与 grilling" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
     assert "需求探索与 grilling" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "阶段内独立复核调度" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "阶段内独立复核调度" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
 
 
 def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, capsys):
@@ -220,27 +234,53 @@ def test_generated_plan_map_documents_draft_source_switch(tmp_path):
     assert "后续新规范默认进入" in text
 
 
-def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, capsys):
-    plan_map = tmp_path / "docs" / "PLAN_MAP.md"
-    plan = tmp_path / "docs" / "plans" / "demo.md"
-    plan.parent.mkdir(parents=True)
-    plan_map.write_text("existing map", encoding="utf-8")
-    plan.write_text("existing plan", encoding="utf-8")
+@pytest.mark.parametrize("option", ["--upgrade-existing", "--update-agent-rules-only"])
+def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, capsys, option):
+    preserved_files = {
+        "docs/PLAN_MAP.md": b"existing map\r\n  \t",
+        "docs/plans/demo.md": b"existing plan\r\n\r\n",
+        "docs/specs/capability.md": b"# Existing contract\r\n\r\nBehavior.  \t\r\n",
+        "api/openapi.json": b'{"openapi":"3.1.0","info":{"title":"Existing","version":"1"}}\r\n',
+        "docs/adr/0001-original.md": b"# Original decision\r\nKeep this choice.\r\n",
+        "docs/migrations/existing.md": b"# Existing migration\r\nKeep the old window.\r\n",
+        "docs/reviews/historical.md": b"# Historical review\r\nDo not rewrite.  \t\r\n",
+    }
+    for relative, content in preserved_files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    docs = tmp_path / "docs"
+    original_docs = {path.relative_to(docs).as_posix() for path in docs.rglob("*")}
+    begin = b"<!-- plan-governance:start -->"
+    end = b"<!-- plan-governance:end -->"
+    prefix = b"# Project rules\r\nCustom prefix.  \t\r\n"
+    suffix = b"\r\n\r\nCustom suffix.  \t\r\n"
+    for filename in ("AGENTS.md", "CLAUDE.md"):
+        (tmp_path / filename).write_bytes(prefix + begin + b"\r\nold rules\r\n" + end + suffix)
     checker = tmp_path / "scripts" / "check_plan_governance.py"
     checker.parent.mkdir(parents=True)
     checker.write_text("old checker", encoding="utf-8")
 
-    result = init_plan_governance.main(["--root", str(tmp_path), "--upgrade-existing"])
+    result = init_plan_governance.main(["--root", str(tmp_path), option])
 
     assert result == 0
-    assert plan_map.read_text(encoding="utf-8") == "existing map"
-    assert plan.read_text(encoding="utf-8") == "existing plan"
-    assert "old checker" not in checker.read_text(encoding="utf-8")
-    assert (tmp_path / "CLAUDE.md").exists()
-    assert (tmp_path / "AGENTS.md").exists()
+    for relative, content in preserved_files.items():
+        assert (tmp_path / relative).read_bytes() == content, relative
+    assert {path.relative_to(docs).as_posix() for path in docs.rglob("*")} == original_docs
+    generated = init_plan_governance.agent_rules_body().encode("utf-8")
+    for filename in ("AGENTS.md", "CLAUDE.md"):
+        updated = (tmp_path / filename).read_bytes()
+        assert updated.startswith(prefix + begin + b"\n")
+        assert updated.endswith(end + suffix)
+        assert updated.split(begin, 1)[1].split(end, 1)[0] == b"\n" + generated
     output = capsys.readouterr().out
-    assert "已有项目升级完成" in output
-    assert "plan-governance-cli check ." in output
+    if option == "--upgrade-existing":
+        assert "old checker" not in checker.read_text(encoding="utf-8")
+        assert "已有项目升级完成" in output
+        assert "plan-governance-cli check ." in output
+    else:
+        assert checker.read_bytes() == b"old checker"
+        assert "代理规则已更新" in output
     assert "WARNING" not in output
 
 
@@ -391,6 +431,41 @@ def test_update_agents_md_replaces_existing_managed_section(tmp_path):
     assert text.count("## 计划治理") == 1
 
 
+@pytest.mark.parametrize(
+    ("filename", "option"),
+    [
+        ("AGENTS.md", "--update-agents-md-only"),
+        ("CLAUDE.md", "--update-claude-md-only"),
+    ],
+)
+@pytest.mark.parametrize("existing_section", [False, True], ids=["append-trailing", "replace-crlf"])
+def test_update_rules_preserves_unmanaged_bytes_and_is_idempotent(tmp_path, filename, option, existing_section):
+    target = tmp_path / filename
+    begin = b"<!-- plan-governance:start -->"
+    end = b"<!-- plan-governance:end -->"
+    if existing_section:
+        prefix = "# 项目规则\r\n\r\n自定义前文。  \t\r\n".encode("utf-8")
+        suffix = "\r\n\r\n自定义后文。  \t\r\n\r\n".encode("utf-8")
+        original = prefix + begin + b"\r\nold managed rules\r\n" + end + suffix
+    else:
+        prefix = "# 项目规则\n\n保留末尾空白。  \t\n\n  \t".encode("utf-8")
+        suffix = b""
+        original = prefix
+    target.write_bytes(original)
+
+    assert init_plan_governance.main(["--root", str(tmp_path), option]) == 0
+
+    updated = target.read_bytes()
+    assert updated.startswith(prefix)
+    assert updated.endswith(suffix)
+    assert updated.count(begin) == 1
+    assert updated.count(end) == 1
+    assert b"old managed rules" not in updated
+    assert not (tmp_path / "docs").exists()
+    assert init_plan_governance.main(["--root", str(tmp_path), option]) == 0
+    assert target.read_bytes() == updated
+
+
 def test_copy_checker_refuses_existing_target_without_force(tmp_path):
     checker = tmp_path / "scripts" / "check_plan_governance.py"
     checker.parent.mkdir(parents=True)
@@ -400,10 +475,14 @@ def test_copy_checker_refuses_existing_target_without_force(tmp_path):
         init_plan_governance.copy_checker(tmp_path, force=False)
 
 
-def test_copy_checker_allows_source_repo_itself():
-    root = Path(__file__).resolve().parents[1]
-    target = init_plan_governance.copy_checker(root, force=True)
+def test_copy_checker_allows_source_repo_itself(tmp_path, monkeypatch):
+    source = tmp_path / "scripts" / "check_plan_governance.py"
+    source.parent.mkdir()
+    source.write_bytes(b"source checker")
+    source.chmod(0o644)
+    monkeypatch.setattr(init_plan_governance, "__file__", str(source.with_name("init_plan_governance.py")))
+    target = init_plan_governance.copy_checker(tmp_path, force=True)
 
-    assert target == root / "scripts" / "check_plan_governance.py"
-    assert target.exists()
+    assert target == source
+    assert target.read_bytes() == b"source checker"
     assert target.stat().st_mode & 0o111

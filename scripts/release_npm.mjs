@@ -61,10 +61,11 @@ if (!options) {
   process.exitCode ??= 2;
 } else {
   let originalRegistry;
-  let switchedToNpm = false;
+  let restoreRequired = false;
   let exitCode = 0;
 
   try {
+    if (!options.dryRun) run(npmCommand, ["run", "verify"]);
     originalRegistry = capture(npmCommand, ["config", "get", "registry"]);
     if (!originalRegistry || originalRegistry === "undefined") {
       throw new Error("无法读取当前 npm registry");
@@ -72,17 +73,18 @@ if (!options) {
 
     if (options.dryRun) {
       console.log(`[release:npm] 当前 registry: ${originalRegistry}`);
+      console.log("[release:npm] dry-run: npm run verify");
+      console.log("[release:npm] dry-run: npm config get registry（验证后保存原值）");
       console.log(`[release:npm] dry-run: nrm use ${npmRegistry}`);
-      console.log("[release:npm] dry-run: npm test");
       console.log(`[release:npm] dry-run: npm version ${options.versionInput} --no-git-tag-version`);
       console.log(`[release:npm] dry-run: npm publish --access public --registry ${npmRegistryUrl}`);
       console.log(`[release:npm] dry-run: 恢复 registry ${originalRegistry}`);
     } else {
       console.log(`[release:npm] 当前版本: ${currentPackageVersion()}`);
+      // A failed switch may already have changed registry, so restore on any attempt.
+      restoreRequired = true;
       run(nrmCommand, ["use", npmRegistry]);
-      switchedToNpm = true;
 
-      run(npmCommand, ["test"]);
       run(npmCommand, ["version", options.versionInput, "--no-git-tag-version"]);
       run(npmCommand, ["publish", "--access", "public", "--registry", npmRegistryUrl]);
       console.log(`[release:npm] 已发布版本: ${currentPackageVersion()}`);
@@ -91,7 +93,7 @@ if (!options) {
     exitCode = 1;
     console.error(`[release:npm] 发布流程失败：${error.message}`);
   } finally {
-    if (switchedToNpm) {
+    if (restoreRequired) {
       try {
         run(npmCommand, ["config", "set", "registry", originalRegistry]);
         console.log(`[release:npm] 已恢复 registry: ${originalRegistry}`);

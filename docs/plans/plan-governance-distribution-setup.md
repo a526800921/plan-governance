@@ -425,6 +425,20 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 脚本将版本从 `0.3.3` 升级为 `0.3.4`，切换官方 npm registry 并发布公共包；官方查询确认 `version` 和 `latest` 均为 `0.3.4`。
 - 发布完成后 registry 已恢复为 `https://mirrors.tencent.com/npm/`；`package.json`、`package-lock.json` 和 README 的锁定版本示例已同步。
 
+## 2026-09-05 0.3.5 发布维护
+
+本次使用项目发布脚本发布阶段内独立复核调度规则：
+
+- `npm run release:npm -- --dry-run patch` 先确认测试、版本升级、官方 registry 发布和 registry 恢复流程。
+- `npm run release:npm -- patch` 执行 `npm test`，39/39 项通过；版本从 `0.3.4` 升级为 `0.3.5`。
+- `plan-governance-cli@0.3.5` 已发布到 `https://registry.npmjs.org/`，官方 API 于 `2026-09-05T13:36:29.908Z` 确认 `0.3.5` 存在且 `latest` 为 `0.3.5`。
+- 本版本包含阶段门自动派发独立只读复核、通过后继续、不按每个微小动作复核，以及高影响/失败/不可用/超时/证据冲突边界对应的 skill、代理元数据、模板、README、初始化器和测试资源。
+- 发布完成后 registry 已恢复为 `https://mirrors.tencent.com/npm/`；本地 `package.json` 和 `package-lock.json` 已更新为 `0.3.5`。
+
+## 2026-09-06 验证入口维护
+
+本次由 [iterative-governance-reliability 阶段 2](iterative-governance-reliability.md#阶段-2-行为契约)统一 CI 和发布前验证，并补齐部分切源失败后的恢复责任。现行检查集合、顺序、失败/回滚及 dry-run 边界以该专项契约为准；上面的历史发布记录保留当时行为。当前仅实施及验证，完成结论见该计划的独立复核；未升级版本、发布、全局安装或修改实际 registry。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |

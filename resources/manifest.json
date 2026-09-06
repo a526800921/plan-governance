@@ -11,7 +11,8 @@
       "resources/skill/assets/PLAN_MAP.template.md",
       "resources/skill/assets/adr.template.md",
       "resources/skill/assets/migration.template.md",
-      "resources/skill/assets/plan.template.md"
+      "resources/skill/assets/plan.template.md",
+      "resources/skill/assets/spec.template.md"
     ]
   },
   "runtime": [

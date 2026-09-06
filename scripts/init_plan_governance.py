@@ -62,6 +62,7 @@ def agent_rules_body():
 - 当前相关的 `docs/plans/*.md`
 - 相关 `docs/adr/*.md`
 - 相关 `docs/migrations/*.md`
+- 相关现行契约（已有 Schema/OpenAPI，或按需建立的 `docs/specs/*.md`）
 
 需求探索与 grilling：
 
@@ -72,10 +73,18 @@ def agent_rules_body():
 
 事实源规则：
 
-- 专项计划是实施细节事实源，记录字段方案、Schema、枚举、Step 0 证据、验证方式和完成条件。
+- 专项计划记录本次目标、范围、行为差异、阶段、Step 0、验证与完成条件，链接现行契约；无独立契约源时明确由计划哪个位置承载，不要求追溯提取旧内容。
+- 现行契约优先复用已有 Schema/OpenAPI；需要跨迭代维护文字行为且无合适来源时，才按需建立 `docs/specs/<capability>.md`。计划不重复维护已有字段定义；ADR 记录取舍与后果，独立 migration 记录步骤、兼容窗口和回滚，其他位置链接引用。
+- `docs/plans/*.md` 保持平铺；目录与文档按实际内容创建，不预建空 spec/ADR/migration 或强制 PRD/design/tasks 组合。
 - `docs/PLAN_MAP.md` 是状态、当前阶段、最后更新、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接的事实源。
 - 总路线图、优先级计划和索引只记录顺序、状态摘要和专项计划链接，不复制字段级方案、枚举、Step 0 细节或完成定义。
 - 如果同一事实在多个文档中重复，保留一个事实源，其他文档改为链接引用。
+
+任务分流与用户验收：
+
+- 无既有计划覆盖的小修改沿用普通任务豁免；仍满足当前准入且范围、契约、完成条件和授权未变的阶段内反馈复用原计划，记录原验收未满足或原范围改进，不自动新建计划或重开全部阶段门。
+- 公共契约、迁移或实质范围变化先核对事实、澄清取舍并更新相应计划，重新评估准入；分流不覆盖独立复核失败的停止规则，不放行跨阶段或高影响动作。
+- 验收记录场景、输入/前置、操作、可观察结果与验证证据，已有场景直接链接；技术任务可用 CLI 输出、文件差异或调用方行为。不新增逐次用户签收门禁，治理和覆盖率通过不能代替场景结果。
 
 阶段转换规则：
 
@@ -95,6 +104,15 @@ def agent_rules_body():
 - 机器识别的结构化章节标题固定为 `阶段路线图`、`当前阶段`、`阶段准入摘要`、`最新独立准入复核`、`独立复核记录`；不要写成 `阶段 1 准入摘要` 等带编号变体，阶段编号以 `PLAN_MAP.md` 的当前阶段为准。
 
 专项计划应保留追加式独立复核记录，并显式维护最新结论的日期、阶段、结论、证据和复核者。历史记录不得覆盖；`PLAN_MAP.md` 只链接最新有效结论。
+
+阶段内独立复核调度：
+
+- 阶段门复核只在阶段准入、阶段转换或计划明确的高影响边界触发；不为每个微小动作单独复核。
+- 对目标、范围和授权边界已清楚且不涉及高影响外部动作的普通阶段门，执行者应自动启动独立只读 subagent 或等价独立复核者，不等待用户逐项确认。复核任务使用新上下文，不参与当前阶段实施，不修改工作区；输入至少包括计划、阶段、被审查 revision、范围、验证命令、完成条件和安全边界。
+- 复核通过后，记录复核者、命令和证据位置，并继续当前计划/阶段推进；跨轮继续由 `goal` 保持上下文。
+- 复核失败、复核入口不可用、超时或证据冲突时，保留阻塞并报告，不得自我批准或以安全替代动作单独放行。只有满足同等独立性和证据要求的等价复核者可以替代；没有复核者时必须停止并报告。
+- 涉及外部授权、凭证、公开暴露、破坏性或不可逆操作、安全、隐私、合规或产品取舍的事项，必须请求用户确认；独立复核不能代替用户授权。
+- 复核结果至少记录：计划、阶段、被审查 revision、复核范围、实际执行命令、证据位置、结论、阻塞项和复核者标识。
 
 阶段准入严格检查命令为 `--strict-readiness`。默认治理检查保持兼容，准入缺陷先以 `WARNING` 提示，严格模式才提升为 `ERROR`；该检查只判断结构化准入条件，不替代业务验收。
 
@@ -152,17 +170,22 @@ def update_managed_file(root, filename, section, begin, end):
         write_file(target, section, force=False)
         return target
 
-    current = target.read_text(encoding="utf-8")
+    # Keep line endings and trailing whitespace outside the managed block intact.
+    current = target.read_bytes().decode("utf-8")
     pattern = re.compile(
         rf"{re.escape(begin)}.*?{re.escape(end)}",
         re.DOTALL,
     )
     if pattern.search(current):
-        updated = pattern.sub(section.rstrip(), current)
+        updated = pattern.sub(lambda match: section.rstrip(), current)
     else:
-        separator = "\n\n" if current.rstrip() else ""
-        updated = f"{current.rstrip()}{separator}{section}"
-    target.write_text(updated, encoding="utf-8")
+        newline = "\r\n" if "\r\n" in current else "\n"
+        if not current or current.endswith(newline * 2):
+            separator = ""
+        else:
+            separator = newline if current.endswith(("\n", "\r")) else newline * 2
+        updated = f"{current}{separator}{section}"
+    target.write_bytes(updated.encode("utf-8"))
     return target
 
 
@@ -205,7 +228,7 @@ def plan_map_content(plan_slug, title, status, phase):
 ## 文档权责
 
 - `docs/PLAN_MAP.md` 是状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接的事实源。
-- `docs/plans/*.md` 是专项计划的实施细节事实源，记录字段方案、Schema、枚举、Step 0 证据、验证方式和完成条件。
+- `docs/plans/*.md` 记录本次行为差异、阶段、Step 0 和验收；现行契约优先引用已有 Schema/OpenAPI，无合适来源且需长期维护时才按需建立 `docs/specs/*.md`。同一事实不重复维护。
 - 总路线图、优先级计划和索引只记录顺序、状态摘要和专项计划链接，不复制字段级方案、枚举、Step 0 细节或完成定义。
 - 当专项计划变化时，必须同步所有引用该计划的路线图、优先级计划或索引。
 - 如果同一事实在多个文档中重复，保留一个事实源，其他文档改为链接引用。

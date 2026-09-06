@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.util
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+
+# 从随包分发的同目录模块读取，避免误用目标仓库或全局安装的检查器。
+_checker_spec = importlib.util.spec_from_file_location(
+    "plan_governance_checker", Path(__file__).with_name("check_plan_governance.py")
+)
+checker = importlib.util.module_from_spec(_checker_spec)
+_checker_spec.loader.exec_module(checker)
 
 
 ACTIVE_STATUSES = {"候选", "设计中", "待实施", "实施中"}
@@ -17,32 +26,10 @@ def read_text(path):
         return ""
 
 
-def table_rows(text, heading):
-    pattern = re.compile(rf"^##\s+{re.escape(heading)}\s*$", re.MULTILINE)
-    match = pattern.search(text)
-    if not match:
-        return []
-    tail = text[match.end():]
-    next_heading = re.search(r"^##\s+", tail, re.MULTILINE)
-    section = tail[: next_heading.start()] if next_heading else tail
-    rows = []
-    for line in section.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|") or "---" in stripped:
-            continue
-        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-        if cells and cells[0] not in {"计划", "问题"}:
-            rows.append(cells)
-    return rows
+table_rows = checker.table_rows
 
 
-def extract_plan_link(cell):
-    match = re.search(r"\((plans/[^)]+\.md)\)", cell)
-    if match:
-        return match.group(1)
-    if cell.endswith(".md") and cell.startswith("plans/"):
-        return cell
-    return None
+extract_plan_link = checker.extract_plan_link
 
 
 def extract_plan_name(cell, link):
@@ -52,15 +39,7 @@ def extract_plan_name(cell, link):
     return label.strip("` ")
 
 
-def markdown_section(text, heading_names):
-    heading_pattern = "|".join(re.escape(name) for name in heading_names)
-    pattern = re.compile(rf"^#+\s+({heading_pattern})\b.*$", re.MULTILINE)
-    match = pattern.search(text)
-    if not match:
-        return None
-    tail = text[match.end():]
-    next_heading = re.search(r"^#+\s+", tail, re.MULTILINE)
-    return tail[: next_heading.start()] if next_heading else tail
+markdown_section = checker.markdown_section
 
 
 def markdown_list_items(section):
@@ -158,7 +137,7 @@ def matching_plans(root, paths):
 
 
 def print_session_start(root):
-    active, blockers = active_plans(root)
+    active, _ = active_plans(root)
     if not active:
         print("[plan-governance] 未发现活跃计划。")
         return 0
@@ -169,17 +148,25 @@ def print_session_start(root):
             f"- {plan['name']}: {plan['status']}，{plan['phase']}，"
             f"最后更新 {plan['last_updated']}，证据 {plan['evidence']}"
         )
-    open_blockers = [
-        row for row in blockers if len(row) >= 5 and row[3].strip() in {"是", "Yes"}
-    ]
-    if open_blockers:
-        print("[plan-governance] 当前阻塞项：")
-        for row in open_blockers:
-            print(f"- {row[0]}: {row[4]}")
-    else:
-        print("[plan-governance] 当前阻塞项：无。")
-
+    print_gate_hints(root, {plan["name"] for plan in active})
     return 0
+
+
+def print_gate_hints(root, names):
+    payload, _ = checker.workset_payload(root)
+    has_blockers = False
+    for plan in payload["plans"]:
+        if plan["plan"] not in names:
+            continue
+        print(f"  {plan['plan']}: {plan['readiness']}，下一动作 {plan['next_action']['kind']}")
+        for blocker in plan["blockers"]:
+            has_blockers = True
+            print(f"  当前阻塞项：{blocker}")
+    for warning in payload["warnings"]:
+        print(f"  WARNING: {warning}")
+    if not has_blockers:
+        print("[plan-governance] 当前阻塞项：无法确认，请核对诊断。" if payload["warnings"]
+              else "[plan-governance] 当前阻塞项：无。")
 
 
 def print_pre_write(root, paths):
@@ -192,6 +179,7 @@ def print_pre_write(root, paths):
     for plan in matches:
         print(f"- {plan['name']}: {plan['status']}，{plan['phase']}")
         print("  当前阶段门禁：确认 Step 0 证据、验证方式、完成条件和公共契约约束。")
+    print_gate_hints(root, {plan["name"] for plan in matches})
     return 0
 
 

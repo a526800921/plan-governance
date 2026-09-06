@@ -1,6 +1,9 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+from test_check_plan_governance import blocker_map, readiness_plan_text
+
 
 def load_module(name):
     path = Path(__file__).resolve().parents[1] / "scripts" / f"{name}.py"
@@ -224,3 +227,31 @@ def test_stop_runs_governance_check_without_blocking_on_warning(tmp_path, capsys
     assert "fixture warning" in output
     assert "计划治理检查通过" in output
     assert "非阻塞" in output
+
+
+@pytest.mark.parametrize("event", ["session-start", "pre-write"])
+@pytest.mark.parametrize("source", ["summary", "map", "resolved", "failed", "empty"])
+def test_hooks_share_gate_diagnostics_without_blocking_or_writing(tmp_path, capsys, event, source):
+    index = blocker_map(state="已解决" if source != "map" else "待处理")
+    plan = readiness_plan_text()
+    if source == "summary":
+        plan = plan.replace("| 当前阻塞项 | 无 |", "| 当前阻塞项 | 外部授权待确认 |")
+    elif source == "failed":
+        plan = plan.replace("| 结论 | 通过 |", "| 结论 | 未通过：需要补证据 |")
+    elif source == "empty":
+        plan = plan.replace("| Step 0 | [Step 0 证据](#step-0-证据) |", "| Step 0 | |")
+    plan += "\n## 影响模块或文件\n\n- `src/`\n"
+    write(tmp_path / "docs/PLAN_MAP.md", index)
+    write(tmp_path / "docs/plans/demo.md", plan)
+    result, output = run_hook(tmp_path, "--event", event, "--paths", "src/app.py", capsys=capsys)
+    assert result == 0
+    if source == "resolved":
+        assert "ready" in output
+        assert "外部授权待确认" not in output
+    elif source == "empty":
+        assert "unknown" in output
+        assert "Step 0" in output
+        assert "implement" not in output
+    else:
+        assert "resolve_blocker" in output
+        assert "implement" not in output

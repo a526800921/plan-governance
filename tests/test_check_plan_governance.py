@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 def load_module(name):
     path = Path(__file__).resolve().parents[1] / "scripts" / f"{name}.py"
@@ -1539,11 +1541,12 @@ def test_workset_derives_actions_history_and_parallel_state(tmp_path, capsys):
         )
         + "\n## 阶段关系\n\n| 来源计划 | 来源阶段 | 目标计划 | 目标阶段 | 关系类型 | 解除条件 | 证据 |\n|---|---|---|---|---|---|---|\n| ready | 阶段 1 | review | 阶段 1 | soft_context | - | rel.md |\n",
     )
-    write(tmp_path / "docs" / "plans" / "ready.md", workset_plan_text("待实施", "通过"))
+    write(tmp_path / "docs" / "plans" / "ready.md", readiness_plan_text())
     write(tmp_path / "docs" / "plans" / "review.md", workset_plan_text("设计中"))
     write(tmp_path / "docs" / "plans" / "step0.md", workset_plan_text("设计中", missing_summary=True))
     write(tmp_path / "docs" / "plans" / "blocked.md", workset_plan_text("设计中", blocker=True))
-    write(tmp_path / "docs" / "plans" / "running.md", workset_plan_text("实施中", next_action="验证"))
+    write(tmp_path / "docs" / "plans" / "running.md",
+          readiness_plan_text(status="实施中").replace("## 当前阶段", "## 当前阶段\n\n下一动作：验证"))
     write(tmp_path / "docs" / "plans" / "unknown.md", workset_plan_text("实施中"))
     write(tmp_path / "docs" / "plans" / "history.md", workset_plan_text("已完成", "通过"))
 
@@ -1772,3 +1775,199 @@ def test_stage2_relation_queries_are_read_only(tmp_path, capsys):
     capsys.readouterr()
     after = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
     assert before == after
+
+
+def assert_gate_result(root, capsys, plan, *, index=None, check_codes=(0, 1),
+                       workset_codes=(0, 1), readiness="unknown", action="unknown"):
+    write(root / "docs/PLAN_MAP.md", index or plan_map(
+        "| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"))
+    write(root / "docs/plans/demo.md", plan)
+    before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+    for strict, check_code, workset_code in zip([False, True], check_codes, workset_codes):
+        flags = ["--strict-readiness"] if strict else []
+        assert check_plan_governance.main([str(root), *flags]) == check_code
+        capsys.readouterr()
+        payload, code = check_plan_governance.workset_payload(root, strict=strict)
+        assert code == workset_code
+        assert set(payload) == {"schema_version", "source", "plans", "warnings"}
+        assert payload["schema_version"] == 1
+        item = payload["plans"][0]
+        assert set(item) == {"plan", "status", "phase", "readiness", "blockers",
+                             "next_action", "parallel", "recent_evidence"}
+        assert (item["readiness"], item["next_action"]["kind"]) == (readiness, action)
+    assert {p: p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+    return payload
+
+
+@pytest.mark.parametrize("field", ["准入状态", "Step 0", "样本矩阵", "验证方式",
+    "失败/回滚边界", "当前阻塞项", "最新独立准入复核", "日期", "阶段", "结论", "证据", "复核者"])
+def test_gate_rejects_each_empty_required_value(tmp_path, capsys, field):
+    import re
+    plan = re.sub(r"(?m)^\| " + re.escape(field) + r" \|.*\|$",
+                  "| " + field + " | |", readiness_plan_text())
+    payload = assert_gate_result(tmp_path, capsys, plan)
+    assert any(field in warning for warning in payload["warnings"])
+
+
+def blocker_map(scope="demo", impact="是", state="待处理"):
+    return plan_map("| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |") + f"""
+## 当前阻塞项
+
+| 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
+|---|---|---|---|---|
+| 外部授权待确认 | 先确认 | {scope} | {impact} | {state} |
+"""
+
+
+@pytest.mark.parametrize("source", ["summary", "map", "both", "open", "unknown"])
+def test_gate_preserves_blockers_across_sources(tmp_path, capsys, source):
+    plan = readiness_plan_text()
+    index = None
+    if source in {"summary", "both"}:
+        plan = plan.replace("| 当前阻塞项 | 无 |", "| 当前阻塞项 | 外部授权待确认 |")
+    if source in {"map", "both"}:
+        index = blocker_map()
+    if source in {"open", "unknown"}:
+        plan = readiness_plan_text(unresolved_blocker=True)
+        if source == "unknown":
+            plan = plan.replace("| 是 | 未解决 |", "| 是 | Pending |")
+    payload = assert_gate_result(tmp_path, capsys, plan, index=index,
+        check_codes=(1, 1) if source == "open" else (0, 1),
+        readiness="blocked", action="resolve_blocker")
+    assert payload["plans"][0]["blockers"]
+    assert payload["warnings"]
+
+
+@pytest.mark.parametrize("state", ["已决定", "已收敛", "已完成", "已解决", "已关闭", "无", "RESOLVED", "closed", "done"])
+def test_resolved_blockers_do_not_block(tmp_path, capsys, state):
+    plan = readiness_plan_text().replace("| - | - | 否 | 已延后 |",
+        f"| 已处理问题 | 已补齐 | Yes | {state} |")
+    payload = assert_gate_result(tmp_path, capsys, plan, index=blocker_map(state=state),
+        check_codes=(0, 0), workset_codes=(0, 0), readiness="ready", action="implement")
+    assert payload["plans"][0]["blockers"] == []
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda p: p.replace("| 结论 | 通过 |", "| 结论 | 未通过 |\n| 结论 | 通过 |"),
+    lambda p: p.replace("| Step 0 |", "| Step 0 | 空 |\n| Step 0 |"),
+    lambda p: p + "\n## 当前阶段\n",
+    lambda p: p + "\n## 最新独立准入复核\n",
+    lambda p: p.replace("### 最新独立准入复核", "### 阶段准入摘要\n\n### 最新独立准入复核"),
+    lambda p: p.replace("| 阶段 1 | 阶段目标 |", "| 阶段 1 | 重复 | Step 0 | pytest | 待实施 |\n| 阶段 1 | 阶段目标 |"),
+    lambda p: p.replace("| 阶段 | 阶段 1 |", "| 阶段 | 阶段 2 |"),
+    lambda p: p.replace("| 阶段准入复核 | 阶段 1 | 通过 |", "| 阶段准入复核 | 阶段 1 | 未通过 |"),
+])
+def test_ambiguous_readiness_never_implements(tmp_path, capsys, mutation):
+    payload = assert_gate_result(tmp_path, capsys, mutation(readiness_plan_text()))
+    assert payload["warnings"]
+
+
+@pytest.mark.parametrize("status", ["设计中", "待实施", "实施中"])
+@pytest.mark.parametrize("conclusion", ["未通过", "不通过", "失败", "不满足标准", "拒绝"])
+def test_failed_current_review_is_not_an_unreviewed_design(tmp_path, capsys, status, conclusion):
+    plan = readiness_plan_text(status=status).replace("| 结论 | 通过 |", f"| 结论 | {conclusion} |")
+    plan = plan.replace("| 阶段 1 | 通过 |", f"| 阶段 1 | {conclusion} |")
+    payload = assert_gate_result(tmp_path, capsys, plan,
+        index=plan_map(f"| [demo](plans/demo.md) | {status} | 阶段 1 | - | - |"),
+        check_codes=(0, 0) if status == "设计中" else (0, 1),
+        workset_codes=(0, 0) if status == "设计中" else (0, 1),
+        readiness="blocked", action="resolve_blocker")
+    assert conclusion in " ".join(payload["plans"][0]["blockers"])
+
+
+@pytest.mark.parametrize("scope,impact", [("demo", "未知"), ("demo", ""), ("missing", "是"), ("demo, missing", "是")])
+def test_uncertain_blocker_index_cannot_allow_implementation(tmp_path, capsys, scope, impact):
+    payload = assert_gate_result(tmp_path, capsys, readiness_plan_text(),
+        index=blocker_map(scope=scope, impact=impact))
+    assert payload["warnings"]
+
+
+@pytest.mark.parametrize("fence", ["```", "~~~~"])
+def test_code_examples_do_not_become_governance_facts(tmp_path, capsys, fence):
+    fake = f"{fence}markdown\n## 当前阶段\n### 阶段准入摘要\n| Step 0 | |\n## 最新独立准入复核\n| 结论 | 未通过 |\n{fence}\n"
+    plan = fake + readiness_plan_text()
+    plan = plan.replace("| 结论 | 通过 |", "| 结论 | 通过 |\n" + fake)
+    payload = assert_gate_result(tmp_path, capsys, plan, check_codes=(0, 0),
+        workset_codes=(0, 0), readiness="ready", action="implement")
+    assert not payload["warnings"]
+
+
+@pytest.mark.parametrize("title,expected", [("阶段 1 最近验证记录", 1),
+    ("阶段 1 最近实施/验证记录", 1), ("阶段 2 最近验证记录", 0)])
+def test_legacy_recent_record_alias_is_current_phase_only(tmp_path, capsys, title, expected):
+    record = f"### {title}\n\n| 日期 | 结果 |\n|---|---|\n| 2026-09-06 | 真实结果 |\n\n"
+    plan = readiness_plan_text().replace("### 最新独立准入复核", record + "### 最新独立准入复核")
+    payload = assert_gate_result(tmp_path, capsys, plan, check_codes=(0, 0),
+        workset_codes=(0, 0), readiness="ready", action="implement")
+    assert len(payload["plans"][0]["recent_evidence"]) == expected
+    assert bool(payload["warnings"]) == bool(expected)
+
+
+def test_exploration_subheading_does_not_duplicate_top_level_problem_table(tmp_path, capsys):
+    plan = readiness_plan_text().replace("## 阶段路线图",
+        "## 需求探索\n\n### 未决问题\n\n参见下方正式未决表。\n\n## 阶段路线图")
+    assert_gate_result(tmp_path, capsys, plan, check_codes=(0, 0), workset_codes=(0, 0),
+        readiness="ready", action="implement")
+
+
+@pytest.mark.parametrize("separator", [",", "，", "、", "/"])
+def test_map_blocker_explicit_multiple_targets_and_links(tmp_path, capsys, separator):
+    index = blocker_map(scope=f"[demo](plans/demo.md){separator}other")
+    index = index.replace("## 当前阻塞项", "| [other](plans/other.md) | 设计中 | 阶段 1 | 2026-09-06 | - | - |\n\n## 当前阻塞项")
+    write(tmp_path / "docs/plans/other.md", workset_plan_text())
+    payload = assert_gate_result(tmp_path, capsys, readiness_plan_text(), index=index,
+        readiness="blocked", action="resolve_blocker")
+    assert all("外部授权待确认" in item["blockers"] for item in payload["plans"])
+
+
+@pytest.mark.parametrize("duplicate_heading", [False, True])
+def test_duplicate_index_is_strict_error_in_both_commands(tmp_path, capsys, duplicate_heading):
+    row = "| [demo](plans/demo.md) | 待实施 | 阶段 1 | - | - |"
+    index = plan_map(row) + plan_map(row) if duplicate_heading else plan_map(row + "\n" + row.replace("待实施", "设计中"))
+    write(tmp_path / "docs/PLAN_MAP.md", index)
+    write(tmp_path / "docs/plans/demo.md", readiness_plan_text())
+    for strict in [False, True]:
+        assert check_plan_governance.main([str(tmp_path), *(["--strict-readiness"] if strict else [])]) == int(strict)
+        assert "重复计划" in capsys.readouterr().out
+        payload, code = check_plan_governance.workset_payload(tmp_path, strict=strict)
+        assert code == int(strict)
+        assert payload["plans"] == []
+
+
+def test_design_missing_materials_remain_legal(tmp_path, capsys):
+    for label, text, action in [("legacy", plan_text(), "complete_step0"),
+                               ("unreviewed", workset_plan_text(), "independent_review")]:
+        assert_gate_result(tmp_path / label, capsys, text,
+            index=plan_map("| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |"),
+            check_codes=(0, 0), workset_codes=(0, 0), readiness="design", action=action)
+
+
+def test_duplicate_map_blocker_sections_cannot_hide_later_blocker(tmp_path, capsys):
+    index = blocker_map(state="已解决") + "\n## 当前阻塞项\n" + blocker_map().split("## 当前阻塞项", 1)[1]
+    assert_gate_result(tmp_path, capsys, readiness_plan_text(), index=index)
+
+
+def test_blocker_text_with_dashes_is_not_a_table_separator(tmp_path, capsys):
+    plan = readiness_plan_text(unresolved_blocker=True).replace("| 示例问题 |", "| 失败---待修复 |")
+    payload = assert_gate_result(tmp_path, capsys, plan, check_codes=(1, 1),
+        readiness="blocked", action="resolve_blocker")
+    assert "失败---待修复" in payload["plans"][0]["blockers"]
+
+
+def test_legacy_open_state_with_description_keeps_default_hard_error(tmp_path, capsys):
+    plan = readiness_plan_text(unresolved_blocker=True).replace("| 是 | 未解决 |", "| 是 | 待处理：补证据 |")
+    assert_gate_result(tmp_path, capsys, plan, check_codes=(1, 1),
+        readiness="blocked", action="resolve_blocker")
+
+
+@pytest.mark.parametrize("fence", ["```", "~~~~"])
+@pytest.mark.parametrize("real_action", [False, True])
+def test_next_action_ignores_fenced_prose_examples(tmp_path, capsys, fence, real_action):
+    sample = f"下一动作格式示例：\n\n{fence}text\n下一动作：实施\n{fence}\n"
+    if real_action:
+        sample += "\n下一动作：验证\n"
+    plan = readiness_plan_text(status="实施中").replace("## 当前阶段", "## 当前阶段\n\n" + sample)
+    assert_gate_result(tmp_path, capsys, plan,
+        index=plan_map("| [demo](plans/demo.md) | 实施中 | 阶段 1 | - | - |"),
+        check_codes=(0, 0), workset_codes=(0, 0), readiness="in_progress",
+        action="verify" if real_action else "unknown")

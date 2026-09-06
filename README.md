@@ -42,6 +42,8 @@ docs/
 
 ```text
 docs/
+  specs/
+    <capability>.md        # 无合适现行契约来源时按需建立
   adr/
     0001-<decision>.md
   migrations/
@@ -53,13 +55,26 @@ docs/
 | 文档 | 权威内容 |
 |---|---|
 | `docs/PLAN_MAP.md` | 计划索引、状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项、证据链接 |
-| `docs/plans/*.md` | 单个计划的目标、阶段、当前步骤、字段方案、Schema、枚举、Step 0 证据、验证方式、完成条件 |
+| `docs/plans/*.md` | 本次目标、范围、行为差异、阶段、Step 0、验证与完成条件；链接现行契约 |
+| 已有 Schema/OpenAPI 或按需的 `docs/specs/*.md` | 跨迭代的现行契约；优先复用已有来源，文字 spec 补充行为/失败语义，不重复字段定义 |
 | `docs/adr/*.md` | 关键架构决策、备选方案和后果 |
 | `docs/migrations/*.md` | 兼容策略、迁移步骤、回滚方式和旧行为保留窗口 |
 
+`docs/plans/*.md` 保持平铺。目录按真实内容增加：`docs/reviews/` 放独立复核，`docs/fixtures/` 放人工样本/回放说明，`tests/fixtures/` 放可执行输入，`docs/attestations/` 放按需快照。init 只创建最小结构；可选 [spec 模板](resources/skill/assets/spec.template.md) 随 skill 分发，不自动创建目标项目 spec 或空目录。
+
+## 任务分流与验收
+
+| 任务 | 最少必要文档与动作 |
+|---|---|
+| 无既有计划覆盖的小修改 | 不新增治理文档，验证实际变化 |
+| 准入仍有效且范围、契约、完成条件、授权未变的阶段内反馈 | 复用原计划和场景，追加差异/结果，按实际元数据同步地图 |
+| 公共契约、迁移或实质范围变化 | 先核对与澄清，再更新相应计划并重新评估准入；契约来源保持唯一 |
+
+验收写清场景、输入/前置、操作、可观察结果和验证证据，已有场景直接链接。CLI 输出、文件差异和调用方行为同样可作观察；不额外要求每次用户签收。原验收未满足、原范围改进和新需求分别记录在现有实施/验证区；分流不覆盖失败复核或高影响授权边界，测试/治理通过不能代替场景结果。
+
 ## 多文档同步
 
-- 专项计划是实施细节事实源，记录字段方案、Schema、枚举、Step 0 证据、验证方式和完成条件。
+- 按上述文档权责记录本次差异与证据；没有独立契约源时明确由计划哪个位置承载，不要求迁移旧文档。独立 migration 承载步骤/窗口/回滚后，计划改为引用。
 - `docs/PLAN_MAP.md` 是状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接的事实源。
 - 总路线图、优先级计划和索引只记录顺序、状态摘要和专项计划链接，不复制字段级方案、枚举、Step 0 细节或完成定义。
 - 当专项计划的状态、字段方案、完成条件或验证结果变化时，必须同步 `docs/PLAN_MAP.md` 和所有引用该计划的路线图、优先级计划或索引。
@@ -190,7 +205,9 @@ plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCor
 
 ## 持续推进
 
-在 Codex 中需要跨轮持续推进时使用 `goal`。`plan-governance` skill 和 CLI 只负责计划、证据、阶段准入与检查，不提供自主连续执行模式或步骤级下一步查询。
+在 Codex 中需要跨轮持续推进时使用 `goal`。阶段内独立复核只绑定阶段准入、阶段转换或明确的高影响边界，不为每个微小动作单独复核。
+
+对目标、范围和授权边界清楚、且不涉及高影响外部动作的普通阶段门，执行者应自动启动独立只读 subagent 或等价独立复核者；复核通过后记录证据并继续当前阶段，不等待用户逐项确认。复核失败、入口不可用、超时或证据冲突时保留阻塞并报告，不能自行放行；涉及外部授权、凭证、公开暴露、破坏性或不可逆操作、安全、隐私、合规或产品取舍时，仍须请求用户确认。`plan-governance` skill 和 CLI 负责计划、证据、阶段准入与检查，不提供整计划自主执行模式、执行清单或步骤级下一步查询。
 
 也可以不全局安装，直接使用锁定版本：
 
@@ -283,6 +300,18 @@ plan-governance-cli check . --check-attestations
 ```
 
 `--attest <plan-name>` 只接受已登记到 `docs/PLAN_MAP.md` 的计划。`--attest-purpose <purpose>` 可与它一起创建带 `purpose`、`snapshot_id`、`supersedes` 和 `review_status` 的关系快照，支持 `phase_completion`、`release_gate`、`compliance`；不传时保持旧 `docs/attestations/<plan-name>.json` 格式。`--supersedes <path>` 和 `--review-status <status>` 可声明替代目标和初始复核状态。`--check-attestations` 会检查 hash 漂移并派生 `current`、`superseded` 或 `needs_review`；旧 JSON 缺少 `purpose` 时按 `phase_completion` 兼容读取。漂移、缺失或 JSON 损坏默认输出 `WARNING`，严格模式才将新增结构错误提升为 `ERROR`。人工确认文档修正合理后，可以重新创建旧快照或用 `--attest-purpose` 创建带替代关系的新快照。
+
+需要把证据绑定到实际文件时，重复传入 `--attest-file`，并同时指定计划和 purpose：
+
+```bash
+plan-governance-cli check . --attest api-change --attest-purpose release_gate \
+  --attest-file src/api.py --attest-file tests/test_api.py
+plan-governance-cli check . --check-attestations --strict-readiness
+```
+
+这是可选模式：快照绑定显式文件、目标与必要上游计划的实际内容，以及相关地图行。无关计划日期、地图注释或 HEAD 变化不触发复核；相关内容变化、删除或绑定无效会显示 `needs_review`，默认警告，显式严格检查失败。旧快照继续按原有全文 hash 规则检查，不自动回填；CI/发布不会自动开启证据检查。
+
+文件须为仓库内普通文件，拒绝重复、目录、glob、越界或 symlink。它记录工作树字节，HEAD 只作定位；未列出的新文件不会自动被发现，hash 不代表独立验收。完成新的复核后，用带绑定的新快照和 `--supersedes <旧快照相对路径>` 替代；旧格式后继不能解除绑定快照的复核责任。具体投影、兼容和失败边界见[范围绑定契约](docs/plans/iterative-governance-reliability.md#阶段-4-行为契约)。
 
 ## 测试覆盖率
 

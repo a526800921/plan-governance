@@ -7,7 +7,7 @@
 ## 文档权责
 
 - `docs/PLAN_MAP.md` 是状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接的事实源。
-- `docs/plans/*.md` 是专项计划的实施细节事实源，记录字段方案、Schema、枚举、Step 0 证据、验证方式和完成条件。
+- 专项计划记录本次行为差异、阶段、Step 0 与验收；现行契约优先引用已有 Schema/OpenAPI，必要时才按需建立 spec，详见[阶段 3 文档职责](plans/iterative-governance-reliability.md#阶段-3-行为契约)。
 - 总路线图、优先级计划和索引只记录顺序、状态摘要和专项计划链接，不复制字段级方案、枚举、Step 0 细节或完成定义。
 - 当专项计划的状态、字段方案、完成条件或验证结果变化时，必须同步 `docs/PLAN_MAP.md` 和所有引用该计划的路线图、优先级计划或索引。
 - 验收治理文档时，必须用 `rg` 搜索同名计划、P 编号、状态名和关键字段，检查是否存在重复定义或漂移。
@@ -21,12 +21,14 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
-| [phase-local-review-dispatch](plans/phase-local-review-dispatch.md) | 待实施 | 阶段 0 | 2026-09-05 | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | [阶段准入摘要](plans/phase-local-review-dispatch.md#阶段-准入摘要) |
+| [phase-local-review-dispatch](plans/phase-local-review-dispatch.md) | 设计中 | 阶段 2 | 2026-09-05 | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | [阶段准入摘要](plans/phase-local-review-dispatch.md#阶段-准入摘要) |
+| [plan-governance-workflow-streamlining](plans/plan-governance-workflow-streamlining.md) | 设计中 | 阶段 0 | 2026-09-06 | iterative-governance-reliability | [阶段准入摘要](plans/plan-governance-workflow-streamlining.md#阶段准入摘要)；[来源报告](reviews/plan-governance-skill-usage-audit-20260906.md) |
 
 ### 已完成
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
+| [iterative-governance-reliability](plans/iterative-governance-reliability.md) | 已完成 | 阶段 4 | 2026-09-06 | phase-entry-gate-hardening, plan-governance-operability-optimization, plan-governance-distribution-setup, phase-local-review-dispatch | [阶段准入摘要](plans/iterative-governance-reliability.md#阶段准入摘要)；[阶段 4 及全计划完成验收](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过) |
 | [codex-skill-rollout](plans/codex-skill-rollout.md) | 已完成 | 阶段 2 | 2026-07-05 | - | [验证方式](plans/codex-skill-rollout.md#验证方式) |
 | [multi-doc-sync-rules](plans/multi-doc-sync-rules.md) | 已完成 | 阶段 1 | 2026-07-05 | codex-skill-rollout | [验证方式](plans/multi-doc-sync-rules.md#验证方式) |
 | [draft-history-source-switch](plans/draft-history-source-switch.md) | 已完成 | 阶段 1 | 2026-07-05 | multi-doc-sync-rules | [验证方式](plans/draft-history-source-switch.md#验证方式) |
@@ -52,21 +54,10 @@
 
 ## 推荐顺序
 
-1. `codex-skill-rollout`
-2. `multi-doc-sync-rules`
-3. `draft-history-source-switch`
-4. `independent-acceptance-rules`
-5. `plan-drift-check-enhancements`
-6. `stale-plan-detection`
-7. `agent-runtime-integration`
-8. `phase-entry-gate-hardening`
-9. `plan-governance-npm-cli`
-10. `plan-governance-distribution-setup`
-11. `requirements-grilling-integration`
-12. `functional-graph-governance` ✅（阶段 0-3：契约、CLI、分发和 ModelPad 试点全部完成）
-13. `architecture-graph-governance` ✅（阶段 0-3：三层契约、ModelPad 架构/代码映射、计划前置影响分析和独立验收全部完成）
-14. `plan-governance-operability-optimization` ✅（阶段 1—3 已完成）
-15. `phase-local-review-dispatch`
+1. `plan-governance-workflow-streamlining`：当前主线，先做阶段 0 最终基线、差距去重和兼容设计；前置技术交付及独立验收已完成，用户接受记录与本计划自身准入仍须补齐。内部顺序见[执行顺序](plans/plan-governance-workflow-streamlining.md#执行顺序)。
+2. `phase-local-review-dispatch` 阶段 2：独立支线，按原计划补齐宿主回放；不作为上述主线的先决条件。涉及共享实现时按下方共享写入边界串行交接。
+
+`iterative-governance-reliability` 及其余已完成计划作为交付基线引用，不重新排队实施；历史阶段和验证入口见已完成索引。
 
 ## 依赖关系
 
@@ -87,6 +78,8 @@
 | architecture-graph-governance | functional-graph-governance | 在已完成的功能图谱试点基础上，重新冻结功能层、架构层和代码层边界，并收缩 GitNexus 引用维护范围 |
 | plan-governance-operability-optimization | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | 复用 drift/pre-commit、严格准入、完成快照、只读 hook 与图谱查询边界；基于真实项目评审补齐当前工作集、阶段关系、证据状态和治理文件覆盖的可操作性缺口 |
 | phase-local-review-dispatch | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | 复用阶段准入、独立复核、当前工作集和证据状态边界，补齐阶段内复核派发、恢复和高影响停止策略 |
+| iterative-governance-reliability | phase-entry-gate-hardening, plan-governance-operability-optimization, plan-governance-distribution-setup, phase-local-review-dispatch | 复用现有准入、工作集和分发契约；与宿主调度计划保持范围和共享写入协调，不承接其阶段 2 回放或解除其阻塞 |
+| plan-governance-workflow-streamlining | iterative-governance-reliability | 前置技术交付已完成；补齐用户接受与最终交接基线后，只实施[成果对照](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界)中的剩余差距 |
 
 ## 阶段关系
 
@@ -94,12 +87,17 @@
 
 | 来源计划 | 来源阶段 | 目标计划 | 目标阶段 | 关系类型 | 解除条件 | 证据 |
 |---|---|---|---|---|---|---|
+| phase-local-review-dispatch | 阶段 2 | iterative-governance-reliability | 阶段 0 | soft_context | 仅作真实失败样本和分工对照，不作为立项或只读设计的硬门禁 | [计划分工](plans/iterative-governance-reliability.md#与既有计划的边界) |
+| iterative-governance-reliability | 阶段 4 | plan-governance-workflow-streamlining | 阶段 0 | hard_gate | 上游全计划完成、独立完成证据和用户接受记录可定位，重新核对最终工作树及差距；本轮立项和只读预对照可先行，新阶段仍须自身准入 | [前置边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界)；[未决问题](plans/plan-governance-workflow-streamlining.md#未决问题) |
+| phase-local-review-dispatch | 阶段 1 | plan-governance-workflow-streamlining | 阶段 0 | soft_context | 仅复用既有复核契约并协调共享规则，不等待宿主阶段 2 回放完成，也不解除其阻塞 | [相关计划边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界) |
 
 ## 并行与共享写入约束
 
 | 范围 | 允许并行 | 串行边界 | 依据 |
 |---|---|---|---|
 | `shared_write_risk` 关系 | 可提示冲突和写入所有权 | 不自动转换为硬门禁依赖；实际写入按单一写入者或串行队列执行 | 共享风险是并行约束，不是业务先后关系 |
+| phase-local-review-dispatch / iterative-governance-reliability | 宿主回放仍由原计划负责 | 优化阶段 0—4 已独立验收完成；当前交付保留为后续对照基线，后续计划按自身授权与准入再单一写入；宿主回放规则及旧计划不改 | [范围与安全边界](plans/iterative-governance-reliability.md#与既有计划的边界) |
+| plan-governance-workflow-streamlining / 既有活跃计划 | 当前仅文档整理与只读设计；前置交付已完成 | 前置用户接受、实际工作树交接和自身准入齐全后再单一写入；宿主回放及旧完成记录不改 | [共享写入边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界) |
 
 ## 替代、合并和废弃
 
@@ -111,6 +109,13 @@
 
 | 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|---|
+| D02 快照目录不可读导致错误放行 | [第二轮独立确认修复](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | iterative-governance-reliability | 否 | 已解决 |
+| D03 混合快照仍读取外部 symlink | [第二轮独立确认修复](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | iterative-governance-reliability | 否 | 已解决 |
+| D04 混合旧快照普通文件不可读时异常退出 | [独立确认修复](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#d04-独立修复确认) | iterative-governance-reliability | 否 | 已解决 |
+| 后续减负计划 B01 前置用户接受与交接基线待补齐 | 前置已完成独立技术验收；补齐用户接受记录并核对最终工作树，不阻塞只读设计，见[未决问题](plans/plan-governance-workflow-streamlining.md#未决问题) | plan-governance-workflow-streamlining | 是 | 未解决 |
+| 后续减负计划 B02 通用规则兼容与执行样本待收敛 | [简单改动自验](plans/plan-governance-workflow-streamlining.md#按风险选择自验或独立复核)已用于本项目；按[三项设计交付](plans/plan-governance-workflow-streamlining.md#阶段-0-设计交付)收敛通用阶段门、用户接受及规则分发兼容，固定样本和准入材料 | plan-governance-workflow-streamlining | 是 | 未解决 |
+| 优化计划阶段 1 真实文件系统基线和扩展反例 | [C01](plans/iterative-governance-reliability.md#未决问题) 已收敛；22 类实盘回放完成，本阶段独立准入通过 | iterative-governance-reliability | 否 | 已收敛 |
+| 下一动作示例误读修复 | [D01](plans/iterative-governance-reliability.md#未决问题)：独立完成重审通过，阶段 1 关闭，失败历史保留 | iterative-governance-reliability | 否 | 已解决 |
 | 自主连续执行能力已废弃；当前没有需要继续推进的该计划阶段 | 使用 Codex `goal` 管理跨轮持续工作；保留历史设计与验收记录供追溯 | autonomous-plan-execution | 否 | 已解决 |
 
 ## 完成证据
@@ -154,3 +159,7 @@
 | autonomous-plan-execution | 阶段 1 | `plan steps validate` 合法/未启用/结构错误、不适用分支、空表、默认/严格退出码、旧计划兼容、阶段状态与计划状态分离和无写入行为通过；npm 39/39、Python 97 passed、覆盖率 91.39%、打包安装 smoke test、严格治理、反向引用和第三轮独立复核通过；曾将当前 `0.3.0` tarball 安装并同步到本机，随后按用户要求恢复同步前状态。 |
 | autonomous-plan-execution | 阶段 2 | 阶段 2 Step 0、N1—N8、`next` 冻结契约、执行约束、缺证据分支、退出码、hook/安装包/无写入边界、全量回归和独立完成验收通过；阶段 2 已完成，阶段 3 随后完成。 |
 | autonomous-plan-execution | 阶段 3（历史） | 模板默认关闭与显式启用、skill/代理元数据/README 运行时说明、T1—T6、当前真实计划兼容、临时 setup、npm 打包、无写入、回滚对照、Python 126 passed/90.67%、npm 41/41、严格治理和独立完成验收通过；2026-08-28 起计划已废弃。 |
+| iterative-governance-reliability | 阶段 1 | [独立完成重审通过](reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过)：203 项 Python/93.22%、41 项 Node、22 类实盘基线及 D01 四类回归；阶段 2 仍设计中 |
+| iterative-governance-reliability | 阶段 2 | [独立完成验收通过](reviews/iterative-governance-reliability-stage2-completion-review-20260906.md)：统一 verify，Python 203/93.22%、Node 98/98（含 57 新回归）；阶段 3 设计中 |
+| iterative-governance-reliability | 阶段 3 | [独立完成验收通过](reviews/iterative-governance-reliability-stage3-completion-review-20260906.md)：Python 208/93.15%、Node 98/98；规则/模板分发、非受管字节保护和五场景走读验证；阶段 4 设计中 |
+| iterative-governance-reliability | 阶段 4 及全计划 | [独立完成验收通过](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)：Python 348/92.97%、Node 99/99；140 项绑定回归及真实临时迭代；D02—D04 已解决，其他计划阻塞保留 |

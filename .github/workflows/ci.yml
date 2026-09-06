@@ -12,9 +12,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install test dependencies
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Python test dependencies
         run: python -m pip install -r requirements-dev.txt
-      - name: Run tests with coverage gate
-        run: python -m pytest
-      - name: Run plan governance check
-        run: python scripts/check_plan_governance.py .
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Run shared verification
+        run: npm run verify
