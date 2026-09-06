@@ -10,6 +10,10 @@
 
 `plan-governance-cli workset . --json` 派生当前计划、阶段、阻塞、下一动作、并行提示和最近证据；加 `--strict-readiness` 对活跃计划的机械缺陷返回非零。它不写计划、不自动执行动作、不替代授权或业务验收，也不自动核对快照和环境漂移。恢复先读工作集与相关当前记录，必要时再展开原计划。
 
+1.0.1 起，恢复阅读可显式用 `workset . --json --evidence-limit 3`，按原追加顺序显示每个计划末尾三条记录。N 必须为正整数且仅适用于 workset JSON；默认仍返回完整记录。限量模式的 `recent_evidence_window` 提供 `total`、`omitted` 和原文 `source`（实际 `path`/`section`；无法确认时为 null），不改变完整数据派生的阻塞、动作、诊断或退出码。没有记录章节时 section 为 null。
+
+限量窗口不等于完整验收证据；有阻塞、缺关键上下文或需要复核结论时，按 source 回查，或去掉 `--evidence-limit` 读取完整记录。`--include-history` 仍只控制是否纳入历史计划。普通文本不显示记录表，不需要此参数；旧 CLI（包括 1.0.0）不支持限量时，继续用完整输出，按已获授权更新版本。
+
 ## 分发与资源
 
 SKILL、三个 references、agents 元数据与 assets 由同一 npm 包的 manifest 分发。`plan-governance-cli setup --target codex|claude|all --dry-run` 查看同步差异；实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理用户目录残留。项目升级不迁移旧计划，受管块外内容必须保持。

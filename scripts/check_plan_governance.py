@@ -2208,9 +2208,50 @@ def print_workset_text(payload, strict=False):
         print(f"{level}: {warning}")
 
 
-def run_workset(root, as_json=False, include_history=False, strict=False):
+def limit_workset_evidence(root, payload, limit):
+    """裁剪 JSON 阅读窗口；完整 payload 和门禁结果保持不变。"""
+    result = {**payload, "plans": []}
+    if not payload["plans"]:
+        return result
+    source_errors = []
+    _, _, records = load_plan_records(root, source_errors)
+    if source_errors:
+        records = {}
+    for item in payload["plans"]:
+        rows = item["recent_evidence"]
+        source = None
+        record = records.get(item["plan"])
+        if record and record["phase"] == item["phase"]:
+            errors = []
+            text = read_utf8(record["path"], errors)
+            # 来源只辅助回查；再次读取失败或内容变化不能伪造定位。
+            if not errors and recent_evidence(text, item["phase"]) == rows:
+                current = top_level_section(text, "当前阶段") or ""
+                titles = ["最近实施/验证记录"]
+                if item["phase"]:
+                    titles.extend([f"{item['phase']} 最近验证记录", f"{item['phase']} 最近实施/验证记录"])
+                section = next((title for title in titles if fixed_section(current, title) is not None), None)
+                try:
+                    path = record["path"].relative_to(root).as_posix()
+                except ValueError:
+                    path = record["path"].as_posix()
+                source = {"path": path, "section": section}
+        shown = rows[-limit:]
+        result["plans"].append({
+            **item,
+            "recent_evidence": shown,
+            "recent_evidence_window": {
+                "total": len(rows), "omitted": len(rows) - len(shown), "source": source,
+            },
+        })
+    return result
+
+
+def run_workset(root, as_json=False, include_history=False, strict=False, evidence_limit=None):
     payload, status = workset_payload(root, include_history=include_history, strict=strict)
     if as_json:
+        if evidence_limit is not None:
+            payload = limit_workset_evidence(root, payload, evidence_limit)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print_workset_text(payload, strict=strict)
@@ -2223,6 +2264,8 @@ def parse_args(argv):
     parser.add_argument("--workset", action="store_true", help="输出只读当前工作集。")
     parser.add_argument("--json", action="store_true", help="以 JSON 输出工作集。")
     parser.add_argument("--include-history", action="store_true", help="工作集包含历史计划。")
+    parser.add_argument("--evidence-limit", type=int, metavar="N",
+                        help="仅工作集 JSON：每个计划显示末尾 N 条记录（正整数），省略时返回全部。")
     parser.add_argument("--root", dest="mode_root", help="工作集的仓库根目录。")
     parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
     parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
@@ -2255,7 +2298,13 @@ def parse_args(argv):
         default=None,
         help="检查活跃计划是否超过 N 天未更新；省略 N 时默认 10 天。",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.evidence_limit is not None:
+        if args.evidence_limit <= 0:
+            parser.error("--evidence-limit 必须为正整数")
+        if not args.workset or not args.json:
+            parser.error("--evidence-limit 只能与 --workset 和 --json 一起使用")
+    return args
 
 
 def main(argv=None):
@@ -2269,6 +2318,7 @@ def main(argv=None):
             as_json=args.json,
             include_history=args.include_history,
             strict=args.strict_readiness,
+            evidence_limit=args.evidence_limit,
         )
     root = Path(args.root)
     docs = root / "docs"

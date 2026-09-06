@@ -209,6 +209,14 @@ plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCor
 
 [验证规范](resources/skill/references/verification.md)统一维护风险分流、证据复用、失败重审与用户验收；其他会话从同一 skill 读取。需要独立复核且授权明确时自动安排只读 subagent，不为普通小改逐次派发；技术完成待用户验收的适用功能计划仍保持实施中。
 
+1.0.1 起支持可选的最近记录窗口：
+
+```bash
+plan-governance-cli workset . --json --evidence-limit 3
+```
+
+每个计划保留末尾三条记录，并给出省略数量和原文位置；默认完整输出和门禁判断保持。窗口用于恢复阅读，必要时去掉参数回查完整记录，详见 [CLI 参考](resources/skill/references/cli.md#当前工作集)。已发布的 1.0.0 尚不支持此参数。
+
 ## 按需读取规则
 
 ```bash
@@ -225,7 +233,7 @@ SKILL 保留任务分流和执行底线，三份 references 按需读取并随 m
 也可以不全局安装，直接使用锁定版本：
 
 ```bash
-npx --yes --package plan-governance-cli@1.0.0 plan-governance-cli check . --strict-readiness
+npx --yes --package plan-governance-cli@1.0.1 plan-governance-cli check . --strict-readiness
 ```
 
 npm 包内部仍使用版本化的 Python 检查器，但用户不需要直接调用或复制该脚本。旧项目已有本地脚本时仍可保留作为兼容或回滚路径。

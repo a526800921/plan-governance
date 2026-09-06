@@ -5,7 +5,7 @@
 - **要解决的问题**：减少低风险任务的复核、重复读取与重复验证，保留高影响检查，并把 AI 技术验证、用户体验及性能验收连成闭环。
 - **当前授权**：用户于 2026-09-06 明确要求推进本计划，并将复核分流落实到共享 skill，供后续会话遵循。先完成阶段 0 设计及阶段 1 自身准入，再实施；不重复请求已明确的实施授权。
 - **本计划采用的方向**：简单改动当前 AI 自验；高影响保留独立复核；一个 skill 配三份按需参考；项目依赖已安装 skill 或 CLI；用户接受后关闭功能计划。
-- **下一步入口**：阶段 1 技术完成已[独立验收通过](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过)，当前等待用户验收；另获授权的 `1.0.0` 发布和本地 CLI/skill 更新已完成，结果见[发布维护](plan-governance-distribution-setup.md#2026-09-06-100-发布维护)。详细目标见 F/R/E 编号；历史过程按需读取，不要求接手者重读全部聊天和旧计划。
+- **下一步入口**：阶段 1 原技术成果已[独立验收通过](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过)，`1.0.0` 发布和本地 CLI/skill 更新已完成，见[发布维护](plan-governance-distribution-setup.md#2026-09-06-100-发布维护)。后续[workset 最近证据限量输出](#workset-最近证据限量输出)已实现、自验并[发布为 1.0.1](plan-governance-distribution-setup.md#2026-09-06-101-发布维护)，本机安装仍为 1.0.0；整体继续等待实际使用验收，小改不另设逐次签收。详细目标见 F/R/E 编号；历史过程按需读取。
 - **这批计划的关系**：前置已提交技术成果与本次推进授权 → 本计划设计收敛 → 实施及用户验收。宿主回放计划继续作为独立支线，不要求先完成其阶段 2。
 
 ## 执行顺序
@@ -184,6 +184,7 @@ grilling 继续复用已有技能；治理入口只负责何时调用、已确�
 - `scripts/init_plan_governance.py`
 - `scripts/check_plan_governance.py`
 - `tests/test_risk_review.py`
+- `tests/test_workset_evidence_limit.py`
 - `tests/test_check_plan_governance.py`
 - `tests/test_plan_governance_hooks.py`
 - `tests/test_init_plan_governance.py`
@@ -308,7 +309,7 @@ D3 冻结规则读取与分发：
 
 ### 测试覆盖率
 
-阶段 1 修复后最终完整 verify：585 个 Python 测试通过，覆盖率 93.55%（门槛 85%）；101 个 Node 测试通过、0 skipped。详情与受测身份见[最终集成验证](../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证)。首轮结果保留在历史记录中。
+1.0.0 发布前阶段 1 修复后完整 verify：585 个 Python 测试通过，覆盖率 93.55%（门槛 85%）；101 个 Node 测试通过、0 skipped。详情与受测身份见[最终集成验证](../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证)。后续限量输出的当前验证见[增量结果](#workset-最近证据限量输出)；历史结果保留。
 
 ### 完成条件
 
@@ -344,6 +345,8 @@ D3 冻结规则读取与分发：
 | 2026-09-06 | 修复后最终集成验证 | B03/B04 已按独立结论解除；完整 verify 退出 0，Python 585 passed/93.55%，Node 101/101、0 skipped；源码保持最终独立受审身份 | [最终集成验证](../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证) | 技术完成，等待用户验收；未提交、发布或全局同步 | Codex |
 | 2026-09-06 | 1.0.0 发布与本地更新授权 | 用户要求先更新版本 1.0.0、发布 npm 并更新本地依赖；已确认版本不存在并完成发布预演 | [发布维护](plan-governance-distribution-setup.md#2026-09-06-100-发布维护) | 发布获授权；本计划仍等待实际使用验收，不补写用户接受 | Codex |
 | 2026-09-06 | 1.0.0 发布与本地更新完成 | 官方版本/latest 和包校验值确认；全局 CLI 及 Codex/Claude skill 同步完成，安装包与资源逐字节核对及安装后验证通过 | [发布结果](plan-governance-distribution-setup.md#2026-09-06-100-发布维护) | 发布与安装完成；实际减负体验仍待用户验收，未提交 Git | Codex |
+| 2026-09-06 | 最近证据限量输出自验 | 显式 JSON 窗口及原文定位已实现；默认输出与门禁兼容，完整 verify 通过 | [实现与验证结果](#workset-最近证据限量输出) | 增量技术完成，未发布；整体实际使用验收保留 | Codex |
+| 2026-09-06 | 1.0.1 发布 | 用户授权后通过统一脚本发布；官方版本/latest 与包完整性已确认 | [发布维护](plan-governance-distribution-setup.md#2026-09-06-101-发布维护) | 1.0.1 已发布，本机安装保持 1.0.0；整体实际使用验收保留 | Codex |
 
 以上记录按当次工作树和工具版本解释，失败历史保留。前置 D02—D04 现已由原计划独立确认修复，本计划不归功或重审。已有共享目标和背景引用告警须说明归属，不为消除提示添加虚假硬依赖。已安装 CLI 检查不等于仓库新实现验收；文档检查不等于行为通过或阶段准入。
 
@@ -379,6 +382,40 @@ D3 冻结规则读取与分发：
 | 2026-09-06 | 阶段完成复核 | 阶段 1 | 通过 | [第三轮报告](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) | /root/streamlining_design_gate |
 
 ## 未决问题
+
+### workset 最近证据限量输出
+
+2026-09-06 用户反馈 `workset` 最近证据返回整张记录表，随后明确授权“你看着改吧”。本项作为阶段 1 内 E01/E02/E05 的有界后续改进实施，不新增阶段。风险判断为低风险：只读、显式选择、可撤销的呈现变化，默认契约与门禁保持，由当前实施者定向自验；已有独立失败均已解除，1.0.0 原独立技术结论仅覆盖原内容，不冒充本次增量验收。本次不发布、同步安装副本或提交 Git。
+
+实测基线 `4734621`：`current_recent_evidence()` 返回当前阶段记录章节的全部数据行，`workset_payload()` 在完整 gate 派生后附加这些行；`run_workset()` 的 JSON 输出保留整表。普通文本和 hook 均不展示该表，因此此项首先优化 JSON 响应体积。当前计划返回 18 行，日期全部为 2026-09-06；按 `json.dumps(rows, ensure_ascii=False, separators=(',', ':')).encode('utf-8')` 计算为 6,402 字节，取 `rows[-3:]` 为 1,099 字节。该字段体积可减少约 82.8%，不是实测 token 或运行耗时收益；完整 workset stdout 为 11,385 字节，不能把字段缩减比例当作整体上下文缩减比例。
+
+本次实施边界：
+
+- 新增显式 `workset . --json --evidence-limit N`，N 为正整数；先按“每个返回计划的末尾 N 条”提供确定性窗口，不按同日日期排序，也不根据自由文本猜测哪些记录重要。窗口内保持原追加顺序，少于 N 条时全部保留。
+- 默认不带参数时，现有 JSON schema、字段、行内容/顺序及退出码保持。只在序列化前裁剪显示，`current_recent_evidence()`、`workset_payload()`、gate、独立失败历史、blockers、next_action、warnings 和 hook 仍使用完整数据；裁剪不能清除有效阻塞或改变准入判断。
+- 显式限量输出附带总条数、省略条数与实际原文位置，供调用者识别“不完整视图”。来源取地图登记的实际计划路径和实际匹配章节，不猜固定文件名；该显示元数据仅用于新模式，不混入 warnings，也不把记录表当成独立验收结论。
+- 新模式在每个计划上增加 `recent_evidence_window`：`total` 为原记录条数，`omitted` 为省略条数，`source` 为包含 `path` 和 `section` 的对象。path 使用地图登记的实际计划路径（优先相对项目根目录），section 使用实际匹配标题；没有章节时为 null，重新读取失败或记录内容已变化、来源不能确认时 source 为 null。默认及底层 payload 不加此字段。非法 N 或参数组合由 argparse 报错并退出 2。
+- 完整历史按需用原 `workset . --json` 或回到所指原文读取；`--include-history` 继续表示包含已完成/废弃等历史计划，与证据条数窗口分别处理，不能复用为“读取更多记录”。文本模式原本不展示证据，新参数用于非 workset/非 JSON 组合时应明确报错，避免无效参数静默成功。
+- 文档与 skill 在实际实现时说明：末尾 N 条是恢复阅读入口，不保证包含所有验证所需证据；缺失关键上下文、存在阻塞或需要确认验收结论时，按来源继续读取。此改动缩减输出，不省略原始解析和门禁检查。
+
+实现前/后的适用验证：默认 JSON 逐项兼容；18→3、空表、N 大于行数、同日/日期乱序；限量隐藏旧行时有效独立失败仍阻塞，默认/严格退出码与完整模式相同；非法 N/参数组合；与 `--include-history`、历史兼容标题和自定义计划路径组合；真实 Node→Python 调用、查询前后文件字节保持。验证应比较相同输入下的响应字节，分别报告字段及整体大小，不以规则文字推测 token 或时长。
+
+实施前基线：已安装 1.0.0 与仓库实现对应，实际命令为 `node bin/plan-governance-cli.mjs workset . --json`，解析 `plans` 中本计划的 `recent_evidence` 后按上述 UTF-8 口径比较全表和末三行；新参数此前不受支持。该只读输出及待新增的行为回归作为 Step 0，不凭旧全量测试宣布新功能通过。
+
+当前范围为 `scripts/check_plan_governance.py`、`tests/test_workset_evidence_limit.py`、`tests/npm_cli.test.mjs`、`resources/skill/references/cli.md`、README 及本计划/地图。完成条件为上述限量、兼容、阻塞与无写入样本通过，真实 CLI 输出对比可复验，文档说明“限量视图不等于完整证据”；有明确失败时修复并复验，影响扩大到门禁时重新评估风险。回滚仅撤销本次参数/显示层/文档差异，完整输出继续可用。
+
+2026-09-06 实现与自验结果（基于 `4734621` 的本次工作树增量）：
+
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q --no-cov -p no:cacheprovider tests/test_workset_evidence_limit.py`：28 项通过，覆盖追加顺序、空表、大 N、历史计划/标题、自定义路径、来源不可读、非法参数、有效独立失败仍阻塞及文件字节/mtime 保持。测试子代理 `/root/evidence_limit_tests` 参与测试实现，不记为独立验收者。
+- `PYTHONDONTWRITEBYTECODE=1 node --test --test-name-pattern='workset evidence' tests/npm_cli.test.mjs`：2 项通过，真实 Node→Python 调用的完整/限量/回查、默认/严格退出码及参数报错通过。
+- 同一当前文档输入下，将 `git show 4734621:scripts/check_plan_governance.py` 的旧代码与当前脚本作对照：默认/严格 × 活跃/含历史四组 stdout、stderr、退出码逐字节一致；限量输出还原证据字段并去除窗口元数据后，其余 payload 全字段一致。
+- 当次对比（本表追加收尾记录前，18 条证据，下一动作暂为验证）：完整 stdout 11,372 字节，限量 3 条后含元数据为 5,277 字节，整体减少约 53.6%；本计划证据字段按上述紧凑 UTF-8 口径为 6,402→1,099 字节。后续新增记录会改变具体字节数；这不是 token 或执行耗时结论。可用 `node bin/plan-governance-cli.mjs workset . --json` 与追加 `--evidence-limit 3` 的命令复测当前输入。
+- `PYTHONDONTWRITEBYTECODE=1 npm run verify`：退出 0，613 项 Python 测试通过，总覆盖率 93.57%，103 项 Node 测试通过、0 skipped；严格治理通过，原宿主回放、共享范围和背景引用告警保留其归属。
+- `resources/skill` 的 `quick_validate.py` 检查通过，CLI 参考与 README 已说明窗口边界及 1.0.0 兼容方式；默认底层 payload、hook 与 gate 没有修改。
+
+本项完成条件已由当前实施者确认，无新增阻塞。整体计划继续保留实际使用验收；本小改不增加用户逐次签收，旧独立报告不扩充为本次自验结论。仓库源码可用，已安装 1.0.0 仍不支持新参数；本次未发布、同步安装副本或提交。
+
+后续发布授权及结果：用户要求“推送 1.0.1”，现已公开发布并确认 latest/包完整性，发布与 Git 推送由[1.0.1 发布维护](plan-governance-distribution-setup.md#2026-09-06-101-发布维护)记录；上述未发布说明保留为功能实施轮结束时的状态。
 
 | 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|

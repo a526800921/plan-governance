@@ -457,6 +457,21 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 安装后验证：当前全局命令确实解析至 `1.0.0` 安装包；从 `/tmp` 且 `PYTHON` 指向不存在路径时，四个 guide 主题均返回包内同源正文。已安装 CLI 严格治理退出 0；原宿主阶段 2、共享影响目标及背景引用告警保留。registry 再次核对为原 Tencent 源。
 - 当前结果：`1.0.0` 已公开发布并成为 latest，全局 CLI 与 Codex/Claude skill 已更新。发布及本地更新完成；减负计划仍等待真实使用验收，不用发布结果或机械测试宣称耗时/token 改善。Git 提交身份以仓库历史为准。
 
+## 2026-09-06 1.0.1 发布维护
+
+用户要求“推送 1.0.1”，本次按已实现的最近证据限量输出发布公共 npm 包，并提交推送 Git；全局 CLI/已安装 skill 更新另按授权处理。该维护不新增阶段，不代表减负计划实际使用验收完成。
+
+- 发布基线：HEAD `4734621`，工作区版本 `1.0.0`；功能及回归范围见[限量输出实现与自验](plan-governance-workflow-streamlining.md#workset-最近证据限量输出)。版本由统一发布脚本更新，README 和 CLI 参考同步最低支持版本。
+- 预检：官方 registry 的 `1.0.1` 查询返回 E404，`latest: 1.0.0`；远端 `main` 为 `4734621`，与本地 HEAD 一致。
+- 执行方式：先 `npm run release:npm -- --dry-run patch`，正式执行 `npm run release:npm -- 1.0.1`；完整 verify 通过后脚本才切源、升级并发布，随后恢复原 registry。
+- 完成条件：官方版本及 latest 为 `1.0.1`，发布包 shasum/integrity 与本地相同内容一致，registry 恢复，发布记录落档并推送当前提交到远端。失败或结果不明先查 registry，禁止重复发布；Git 推送不覆盖远端新增提交。
+- 发布前预演、npm 登录和 nrm 可用性检查通过；打包清单仅 18 项生产文件，包含检查器与更新的 CLI 参考，不含测试、计划或凭证。只读发布内容核对者 `/root/release_101_scope_check` 确认范围、参数说明及包资源覆盖，无阻塞；该核对不是阶段独立验收。
+- 正式命令退出 0：严格治理通过，Python 613 passed、覆盖率 93.57%，Node 103/103、0 skipped。脚本更新 package/lock 至 `1.0.1`，npm 返回发布成功，原 registry `https://mirrors.tencent.com/npm/` 已恢复并复查。
+- 发布包与版本更新后的本地 pack dry-run 均为 18 项生产文件，shasum `8d534d93f547c003d5b1e865c8cf1bb01a8c070f`，integrity `sha512-0sh40BcslwSUOrIYlPJrPulCZSkuglK2J4EYHcQtv32tw9dk7RvjiSIGlS6TAnRckftaVKuRCHWMnZsehfTREg==`。
+- npm 提示后台处理，发布后的前几次官方查询暂为 E404；等待版本可见后核对，未重复发布。
+- 官方确认：`npm view plan-governance-cli@1.0.1 version dist.shasum dist.integrity dist-tags --json --registry=https://registry.npmjs.org/ --prefer-online` 返回版本与 latest 均为 `1.0.1`，shasum/integrity 与上述本地发布内容一致。
+- 发布结果已确认；本轮不更新全局 CLI 或已安装 skill，既有 1.0.0 安装保持。Git 提交及远端同步身份以仓库历史为准；整体实际使用验收仍归减负计划。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |

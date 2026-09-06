@@ -61,6 +61,64 @@ function exerciseGuide(entry, packageDirectory, cwd) {
   assert.deepEqual(readdirSync(cwd), originalEntries, "guide must not write into cwd");
 }
 
+test("workset evidence windows preserve decisions and allow full retrieval", () => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-evidence-window-"));
+  try {
+    const map = "# PLAN_MAP\n\n## 计划索引\n\n| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |\n|---|---|---|---|---|---|\n| [run](plans/custom/run.md) | 待实施 | 阶段 1 | 2026-09-06 | - | fixture |\n";
+    writeProjectFile(tempRoot, "docs/PLAN_MAP.md", map);
+    const recent = "### 最近实施/验证记录\n\n| 日期 | 类型 | 动作 | 证据 | 状态 | 记录者 |\n|---|---|---|---|---|---|\n" +
+      Array.from({ length: 18 }, (_, i) => `| 2026-09-06 | 验证 | 记录 ${i + 1} | fixture-${i + 1} | 通过 | tester |`).join("\n") + "\n\n";
+    for (const blocked of [false, true]) {
+      let plan = admittedPlan().replace("## 最新独立准入复核", `${recent}## 最新独立准入复核`);
+      if (blocked) plan = plan.replace("| 结论 | 通过 |", "| 结论 | 未通过 |")
+        .replace("| 2026-08-10 | 准入 | 阶段 1 | 通过 |", "| 2026-08-10 | 准入 | 阶段 1 | 未通过 |");
+      writeProjectFile(tempRoot, "docs/plans/custom/run.md", plan);
+      for (const strict of [[], ["--strict-readiness"]]) {
+        const complete = run("workset", tempRoot, "--json", ...strict);
+        const limited = run("workset", tempRoot, "--json", "--evidence-limit", "3", ...strict);
+        assert.equal(limited.status, complete.status, limited.stderr);
+        assert.equal(limited.stderr, complete.stderr);
+        const full = JSON.parse(complete.stdout);
+        const window = JSON.parse(limited.stdout);
+        const entry = window.plans[0];
+        assert.equal(full.plans[0].recent_evidence.length, 18);
+        assert.equal(Object.hasOwn(full.plans[0], "recent_evidence_window"), false);
+        assert.deepEqual(entry.recent_evidence, full.plans[0].recent_evidence.slice(-3));
+        assert.deepEqual(entry.recent_evidence_window, {
+          total: 18, omitted: 15,
+          source: { path: "docs/plans/custom/run.md", section: "最近实施/验证记录" },
+        });
+        delete entry.recent_evidence_window;
+        entry.recent_evidence = full.plans[0].recent_evidence;
+        assert.deepEqual(window, full, "presentation must preserve every decision and diagnostic");
+        assert.equal(entry.readiness, blocked ? "blocked" : "ready");
+        assert.ok(Buffer.byteLength(limited.stdout) < Buffer.byteLength(complete.stdout));
+        assert.equal(run("workset", tempRoot, "--json", ...strict).stdout, complete.stdout);
+      }
+      assert.equal(readFileSync(join(tempRoot, "docs/PLAN_MAP.md"), "utf8"), map);
+      assert.equal(readFileSync(join(tempRoot, "docs/plans/custom/run.md"), "utf8"), plan);
+    }
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("workset evidence limit rejects invalid values and incompatible output modes", () => {
+  for (const args of [
+    ["workset", "--json", "--evidence-limit", "0"],
+    ["workset", "--json", "--evidence-limit", "-1"],
+    ["workset", "--json", "--evidence-limit", "many"],
+    ["workset", "--json", "--evidence-limit"],
+    ["workset", "--evidence-limit", "3"],
+    ["check", "--json", "--evidence-limit", "3"],
+  ]) {
+    const result = run(...args);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /evidence-limit/);
+  }
+});
+
 test("guide reads the selected package resource without Python or project writes", () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-guide-"));
   try {
