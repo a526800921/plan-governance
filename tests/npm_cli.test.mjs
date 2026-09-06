@@ -34,6 +34,64 @@ function admittedPlan(status = "待实施") {
     "\n## 独立复核记录\n\n| 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |\n|---|---|---|---|---|---|\n| 2026-08-10 | 准入 | 阶段 1 | 通过 | fixture | tester |\n";
 }
 
+function exerciseGuide(entry, packageDirectory, cwd) {
+  const invoke = (...args) => spawnSync(process.execPath, [entry, "guide", ...args], {
+    cwd, encoding: "utf8", timeout: 5000,
+    env: { ...process.env, PYTHON: join(cwd, "python-does-not-exist") },
+  });
+  const originalEntries = readdirSync(cwd);
+  for (const [topic, resource] of [
+    ["overview", "SKILL.md"], ["planning", "references/planning.md"],
+    ["verification", "references/verification.md"], ["cli", "references/cli.md"],
+  ]) {
+    const result = invoke(topic);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, "");
+    assert.equal(result.stdout, readFileSync(join(packageDirectory, "resources/skill", resource), "utf8"));
+  }
+  assert.equal(invoke().stdout, invoke("overview").stdout);
+  assert.equal(invoke("--help").status, 0);
+  assert.match(invoke("--help").stdout, /overview.*planning.*verification.*cli/);
+  for (const args of [["unknown"], ["../SKILL.md"], ["__proto__"], ["toString"], ["overview", "extra"], ["--help", "extra"]]) {
+    const result = invoke(...args);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /guide/);
+  }
+  assert.deepEqual(readdirSync(cwd), originalEntries, "guide must not write into cwd");
+}
+
+test("guide reads the selected package resource without Python or project writes", () => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-guide-"));
+  try {
+    exerciseGuide(cli, root, tempRoot);
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("guide fails visibly for missing, empty and unreadable package resources", () => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-guide-broken-"));
+  try {
+    const entry = join(tempRoot, "bin/plan-governance-cli.mjs");
+    writeProjectFile(tempRoot, "bin/plan-governance-cli.mjs", readFileSync(cli));
+    for (const resource of [null, " \n\t", "directory"]) {
+      if (resource === "directory") {
+        rmSync(join(tempRoot, "resources/skill/SKILL.md"));
+        mkdirSync(join(tempRoot, "resources/skill/SKILL.md"));
+      } else if (resource !== null) {
+        writeProjectFile(tempRoot, "resources/skill/SKILL.md", resource);
+      }
+      const result = spawnSync(process.execPath, [entry, "guide"], { cwd: root, encoding: "utf8" });
+      assert.equal(result.status, 1);
+      assert.equal(result.stdout, "");
+      assert.match(result.stderr, /规则资源/);
+    }
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
 function exerciseBindingIteration(entry, projectRoot) {
   const invoke = (...args) => spawnSync(process.execPath, [entry, ...args], {
     cwd: root, encoding: "utf8", timeout: 15000,
@@ -241,30 +299,24 @@ test("package manifest contains the distributable skill resources", () => {
   const planTemplate = readFileSync(resolve(root, "resources", "skill", "assets", "plan.template.md"), "utf8");
   const readme = readFileSync(resolve(root, "README.md"), "utf8");
   assert.doesNotMatch(skill, /\/Users\/jafish\//);
-  assert.match(skill, /需求探索与 grilling/);
-  assert.match(skill, /grill-me/);
-  assert.match(skill, /goal/);
-  assert.match(skill, /阶段内独立复核调度/);
-  assert.match(skill, /自动启动独立只读 subagent/);
-  assert.match(skill, /不为每个微小动作单独复核/);
-  assert.match(skill, /复核入口不可用/);
-  assert.match(agent, /阶段门.*自动启动独立只读 subagent/);
+  // The entry routes to packaged resources; behavior is exercised separately.
+  for (const topic of ["planning", "verification", "cli"]) {
+    const resource = `resources/skill/references/${topic}.md`;
+    assert.ok(manifest.skill.files.includes(resource), resource);
+    assert.ok(skill.includes(`references/${topic}.md`), topic);
+  }
   assert.doesNotMatch(skill, /^## 自主连续执行$/m);
   assert.doesNotMatch(skill, /plan next|execution_mode|execution_policy/);
   assert.doesNotMatch(agent, /推进到完成/);
-  assert.match(readme, /^## 持续推进$/m);
-  assert.match(readme, /goal/);
-  assert.match(readme, /自动启动独立只读 subagent/);
-  assert.match(readme, /不为每个微小动作单独复核/);
+  assert.match(agent, /\$plan-governance/);
   assert.match(planTemplate, /^## 需求探索$/m);
-  assert.match(planTemplate, /独立复核只绑定阶段准入\/阶段转换和高影响边界/);
   assert.doesNotMatch(planTemplate, /自主连续执行|执行清单|execution_mode|execution_policy/);
   assert.match(planTemplate, /^### 阶段证据$/m);
   assert.match(planTemplate, /^### 最近实施\/验证记录$/m);
   assert.match(planTemplate, /purpose.*snapshot_id.*supersedes.*review_status/);
-  assert.match(planTemplate, /^## 最新独立准入复核$/m);
-  assert.match(planTemplate, /^## 独立复核记录$/m);
-  assert.doesNotMatch(planTemplate, /^### 最新独立准入复核$/m);
+  assert.match(planTemplate, /^## 最新阶段复核$/m);
+  assert.match(planTemplate, /^## 阶段复核记录$/m);
+  assert.match(readme, /guide verification/);
   assert.deepEqual(manifest.hooks, []);
 });
 
@@ -307,6 +359,9 @@ test("packed package runs from a temporary installation", () => {
       assert.deepEqual(readFileSync(resolve(installedPackageRoot, resource)), sourceBytes, resource);
     }
     const installedCli = resolve(installedPackageRoot, "bin", "plan-governance-cli.mjs");
+    const guideCwd = join(tempRoot, "guide-cwd");
+    mkdirSync(guideCwd);
+    exerciseGuide(installedCli, installedPackageRoot, guideCwd);
     const result = spawnSync(process.execPath, [installedCli, "--help"], {
       cwd: root,
       encoding: "utf8",
@@ -336,7 +391,7 @@ test("packed package runs from a temporary installation", () => {
     assert.match(plan, /^### 阶段证据$/m);
     assert.match(plan, /^### 最近实施\/验证记录$/m);
     assert.match(plan, /purpose.*snapshot_id.*supersedes.*review_status/);
-    assert.match(plan, /^## 最新独立准入复核$/m);
+    assert.match(plan, /^## 最新阶段复核$/m);
     assert.match(plan, /验证安装后的模板资源/);
     assert.doesNotMatch(plan, /\/Users\/jafish\/Documents\/work\/plan-governance/);
     const expectedPlan = sourceResources.get("resources/skill/assets/plan.template.md").toString("utf8")

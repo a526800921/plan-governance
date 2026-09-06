@@ -21,8 +21,8 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
-| [phase-local-review-dispatch](plans/phase-local-review-dispatch.md) | 设计中 | 阶段 2 | 2026-09-05 | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | [阶段准入摘要](plans/phase-local-review-dispatch.md#阶段-准入摘要) |
-| [plan-governance-workflow-streamlining](plans/plan-governance-workflow-streamlining.md) | 设计中 | 阶段 0 | 2026-09-06 | iterative-governance-reliability | [阶段准入摘要](plans/plan-governance-workflow-streamlining.md#阶段准入摘要)；[来源报告](reviews/plan-governance-skill-usage-audit-20260906.md) |
+| [phase-local-review-dispatch](plans/phase-local-review-dispatch.md) | 设计中 | 阶段 2 | 2026-09-05 | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | [阶段准入摘要](plans/phase-local-review-dispatch.md#阶段准入摘要) |
+| [plan-governance-workflow-streamlining](plans/plan-governance-workflow-streamlining.md) | 实施中 | 阶段 1 | 2026-09-06 | iterative-governance-reliability | [阶段准入摘要](plans/plan-governance-workflow-streamlining.md#阶段准入摘要)；[技术验收通过，待用户验收](reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) |
 
 ### 已完成
 
@@ -38,7 +38,7 @@
 | [agent-runtime-integration](plans/agent-runtime-integration.md) | 已完成 | 阶段 3 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/agent-runtime-integration.md#验证方式) |
 | [phase-entry-gate-hardening](plans/phase-entry-gate-hardening.md) | 已完成 | 阶段 3 | 2026-07-13 | agent-runtime-integration, independent-acceptance-rules | [验证方式](plans/phase-entry-gate-hardening.md#验证方式) |
 | [plan-governance-npm-cli](plans/plan-governance-npm-cli.md) | 已完成 | 阶段 2 | 2026-07-13 | phase-entry-gate-hardening | [阶段 2 完成证据](plans/plan-governance-npm-cli.md#阶段-2-完成证据) |
-| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-08-30 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) / [2026-08-28 发布维护](plans/plan-governance-distribution-setup.md#2026-08-28-发布维护) / [2026-08-30 测试维护](plans/plan-governance-distribution-setup.md#2026-08-30-测试维护) / [2026-08-30 发布流程维护](plans/plan-governance-distribution-setup.md#2026-08-30-发布流程维护) / [2026-08-30 0.3.4 发布维护](plans/plan-governance-distribution-setup.md#2026-08-30-034-发布维护) |
+| [plan-governance-distribution-setup](plans/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-09-06 | plan-governance-npm-cli | [完成证据](plans/plan-governance-distribution-setup.md#完成证据) / [2026-08-28 发布维护](plans/plan-governance-distribution-setup.md#2026-08-28-发布维护) / [2026-08-30 测试维护](plans/plan-governance-distribution-setup.md#2026-08-30-测试维护) / [2026-08-30 发布流程维护](plans/plan-governance-distribution-setup.md#2026-08-30-发布流程维护) / [2026-08-30 0.3.4 发布维护](plans/plan-governance-distribution-setup.md#2026-08-30-034-发布维护) / [1.0.0 发布维护](plans/plan-governance-distribution-setup.md#2026-09-06-100-发布维护) |
 | [requirements-grilling-integration](plans/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/functional-graph-governance.md#完成证据) |
 | [architecture-graph-governance](plans/architecture-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/architecture-graph-governance.md#当前阶段) |
@@ -48,13 +48,13 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
-| [autonomous-plan-execution](plans/autonomous-plan-execution.md) | 已废弃 | 阶段 3 | 2026-08-28 | - | [废弃记录](plans/autonomous-plan-execution.md#废弃记录)；历史：[阶段 3 完成验收复核报告](reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](plans/autonomous-plan-execution.md#阶段3完成证据)；[阶段 2 完成验收复核报告](reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 1 完成证据](plans/autonomous-plan-execution.md#完成证据) |
+| [autonomous-plan-execution](plans/autonomous-plan-execution.md) | 已废弃 | 阶段 3 | 2026-08-28 | - | [废弃记录](plans/autonomous-plan-execution.md#废弃记录)；历史：[阶段 3 完成验收复核报告](reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](plans/autonomous-plan-execution.md#阶段-3-完成证据)；[阶段 2 完成验收复核报告](reviews/autonomous-plan-execution-stage2-completion-review-20260811.md)；[阶段 1 完成证据](plans/autonomous-plan-execution.md#完成证据) |
 
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
 ## 推荐顺序
 
-1. `plan-governance-workflow-streamlining`：当前主线，先做阶段 0 最终基线、差距去重和兼容设计；前置技术交付及独立验收已完成，用户接受记录与本计划自身准入仍须补齐。内部顺序见[执行顺序](plans/plan-governance-workflow-streamlining.md#执行顺序)。
+1. `plan-governance-workflow-streamlining`：当前主线，阶段 0 设计及阶段 1 自身准入已独立通过，共享规则、风险判定和分发入口已独立技术验收通过；1.0.0 已发布且本地 CLI/skill 已更新，见[发布维护](plans/plan-governance-distribution-setup.md#2026-09-06-100-发布维护)，当前等待实际使用验收。内部顺序见[执行顺序](plans/plan-governance-workflow-streamlining.md#执行顺序)。
 2. `phase-local-review-dispatch` 阶段 2：独立支线，按原计划补齐宿主回放；不作为上述主线的先决条件。涉及共享实现时按下方共享写入边界串行交接。
 
 `iterative-governance-reliability` 及其余已完成计划作为交付基线引用，不重新排队实施；历史阶段和验证入口见已完成索引。
@@ -79,7 +79,7 @@
 | plan-governance-operability-optimization | plan-drift-check-enhancements, phase-entry-gate-hardening, agent-runtime-integration, architecture-graph-governance | 复用 drift/pre-commit、严格准入、完成快照、只读 hook 与图谱查询边界；基于真实项目评审补齐当前工作集、阶段关系、证据状态和治理文件覆盖的可操作性缺口 |
 | phase-local-review-dispatch | phase-entry-gate-hardening, independent-acceptance-rules, plan-governance-operability-optimization | 复用阶段准入、独立复核、当前工作集和证据状态边界，补齐阶段内复核派发、恢复和高影响停止策略 |
 | iterative-governance-reliability | phase-entry-gate-hardening, plan-governance-operability-optimization, plan-governance-distribution-setup, phase-local-review-dispatch | 复用现有准入、工作集和分发契约；与宿主调度计划保持范围和共享写入协调，不承接其阶段 2 回放或解除其阻塞 |
-| plan-governance-workflow-streamlining | iterative-governance-reliability | 前置技术交付已完成；补齐用户接受与最终交接基线后，只实施[成果对照](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界)中的剩余差距 |
+| plan-governance-workflow-streamlining | iterative-governance-reliability | 前置技术成果已提交且本次已获推进授权；自身准入后只实施[成果对照](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界)中的剩余差距 |
 
 ## 阶段关系
 
@@ -88,7 +88,7 @@
 | 来源计划 | 来源阶段 | 目标计划 | 目标阶段 | 关系类型 | 解除条件 | 证据 |
 |---|---|---|---|---|---|---|
 | phase-local-review-dispatch | 阶段 2 | iterative-governance-reliability | 阶段 0 | soft_context | 仅作真实失败样本和分工对照，不作为立项或只读设计的硬门禁 | [计划分工](plans/iterative-governance-reliability.md#与既有计划的边界) |
-| iterative-governance-reliability | 阶段 4 | plan-governance-workflow-streamlining | 阶段 0 | hard_gate | 上游全计划完成、独立完成证据和用户接受记录可定位，重新核对最终工作树及差距；本轮立项和只读预对照可先行，新阶段仍须自身准入 | [前置边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界)；[未决问题](plans/plan-governance-workflow-streamlining.md#未决问题) |
+| iterative-governance-reliability | 阶段 4 | plan-governance-workflow-streamlining | 阶段 0 | hard_gate | 上游已提交技术成果、独立完成证据及本次推进授权可定位，核对最终工作树及差距；新阶段仍须自身准入，不追溯补写产品接受 | [前置边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界)；[未决问题](plans/plan-governance-workflow-streamlining.md#未决问题) |
 | phase-local-review-dispatch | 阶段 1 | plan-governance-workflow-streamlining | 阶段 0 | soft_context | 仅复用既有复核契约并协调共享规则，不等待宿主阶段 2 回放完成，也不解除其阻塞 | [相关计划边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界) |
 
 ## 并行与共享写入约束
@@ -97,7 +97,7 @@
 |---|---|---|---|
 | `shared_write_risk` 关系 | 可提示冲突和写入所有权 | 不自动转换为硬门禁依赖；实际写入按单一写入者或串行队列执行 | 共享风险是并行约束，不是业务先后关系 |
 | phase-local-review-dispatch / iterative-governance-reliability | 宿主回放仍由原计划负责 | 优化阶段 0—4 已独立验收完成；当前交付保留为后续对照基线，后续计划按自身授权与准入再单一写入；宿主回放规则及旧计划不改 | [范围与安全边界](plans/iterative-governance-reliability.md#与既有计划的边界) |
-| plan-governance-workflow-streamlining / 既有活跃计划 | 当前仅文档整理与只读设计；前置交付已完成 | 前置用户接受、实际工作树交接和自身准入齐全后再单一写入；宿主回放及旧完成记录不改 | [共享写入边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界) |
+| plan-governance-workflow-streamlining / 既有活跃计划 | 已完成设计，阶段 1 实施 | 交接及自身准入已通过，按已列范围单一写入；宿主回放及旧完成记录不改 | [共享写入边界](plans/plan-governance-workflow-streamlining.md#与前置及相关计划的边界) |
 
 ## 替代、合并和废弃
 
@@ -112,8 +112,10 @@
 | D02 快照目录不可读导致错误放行 | [第二轮独立确认修复](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | iterative-governance-reliability | 否 | 已解决 |
 | D03 混合快照仍读取外部 symlink | [第二轮独立确认修复](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | iterative-governance-reliability | 否 | 已解决 |
 | D04 混合旧快照普通文件不可读时异常退出 | [独立确认修复](reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#d04-独立修复确认) | iterative-governance-reliability | 否 | 已解决 |
-| 后续减负计划 B01 前置用户接受与交接基线待补齐 | 前置已完成独立技术验收；补齐用户接受记录并核对最终工作树，不阻塞只读设计，见[未决问题](plans/plan-governance-workflow-streamlining.md#未决问题) | plan-governance-workflow-streamlining | 是 | 未解决 |
-| 后续减负计划 B02 通用规则兼容与执行样本待收敛 | [简单改动自验](plans/plan-governance-workflow-streamlining.md#按风险选择自验或独立复核)已用于本项目；按[三项设计交付](plans/plan-governance-workflow-streamlining.md#阶段-0-设计交付)收敛通用阶段门、用户接受及规则分发兼容，固定样本和准入材料 | plan-governance-workflow-streamlining | 是 | 未解决 |
+| 后续减负计划 B01 前置交接基线 | 已提交技术基线与本次推进授权已核对，不补写历史产品接受，见[未决问题](plans/plan-governance-workflow-streamlining.md#未决问题) | plan-governance-workflow-streamlining | 否 | 已解决 |
+| 减负计划 B04 模板式结论误放行 | [第三轮独立确认修复](reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) | plan-governance-workflow-streamlining | 否 | 已解决 |
+| 减负计划 B03 明确通过句号兼容 | [第二轮独立确认修复](reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第二轮b03-通过b04-未通过) | plan-governance-workflow-streamlining | 否 | 已解决 |
+| 后续减负计划 B02 通用规则兼容与执行样本 | [独立设计和阶段 1 自身准入通过](reviews/plan-governance-workflow-streamlining-design-review-20260906.md) | plan-governance-workflow-streamlining | 否 | 已解决 |
 | 优化计划阶段 1 真实文件系统基线和扩展反例 | [C01](plans/iterative-governance-reliability.md#未决问题) 已收敛；22 类实盘回放完成，本阶段独立准入通过 | iterative-governance-reliability | 否 | 已收敛 |
 | 下一动作示例误读修复 | [D01](plans/iterative-governance-reliability.md#未决问题)：独立完成重审通过，阶段 1 关闭，失败历史保留 | iterative-governance-reliability | 否 | 已解决 |
 | 自主连续执行能力已废弃；当前没有需要继续推进的该计划阶段 | 使用 Codex `goal` 管理跨轮持续工作；保留历史设计与验收记录供追溯 | autonomous-plan-execution | 否 | 已解决 |
@@ -122,6 +124,7 @@
 
 | 计划 | 阶段 | 证据 |
 |---|---|---|
+| plan-governance-distribution-setup | 发布维护（2026-09-06） | [1.0.0 发布与本地同步完成](plans/plan-governance-distribution-setup.md#2026-09-06-100-发布维护)：官方 latest/包校验值、全局 CLI、Codex/Claude 20 份资源及安装后验证通过；真实使用验收仍归减负计划 |
 | codex-skill-rollout | 阶段 2 | skill 校验、仓库治理检查和临时目录初始化验证通过 |
 | multi-doc-sync-rules | 阶段 1 | `python3 -m pytest` 通过，覆盖率 98.54%；反向引用搜索通过；治理检查通过 |
 | draft-history-source-switch | 阶段 1 | 反向引用搜索通过；`python3 -m pytest` 通过，覆盖率 98.54%；`python3 scripts/check_plan_governance.py .` 输出 `计划治理检查通过。` |

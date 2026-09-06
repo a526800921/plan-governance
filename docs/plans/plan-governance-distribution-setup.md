@@ -439,6 +439,24 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 本次由 [iterative-governance-reliability 阶段 2](iterative-governance-reliability.md#阶段-2-行为契约)统一 CI 和发布前验证，并补齐部分切源失败后的恢复责任。现行检查集合、顺序、失败/回滚及 dry-run 边界以该专项契约为准；上面的历史发布记录保留当时行为。当前仅实施及验证，完成结论见该计划的独立复核；未升级版本、发布、全局安装或修改实际 registry。
 
+## 2026-09-06 1.0.0 发布维护
+
+用户明确要求将当前已通过独立技术验收的成果发布为 `1.0.0`，并更新本地依赖。本次授权覆盖版本元数据、公共 npm 发布、全局 CLI 升级及 Codex/Claude 已安装 skill 的 manifest 资源同步；不迁移其他项目、不配置 hook、不删除 manifest 外文件。发布授权不补写减负计划的真实使用效果或用户最终接受。
+
+- 发布基线：工作区 `0.3.5`，当前优化源码及资源已通过独立技术完成复核；复用[减负计划技术验收](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md)。发布前仅更新 README 锁定版本示例，版本文件由统一发布脚本更新。
+- 预检：官方 registry 当前 `latest: 0.3.5`，版本列表无 `1.0.0`；npm 登录检查及 `nrm` 可用性通过，不记录账户或凭证。原 registry 为 `https://mirrors.tencent.com/npm/`。
+- `npm run release:npm -- --dry-run 1.0.0` 通过；预览顺序为完整 verify、保存原 registry、切官方源、`npm version 1.0.0 --no-git-tag-version`、公开发布、恢复原 registry。打包清单仅 18 项生产文件，包含三份 references 和 spec 模板，不含测试、项目计划或凭证。
+- 执行与验证：正式使用 `npm run release:npm -- 1.0.0`；发布成功后核对官方版本、latest 及包完整性，再从官方 registry 安装明确的 `1.0.0`。skill 先预演、核对本地定制与清单，再按本次更新授权同步，二次预演和逐文件比较确认结果。
+- 失败边界：验证失败不发布；发布结果不明时先查询官方 registry，禁止重复发布或擅自换版本。同步遇到无法归属的用户定制时保留原内容，包内标准资源按本次授权更新；不自动清理残留或回滚其他工作树。
+- 发布执行：`npm run release:npm -- 1.0.0` 退出 0。严格治理通过，Python 585 passed、覆盖率 93.55%，Node 101/101、0 skipped。脚本更新 package/lock 至 `1.0.0`，npm 返回发布成功并提示后台处理，原 registry 已恢复。发布后最初两次官方版本查询暂为 E404，等待可见后再安装，未重复发布。
+- 发布内容：18 项生产文件，shasum `fc5d3b3fa495ad3bf6c51f6fa6f5f235854e5829`，integrity `sha512-CsqklZd09MSpnganbwQxVuVlFzftVvRZKnxmetkvU4NRpKBf0pf8+LbimPLTqtrkD+Ue1dW1aWFehd9MMMeKTQ==`；与版本更新后的本地 pack dry-run 一致。前次受审清单中 23 项源码/资源未变，另外三项仅 package/lock 版本及 README 锁定版本变化。
+- 本地同步准备：全局 CLI 为 `0.3.5`；Codex 旧资源匹配安装包 `0.3.5`，Claude 旧资源匹配历史 `0.3.4`，未发现受管文件用户定制。两个目标各覆盖 4、新增 4、不变 2；12 个既有受管文件已备份至 `~/.codex/backups/plan-governance-1.0.0-ovph__t7`，记录 5 个非受管文件的 hash 以核对保留。
+- 官方确认：registry 记录 `1.0.0` 发布时间为 `2026-09-06T10:57:45.027Z`；于 `2026-09-06T10:58:34.502Z` 查询确认版本可见且 `latest: 1.0.0`，shasum/integrity 与上面的本地发布内容一致。初次 E404 属发布处理期间，未重发。
+- 本地更新：`npm install -g plan-governance-cli@1.0.0 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 成功，全局版本为 `1.0.0`；18 项已安装生产文件逐字节匹配仓库发布内容。项目 `npm ls --depth=0` 正常，既有 `yaml@2.9.0` 无需变更。
+- skill 同步：`plan-governance-cli setup --target all --force --dry-run` 确认预期范围后，执行已授权的 `setup --target all --force`。二次 `setup --target all --dry-run` 显示 20 项全部最新；两目标的 20 份资源逐字节匹配发布包，5 个 manifest 外文件 hash 保持。
+- 安装后验证：当前全局命令确实解析至 `1.0.0` 安装包；从 `/tmp` 且 `PYTHON` 指向不存在路径时，四个 guide 主题均返回包内同源正文。已安装 CLI 严格治理退出 0；原宿主阶段 2、共享影响目标及背景引用告警保留。registry 再次核对为原 Tencent 源。
+- 当前结果：`1.0.0` 已公开发布并成为 latest，全局 CLI 与 Codex/Claude skill 已更新。发布及本地更新完成；减负计划仍等待真实使用验收，不用发布结果或机械测试宣称耗时/token 改善。Git 提交身份以仓库历史为准。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |

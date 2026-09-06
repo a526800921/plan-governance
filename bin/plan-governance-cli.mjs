@@ -181,9 +181,36 @@ function setup(args) {
   return 0;
 }
 
+function guide(args) {
+  const topics = new Map([
+    ["overview", "SKILL.md"],
+    ["planning", "references/planning.md"],
+    ["verification", "references/verification.md"],
+    ["cli", "references/cli.md"],
+  ]);
+  if (args.length === 1 && args[0] === "--help") {
+    console.log("用法：plan-governance-cli guide [overview|planning|verification|cli]\n缺省 overview；只读当前包内规则，不依赖 cwd 或 Python。");
+    return 0;
+  }
+  const topic = args[0] ?? "overview";
+  if (args.length > 1 || !topics.has(topic)) {
+    return fail("guide 仅接受一个主题：overview、planning、verification、cli；用 guide --help 查看用法。");
+  }
+  const path = resolve(packageRoot, "resources", "skill", topics.get(topic));
+  try {
+    const content = readFileSync(path, "utf8");
+    if (!content.trim()) return fail(`规则资源为空：${path}`);
+    process.stdout.write(content);
+    return 0;
+  } catch (error) {
+    return fail(`无法读取规则资源 ${path}：${error.message}`);
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   const command = args[0];
+  if (command === "guide") return guide(args.slice(1));
   if (command === "setup") return setup(args.slice(1));
   if (command === "workset") return runPython(checker, ["--workset", ...args.slice(1)]);
   if (command === "init") return runPython(initializer, args.slice(1));

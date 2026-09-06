@@ -196,7 +196,203 @@ def readiness_issue(warnings, errors, strict, message):
         warn(warnings, message)
 
 
-def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors):
+def review_outcome(conclusion):
+    """新策略只识别明确结论；未进行、失败和不确定声明不能混为通过。"""
+    conclusion = conclusion.strip()
+    choice_separator = r"\s*(?:[/／]|或(?:者)?)\s*"
+    if re.match(
+        rf"^(?:通过{choice_separator}(?:未通过|不通过)|(?:未通过|不通过){choice_separator}通过)",
+        conclusion,
+    ):
+        # 开头候选始终不是结论，不能因尾标点/说明漏匹配后落入 passed。
+        return "unknown"
+    if conclusion.startswith(("未通过", "不通过", "失败", "不满足", "拒绝")):
+        return "failed"
+    if re.match(r"^通过(?:$|[。.!！：:，,；;（(\s])", conclusion):
+        return "passed"
+    if any(token in conclusion for token in ("不可用", "超时", "证据冲突", "证据失效")):
+        return "failed"
+    if conclusion in {"未进行", "尚未进行", "待复核", "待自验", "待独立复核", "待验证"}:
+        return "pending"
+    return "unknown"
+
+
+def risk_review_state(plan_text, phase):
+    """显式风险策略的共享事实判定；不评估风险真实性或自动检测证据漂移。"""
+    summary_section = fixed_section(top_level_section(plan_text, "当前阶段"), "阶段准入摘要")
+    policies = [row for row in markdown_table_rows(summary_section) if row[0] == "复核策略"]
+    result = {"enabled": bool(policies), "passed": False, "pending_action": None,
+              "issues": [], "blockers": []}
+    if not policies:
+        return result
+    issues, blockers = result["issues"], result["blockers"]
+    if len(policies) != 1 or len(policies[0]) != 2 or policies[0][1] != "风险分流":
+        issues.append("复核策略必须唯一且为 风险分流；空值、未知值或重复声明不能准入")
+    summary = key_value_table(summary_section)
+    if "最新独立准入复核" in summary:
+        issues.append("风险分流的阶段准入摘要应以 最新阶段复核 替代 最新独立准入复核")
+    if is_placeholder(summary.get("最新阶段复核")):
+        issues.append("阶段准入摘要缺少有效的 最新阶段复核 链接")
+
+    review = key_value_table(fixed_section(plan_text, "最新阶段复核"))
+    if any(len(row) != 2 for row in markdown_table_rows(fixed_section(plan_text, "最新阶段复核"))):
+        issues.append("最新阶段复核必须使用字段/内容两列表格")
+    fields = {"日期", "阶段", "方式", "风险", "风险依据", "结论", "证据", "复核者"}
+    for field in sorted(fields - set(review)):
+        issues.append(f"最新阶段复核缺少字段：{field}")
+    outcome = review_outcome(review.get("结论", ""))
+    if review.get("阶段") != phase:
+        issues.append(f"最新阶段复核阶段与 PLAN_MAP 当前阶段 {phase} 不一致")
+    if review.get("方式") not in {"自验", "独立"}:
+        issues.append("最新阶段复核方式必须为 自验/独立")
+    if review.get("风险") not in {"低风险", "高影响", "待判断"}:
+        issues.append("最新阶段复核风险必须为 低风险/高影响/待判断")
+    if review.get("风险") == "待判断":
+        issues.append("最新阶段复核风险待判断，不能准入")
+    if review.get("方式") == "自验" and review.get("风险") != "低风险":
+        issues.append("自验只适用于低风险，不能代替高影响独立复核")
+    if is_placeholder(review.get("风险依据")):
+        issues.append("最新阶段复核风险依据为空或占位")
+    if outcome == "unknown":
+        issues.append("最新阶段复核结论为空或未知")
+    if outcome == "failed" and review.get("阶段") == phase:
+        blockers.append("最新阶段复核：" + review["结论"])
+
+    def valid_date(value):
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            return None
+        try:
+            return parse_plan_date(value)
+        except ValueError:
+            return None
+
+    def qualified(row, legacy=False):
+        # 仅完整的独立通过可以解除先前独立失败；失败记录即使材料残缺也保留。
+        return (len(row) == (6 if legacy else 8) and not any(is_placeholder(value) for value in row)
+                and valid_date(row[0]) is not None
+                and (legacy or (row[3] == "独立" and row[4] in {"低风险", "高影响"})))
+
+    known_phases = {row[0] for row in phase_roadmap_rows(plan_text)}
+
+    def known_other_phase(value):
+        return value != phase and (value in known_phases or re.fullmatch(r"阶段\s*\d+", value))
+
+    def current_history(title, width):
+        section = fixed_section(plan_text, title)
+        rows = markdown_table_rows(section)
+        expected = (["日期", "类型", "阶段", "方式", "风险", "结论", "证据", "复核者"]
+                    if width == 8 else ["日期", "类型", "阶段", "结论", "证据", "复核者"])
+        if rows and rows[0] != expected:
+            issues.append(f"{title} 必须使用固定的 {width} 列表头")
+        if rows.count(expected) > 1:
+            issues.append(f"{title} 存在重复表头，无法确认记录结构")
+        current = []
+        previous_date = None
+        for row in rows:
+            if row == expected:
+                continue
+            if len(row) > 2 and row[2] != phase:
+                if known_other_phase(row[2]):
+                    continue
+                issues.append(f"{title} 记录阶段为空或未知，不能忽略")
+                continue
+            if len(row) != width or len(row) < 3 or row[2] != phase:
+                issues.append(f"{title} 记录字段不足、列数不符或阶段不明")
+                continue
+            current.append(row)
+            if is_placeholder(row[1]):
+                issues.append(f"{title} 类型为空或占位")
+            parsed = valid_date(row[0])
+            if not is_placeholder(row[0]) and parsed is None:
+                issues.append(f"{title} 日期不合法：{row[0]}")
+            if parsed and previous_date and parsed < previous_date:
+                issues.append(f"{title} 当前阶段记录日期逆序，无法确认最新结果")
+            if parsed:
+                previous_date = parsed
+        return current
+
+    history = current_history("阶段复核记录", 8)
+    for row in history:
+        if row[3] not in {"自验", "独立"} or row[4] not in {"低风险", "高影响", "待判断"}:
+            issues.append("阶段复核记录方式或风险未知")
+        if row[3] == "自验" and row[4] != "低风险":
+            issues.append("阶段复核记录自验只适用于低风险")
+        if review_outcome(row[5]) == "unknown":
+            issues.append("阶段复核记录结论为空或未知")
+        if review_outcome(row[5]) == "passed" and (
+            any(is_placeholder(value) for value in row) or valid_date(row[0]) is None or row[4] == "待判断"
+        ):
+            issues.append("阶段复核记录通过缺少有效日期、类型、风险、证据或身份")
+    if history:
+        latest = history[-1]
+        for field, index in [("日期", 0), ("方式", 3), ("风险", 4), ("结论", 5), ("证据", 6), ("复核者", 7)]:
+            if review.get(field) != latest[index]:
+                issues.append(f"最新阶段复核与当前阶段历史记录最后一条 {field} 冲突")
+        if review_outcome(latest[5]) == "failed":
+            blockers.append("阶段复核记录最新结果：" + latest[5])
+    elif outcome != "pending":
+        issues.append(f"阶段复核记录缺少当前阶段 {phase} 的记录")
+    if outcome == "passed":
+        for field in sorted(fields & set(review)):
+            if is_placeholder(review[field]):
+                issues.append(f"最新阶段复核字段 {field} 为空或占位")
+    if (outcome == "passed" or not is_placeholder(review.get("日期"))) and valid_date(review.get("日期", "")) is None:
+        issues.append("最新阶段复核日期不合法")
+
+    independent = [row for row in history if row[3] == "独立"]
+    unresolved = None
+    for row in independent:
+        row_outcome = review_outcome(row[5])
+        if row_outcome == "failed":
+            unresolved = row[5]
+        elif row_outcome == "passed" and qualified(row):
+            unresolved = None
+    if unresolved:
+        blockers.append("阶段复核记录存在未解除的独立失败：" + unresolved)
+
+    # 旧独立记录仍是独立事实源；完成失败也不能被新自验覆盖。
+    legacy_history = current_history("独立复核记录", 6)
+    legacy_section = fixed_section(plan_text, "最新独立准入复核")
+    legacy = key_value_table(legacy_section)
+    legacy_current = legacy.get("阶段") == phase
+    if legacy_section is not None and not legacy_current and not known_other_phase(legacy.get("阶段", "")):
+        issues.append("旧最新独立准入复核阶段为空或未知，不能降级放行")
+    if legacy_history:
+        latest = legacy_history[-1]
+        if not legacy_current or any(legacy.get(field) != latest[index]
+                                    for field, index in [("日期", 0), ("证据", 4), ("复核者", 5)]) or (
+            latest[3] != legacy.get("结论") and not (
+                review_outcome(latest[3]) == review_outcome(legacy.get("结论", "")) == "passed"
+                and latest[3] in legacy.get("结论", "")
+            )
+        ):
+            issues.append("旧最新独立准入复核与当前阶段历史记录冲突，不能降级放行")
+    unresolved = None
+    for row in legacy_history:
+        row_outcome = review_outcome(row[3])
+        if row_outcome == "failed":
+            unresolved = row[3]
+        elif row_outcome == "passed" and qualified(row, legacy=True):
+            unresolved = None
+        elif row_outcome == "passed":
+            issues.append("旧独立通过记录缺少有效日期、类型、证据或身份")
+        elif row_outcome == "unknown":
+            issues.append("旧独立复核记录结论为空或未知")
+    if unresolved:
+        blockers.append("旧独立复核记录存在未解除的失败：" + unresolved)
+    if legacy_current:
+        if review_outcome(legacy.get("结论", "")) == "failed":
+            blockers.append("最新独立准入复核：" + legacy["结论"])
+        elif not legacy_history or any(is_placeholder(legacy.get(field))
+                                     for field in ["日期", "阶段", "结论", "证据", "复核者"]) or valid_date(legacy.get("日期", "")) is None:
+            issues.append("旧最新独立准入复核缺少有效字段或当前阶段历史，不能降级放行")
+    result["passed"] = outcome == "passed" and not issues and not blockers
+    if outcome == "pending" and not issues and not blockers:
+        result["pending_action"] = "verify" if review.get("方式") == "自验" else "independent_review"
+    return result
+
+
+def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors, review_state=None):
     """检查待实施/实施中计划的阶段准入结构，不判断业务证据真实性。"""
     if data["status"] not in ACTIVE:
         return
@@ -231,7 +427,11 @@ def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors):
         section_hint = structural_heading_hint(plan_text, "当前阶段")
         readiness_issue(warnings, errors, strict, f"{plan_name}: 缺少 `## 当前阶段` 章节{section_hint}")
 
-    missing_fields = sorted(READINESS_FIELDS - set(summary))
+    review_state = review_state if review_state is not None else risk_review_state(plan_text, current_phase)
+    required_fields = READINESS_FIELDS
+    if review_state["enabled"]:
+        required_fields = (READINESS_FIELDS - {"最新独立准入复核"}) | {"最新阶段复核"}
+    missing_fields = sorted(required_fields - set(summary))
     if missing_fields:
         title_hint = ""
         if summary_section is None:
@@ -242,7 +442,7 @@ def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors):
             strict,
             f"{plan_name}: 阶段准入摘要缺少字段：{', '.join(missing_fields)}{title_hint}",
         )
-    for field in sorted(READINESS_FIELDS - {"当前阻塞项"}):
+    for field in sorted(required_fields - {"当前阻塞项"}):
         if field in summary and is_placeholder(summary[field]):
             readiness_issue(
                 warnings,
@@ -264,6 +464,13 @@ def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors):
             strict,
             f"{plan_name}: 阶段准入摘要状态 {summary['准入状态']} 与 PLAN_MAP 状态 {data['status']} 不一致",
         )
+
+    if review_state["enabled"]:
+        for issue in review_state["issues"] + review_state["blockers"]:
+            readiness_issue(warnings, errors, strict, f"{plan_name}: {issue}")
+        if review_state["pending_action"]:
+            readiness_issue(warnings, errors, strict, f"{plan_name}: 最新阶段复核尚未通过")
+        return
 
     review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
     review_fields = {"日期", "阶段", "结论", "证据", "复核者"}
@@ -1497,13 +1704,16 @@ def map_blockers(plan_map_text):
 def structural_ambiguities(plan_text, phase):
     issues = []
     current = top_level_section(plan_text, "当前阶段") or ""
-    for text, title in [(plan_text, "当前阶段"), (current, "阶段准入摘要"),
-                        (plan_text, "最新独立准入复核"), (plan_text, "阶段路线图"),
-                        (plan_text, "独立复核记录"), (plan_text, "未决问题")]:
+    sections = [(plan_text, "当前阶段"), (current, "阶段准入摘要"),
+                (plan_text, "最新独立准入复核"), (plan_text, "阶段路线图"),
+                (plan_text, "独立复核记录"), (plan_text, "未决问题")]
+    if "复核策略" in key_value_table(fixed_section(current, "阶段准入摘要")):
+        sections.extend([(plan_text, "最新阶段复核"), (plan_text, "阶段复核记录")])
+    for text, title in sections:
         level = "##" if title in {"当前阶段", "未决问题"} else "#+"
         if len(re.findall(rf"^{level}\s+{re.escape(title)}\s*$", mask_fenced_code(text), re.MULTILINE)) > 1:
             issues.append(f"重复结构化章节：{title}")
-        if title in {"阶段准入摘要", "最新独立准入复核"}:
+        if title in {"阶段准入摘要", "最新独立准入复核", "最新阶段复核"}:
             seen = set()
             for row in markdown_table_rows(fixed_section(text, title)):
                 if len(row) < 2 or row[0] == "字段":
@@ -1520,7 +1730,10 @@ def phase_gate(plan_map_text, plan_name, data, plan_text):
     """共享只读派生；严重级别由 check/workset/hook 的入口契约决定。"""
     issues = structural_ambiguities(plan_text, data["phase"])
     warnings = []
-    check_phase_structure(plan_name, data, plan_text, True, warnings, issues)
+    review_state = risk_review_state(plan_text, data["phase"])
+    check_phase_structure(plan_name, data, plan_text, True, warnings, issues, review_state)
+    if review_state["enabled"]:
+        issues.extend(review_state["issues"] + review_state["blockers"])
     if data["status"] in ACTIVE and is_placeholder(data["phase"]):
         issues.append("PLAN_MAP 当前阶段为空或占位")
     details, detail_issues = problem_blockers(plan_text)
@@ -1535,16 +1748,20 @@ def phase_gate(plan_map_text, plan_name, data, plan_text):
         issues.append("当前阶段存在未解决阻塞项：" + "；".join(blockers))
         if ((details or indexed) and value == "无") or ((details or declared) and not indexed):
             issues.append("当前阻塞来源需同步：PLAN_MAP 索引、未决问题或阶段准入摘要缺失/冲突")
-    review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
-    conclusion = review.get("结论", "").strip()
-    if review.get("阶段") == data["phase"] and conclusion.startswith(("未通过", "不通过", "失败", "不满足", "拒绝")):
-        blockers.append("最新独立准入复核：" + conclusion)
-        if data["status"] not in ACTIVE:
-            issues.append(blockers[-1])
+    if review_state["enabled"]:
+        blockers.extend(review_state["blockers"])
+    else:
+        review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
+        conclusion = review.get("结论", "").strip()
+        if review.get("阶段") == data["phase"] and conclusion.startswith(("未通过", "不通过", "失败", "不满足", "拒绝")):
+            blockers.append("最新独立准入复核：" + conclusion)
+            if data["status"] not in ACTIVE:
+                issues.append(blockers[-1])
     _, recent_warnings = current_recent_evidence(plan_text, data["phase"])
     warnings.extend(recent_warnings)
     issues = [message.removeprefix(f"{plan_name}: ") for message in issues]
-    return {"blockers": blockers, "issues": list(dict.fromkeys(issues)), "warnings": warnings}
+    return {"blockers": list(dict.fromkeys(blockers)), "issues": list(dict.fromkeys(issues)),
+            "warnings": warnings, "review": review_state}
 
 
 def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, warnings, errors):
@@ -1593,12 +1810,15 @@ def structured_next_action(plan_text):
         "implement": "implement",
         "无": "none",
         "none": "none",
+        "等待用户验收": "none",
     }
     if not value:
         return {"state": "unknown", "kind": "unknown", "reason": "缺少结构化下一动作"}
     kind = mapping.get(value.lower(), "unknown")
     if kind == "unknown":
         return {"state": "unknown", "kind": "unknown", "reason": f"下一动作值无法识别：{value}"}
+    if value == "等待用户验收":
+        return {"state": "known", "kind": "none", "reason": "等待用户验收；技术完成不自动关闭计划"}
     return {"state": "known", "kind": kind, "reason": "来自当前阶段结构化下一动作"}
 
 
@@ -1922,6 +2142,17 @@ def workset_payload(root, include_history=False, strict=False):
                     "state": "known",
                     "kind": "complete_step0",
                     "reason": f"阶段准入摘要缺少或占位字段：{', '.join(missing)}",
+                }
+            elif gate["review"]["enabled"]:
+                readiness = "design"
+                kind = "sync" if gate["review"]["passed"] else gate["review"]["pending_action"]
+                action = {
+                    "state": "known" if kind else "unknown",
+                    "kind": kind or "unknown",
+                    "reason": ("当前阶段复核通过，待同步 PLAN_MAP 准入状态" if kind == "sync" else
+                               "低风险阶段待自验" if kind == "verify" else
+                               "当前阶段待独立复核" if kind == "independent_review" else
+                               "当前阶段复核声明无法确定"),
                 }
             elif not current_review_passes(plan_text, data["phase"]):
                 readiness = "design"

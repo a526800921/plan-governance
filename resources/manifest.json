@@ -12,7 +12,10 @@
       "resources/skill/assets/adr.template.md",
       "resources/skill/assets/migration.template.md",
       "resources/skill/assets/plan.template.md",
-      "resources/skill/assets/spec.template.md"
+      "resources/skill/assets/spec.template.md",
+      "resources/skill/references/planning.md",
+      "resources/skill/references/verification.md",
+      "resources/skill/references/cli.md"
     ]
   },
   "runtime": [

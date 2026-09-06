@@ -116,7 +116,7 @@ F01—F03 优先复用用户可观察验收和反馈记录；R01—R04 涉及独
 
 ## 建议推进顺序
 
-以[新计划阶段路线图](../plans/plan-governance-workflow-streamlining.md#阶段路线图)为准：前置计划完成与用户验收 → 最终成果去重和设计 → 获准后实施剩余改进与验收。原“纳入现有阶段”的建议已由用户本次决定取代；本报告不继续维护第二套阶段状态或完成条件。
+推进顺序和前置条件只以[新计划执行交接](../plans/plan-governance-workflow-streamlining.md#执行交接)与[阶段路线图](../plans/plan-governance-workflow-streamlining.md#阶段路线图)为准。原“纳入现有阶段”的建议已由用户本次决定取代；本报告不继续维护第二套阶段状态或完成条件。
 
 ## 初版验证记录
 

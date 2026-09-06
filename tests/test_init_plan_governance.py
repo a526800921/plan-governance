@@ -52,8 +52,8 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert "### 阶段准入摘要" in plan.read_text(encoding="utf-8")
     assert "## 需求探索" in plan.read_text(encoding="utf-8")
     assert "### 用户确认的探索结论" in plan.read_text(encoding="utf-8")
-    assert "## 最新独立准入复核" in plan.read_text(encoding="utf-8")
-    assert "## 独立复核记录" in plan.read_text(encoding="utf-8")
+    assert "## 最新阶段复核" in plan.read_text(encoding="utf-8")
+    assert "## 阶段复核记录" in plan.read_text(encoding="utf-8")
     docs = tmp_path / "docs"
     assert {path.relative_to(docs).as_posix() for path in docs.rglob("*")} == {
         "PLAN_MAP.md", "plans", "plans/api-migration.md",
@@ -100,30 +100,11 @@ def test_main_can_create_claude_md(tmp_path):
     assert result == 0
     assert "## 计划治理" in text
     assert "docs/PLAN_MAP.md" in text
-    assert "事实源规则" in text
-    assert "最后更新" in text
-    assert "不复制字段级方案" in text
-    assert "草案和历史文档规则" in text
-    assert "不再作为规范事实源" in text
-    assert "草案为准|以草案为事实源|详见草案" in text
-    assert "rg` 搜索同名计划" in text
     assert "## 计划治理" in text
-    assert "验收独立性" in text
-    assert "不得仅依据计划状态、完成证据文字或文档格式判定完成" in text
     assert "plan-governance-cli check ." in text
-    assert "plan-governance-cli check . --stale-days" in text
+    assert "plan-governance-cli guide" in text
     assert "python3 scripts/check_plan_governance.py" not in text
-    assert "--migrate-plan-map-last-updated" in text
-    assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
-    assert "机器识别的结构化章节标题固定为 `阶段路线图`" in text
-    assert "追加式独立复核记录" in text
-    assert "需求探索与 grilling" in text
-    assert "grill-me" in text
-    assert "用户确认结构化总结" in text
-    assert "阶段内独立复核调度" in text
-    assert "不为每个微小动作单独复核" in text
-    assert "复核入口不可用" in text
     assert "高影响" in text
     assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
     assert init_plan_governance.CLAUDE_SECTION_END in text
@@ -138,21 +119,10 @@ def test_main_can_create_agents_md(tmp_path):
     text = agents_md.read_text(encoding="utf-8")
     assert result == 0
     assert "## 计划治理" in text
-    assert "验收独立性" in text
-    assert "不得仅依据计划状态、完成证据文字或文档格式判定完成" in text
     assert "plan-governance-cli check ." in text
-    assert "plan-governance-cli check . --stale-days" in text
+    assert "plan-governance-cli guide" in text
     assert "python3 scripts/check_plan_governance.py" not in text
-    assert "--migrate-plan-map-last-updated" in text
-    assert "阶段 N 完成只关闭阶段 N" in text
     assert "--strict-readiness" in text
-    assert "机器识别的结构化章节标题固定为 `阶段路线图`" in text
-    assert "需求探索与 grilling" in text
-    assert "grill-me" in text
-    assert "用户确认结构化总结" in text
-    assert "阶段内独立复核调度" in text
-    assert "不为每个微小动作单独复核" in text
-    assert "复核入口不可用" in text
     assert "高影响" in text
     assert init_plan_governance.AGENTS_SECTION_BEGIN in text
     assert init_plan_governance.AGENTS_SECTION_END in text
@@ -166,12 +136,6 @@ def test_main_can_create_all_agent_rules(tmp_path):
     assert result == 0
     assert (tmp_path / "CLAUDE.md").exists()
     assert (tmp_path / "AGENTS.md").exists()
-    assert "验收独立性" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "验收独立性" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-    assert "需求探索与 grilling" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "需求探索与 grilling" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
-    assert "阶段内独立复核调度" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "阶段内独立复核调度" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
 
 
 def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, capsys):
@@ -408,7 +372,6 @@ def test_update_agents_md_appends_to_existing_file(tmp_path):
     text = agents_md.read_text(encoding="utf-8")
     assert text.startswith("# 项目规则\n\n已有内容。")
     assert text.count("## 计划治理") == 1
-    assert "验收独立性" in text
 
 
 def test_update_agents_md_replaces_existing_managed_section(tmp_path):
