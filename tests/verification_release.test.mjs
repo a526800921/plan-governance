@@ -6,7 +6,6 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import vm from "node:vm";
-import { parse as parseYaml } from "yaml";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const verifyPath = join(root, "scripts/verify.mjs");
@@ -382,7 +381,7 @@ test("VM harness rejects shell execution even if entry point catches it", () => 
   assert.throws(() => runVerify({ source }), /VM child-process\/file contract violation/);
 });
 
-test("package and parsed CI share verify without adding npm test recursion", () => {
+test("package keeps local verification and release commands without npm test recursion", () => {
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   assert.equal(manifest.scripts.verify, "node scripts/verify.mjs");
   assert.equal(manifest.scripts["release:npm"], "node scripts/release_npm.mjs");
@@ -392,16 +391,6 @@ test("package and parsed CI share verify without adding npm test recursion", () 
   for (const hook of ["pretest", "posttest", "preverify", "postverify"]) {
     assert.equal(manifest.scripts[hook], undefined, `${hook} must not bypass the isolated verification composition`);
   }
-  const workflow = parseYaml(readFileSync(join(root, ".github/workflows/ci.yml"), "utf8"));
-  const steps = workflow.jobs.test.steps;
-  const pythonSetup = steps.find((step) => step.uses?.startsWith("actions/setup-python@"));
-  const nodeSetup = steps.find((step) => step.uses?.startsWith("actions/setup-node@"));
-  assert.equal(String(pythonSetup?.with?.["python-version"]), "3.11");
-  assert.equal(String(nodeSetup?.with?.["node-version"]), "22");
-  const commands = steps.filter((step) => step.run).map((step) => step.run.trim());
-  assert.deepEqual(commands, ["python -m pip install -r requirements-dev.txt", "npm ci", "npm run verify"]);
-  assert.ok(steps.indexOf(pythonSetup) < steps.findIndex((step) => step.run?.includes("pip install")));
-  assert.ok(steps.indexOf(nodeSetup) < steps.findIndex((step) => step.run === "npm ci"));
 });
 
 test("real Node verification entry only executes temporary recording Python and npm fixtures", { skip: process.platform === "win32" }, () => {

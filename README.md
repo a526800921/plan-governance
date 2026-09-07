@@ -353,7 +353,8 @@ python3 -m pytest
 - 统计 `scripts/` 下的 Python 代码。
 - 开启分支覆盖率。
 - 总覆盖率低于 85% 时测试失败。
-- CI 会同时运行测试覆盖率检查和计划治理检查。
+- 本地执行 `npm run verify` 会依次运行严格计划治理检查、Python 测试与覆盖率检查、Node 测试；npm 发布前也会自动执行。
+- 本仓库不配置 GitHub Actions CI，推送和 PR 不自动运行上述验证。
 
 ## 状态
 
