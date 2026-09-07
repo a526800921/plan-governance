@@ -472,6 +472,32 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 官方确认：`npm view plan-governance-cli@1.0.1 version dist.shasum dist.integrity dist-tags --json --registry=https://registry.npmjs.org/ --prefer-online` 返回版本与 latest 均为 `1.0.1`，shasum/integrity 与上述本地发布内容一致。
 - 发布结果已确认；本轮不更新全局 CLI 或已安装 skill，既有 1.0.0 安装保持。Git 提交及远端同步身份以仓库历史为准；整体实际使用验收仍归减负计划。
 
+### 1.0.1 本地更新
+
+用户随后要求“本地更新一下”，授权将全局 CLI 及 Codex/Claude 已安装 skill 更新至已发布的 1.0.1。更新前全局包为 1.0.0，两目标的 20 份受管资源与旧包一致，无本地定制；预期仅各更新 `references/cli.md`，保留 5 份非受管文件。
+
+从官方 registry 安装锁定的 1.0.1，安装后先执行 `setup --target all --force --dry-run`，核对范围再同步。同步前备份待覆盖文件并记录原目录 hash；完成时核对全局版本、包内文件、20 份受管资源、非受管文件保持和真实限量命令。异常时保留已知状态与备份，不修改其他项目或清理残留。
+
+- `npm install -g plan-governance-cli@1.0.1 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 成功；实际全局 CLI 入口指向 1.0.1 安装包，18 项生产文件与已发布仓库内容逐字节一致。
+- 两份待覆盖的 `references/cli.md` 已备份至 `~/.codex/backups/plan-governance-1.0.1-x2wxtuf1`，`before.json` 记录两目标原有 25 个文件的 hash。预演确认只写这两份文件后，执行 `plan-governance-cli setup --target all --force`；二次无 force 的 dry-run 显示 20 项全部最新。
+- 两目标的 20 份受管资源均逐字节匹配安装包，其他 23 个既有文件 hash 保持（含 5 个非受管文件），没有新增或删除文件。从 `/tmp` 运行已安装 CLI 的完整/限量 JSON，默认与严格模式均通过且所有门禁字段保持；`guide cli` 在无 Python 条件下匹配安装包参考正文并包含新参数。原 Tencent registry 保持。
+- 本地更新完成；复用已确认相同发布内容的完整测试证据，本轮执行安装与资源同步验收，不再重跑发行套件。减负计划的实际使用验收仍保留。
+
+## 2026-09-07 1.0.2 发布维护
+
+用户要求“可以发一版”，授权将已完成并同步本机的 U1—U5 规则调整发布为下一补丁版本。发布从工作区 `1.0.1` 使用 `patch` 生成 `1.0.2`；本次不包含 Git 提交/推送或升级全局 CLI。源规则及同步证据见[使用反馈调整](plan-governance-workflow-streamlining.md#本次实施结果)和[独立完成复核](../reviews/plan-governance-usage-adjustments-review-20260907.md)。整体实际使用验收不因发布自动完成。
+
+- 发布前官方 registry 查询：`latest: 1.0.1`，`plan-governance-cli@1.0.2` 返回 E404，不重复发布既有版本。
+- `npm run release:npm -- --dry-run patch` 退出 0；原 registry 为 `https://mirrors.tencent.com/npm/`。正式发布使用 `npm run release:npm -- patch`，由同一脚本先执行完整 verify，再切源、升级版本、发布及恢复 registry。
+- 本次打包内容差异为三份已独立复核通过的共享参考；发布前保持受审指纹，版本号由脚本更新。完成时核对官方版本、dist-tag、包 shasum/integrity、本地 registry 恢复并追加真实结果；结果不明先查询官方状态，不自动重试发布或回滚版本。
+- `npm run release:npm -- patch` 退出 0：严格治理通过，Python 613 passed、覆盖率 93.57%，Node 103/103、0 skipped；随后 package/lock 更新至 `1.0.2`，npm 返回发布成功。原 registry `https://mirrors.tencent.com/npm/` 已恢复并复查。
+- npm 提示后台处理，首次官方版本查询仍为 E404；保留已成功的发布命令结果，等待可见并仅做只读查询，不重复发布。
+- 版本更新后的 `npm pack --dry-run --json` 返回 18 项生产文件，shasum `dc6b83b02eb5e656834d69d28bf771de4685f378`，integrity `sha512-ADFV9cULccnLWh1iX5yYjFPtTgjZI4BtPRUSfdlfJVW+RDhic93bXniJNZORm6Ysf3AMDkkSxbs5KQC1zOuz6w==`；与发布输出的 shasum 一致，不包含计划、测试或凭证。
+- 后续官方查询确认 `version: 1.0.2`、`latest: 1.0.2`，完整 shasum/integrity 均与上述本地包一致。查询命令：`npm view plan-governance-cli@1.0.2 version dist.shasum dist.integrity dist-tags --json --registry=https://registry.npmjs.org/ --prefer-online`；未重复发布。
+- 发布完成；本机 skill 已在上一轮直接从仓库同步，本轮全局 CLI 安装仍为 1.0.1，未升级安装或操作 Git 提交/推送。只读发布内容核对者 `/root/skill_distribution_audit` 确认生产范围仅三份已受审参考差异；该核对不是新的阶段门禁。实际减负体验仍待用户验收。
+
+用户随后明确要求“提交推送”，授权将本仓库中的规则调整、独立复核、安装同步记录和 1.0.2 版本/发布记录一并提交并推送 origin/main。以上未提交说明保留为发布轮结束时的状态；实际提交及远端身份以 Git 历史为准，不扩大为整体实际使用验收通过。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |

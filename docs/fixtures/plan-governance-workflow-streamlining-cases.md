@@ -159,3 +159,56 @@ B03 来源为独立复核的“通过。”合法旧记录误拒绝；B04 为实
 2026-09-06，B03/B04 已由[独立技术完成复核](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过)确认修复并落档解除。针对两处实际实现修复重新执行 `PYTHONDONTWRITEBYTECODE=1 npm run verify`，退出 0：严格治理通过，Python 585 passed、覆盖率 93.55%（门槛 85%），Node 101/101、0 skipped。包含真实临时打包安装、setup、guide 和旧范围绑定全链路。工具记录 `7c8f1d`、`5eaf56`。
 
 受测内容为以上 26 项的最新指纹（同路径取最后一条），与第三轮独立复核一致；随后仅同步验证文档。历史 518 项/93.42% 是修复前结果，不作为当前覆盖率。宿主阶段 2 及既有共享目标/背景引用告警不因本轮通过解除。本计划技术完成，等待用户验收；未提交、发布、修改版本或同步全局安装。
+
+## 2026-09-07 使用反馈增量验证
+
+本节仅覆盖[U1—U5 已批准调整](../plans/plan-governance-workflow-streamlining.md#实际使用反馈与有界调整2026-09-07)。受测身份为 HEAD `f8c6e3728df4b4dae33b951fe003e487062f7dd9` 加三份共享参考差异；既有文档修改保持。SKILL、manifest、模板、checker、初始化器、Node CLI、package/lock 与 HEAD 逐字节一致。
+
+| 共享参考 | SHA-256 |
+|---|---|
+| planning.md | `19ccc39f654af72cf21ea0817a2281287cc395d3e42f982501920cb8f418c8af` |
+| verification.md | `cdae5b625a5f4fd1697f3eca3e18565a2cd6a0affad50aeb00c687273782bf7e` |
+| cli.md | `fb59de83cfeea27fff98e66916d572231bcdc8ef58a1f475ae05ca3c7fef54d1` |
+
+适用机械检查：`node bin/plan-governance-cli.mjs check . --strict-readiness` 退出 0、0 ERROR、13 WARNING；警告归属仍为宿主回放、共享目标和背景引用。新增反馈表曾放在未决问题章节，被解析为阻塞表；移成独立章节后通过，未改检查器或删除真实阻塞。`git diff --check` 和三份参考的本地链接检查通过。三个 `guide <topic>` 均退出 0，stdout 与对应源文件逐字节一致。本次只改规则文本，不重复原全量代码测试，也不把机械检查当行为验收。
+
+同步预检：仓库 `setup --target all --dry-run --force` 仅将更新 Codex/Claude 各三份参考，其他各七项资源已一致。两个安装副本及 npm CLI 1.0.1 内三份参考仍匹配实施前指纹，没有未处理定制差异。实际同步及入口更新须在相关任务不处于实施/复核时执行，再核对资源与非受管内容；此处不预记为已完成。
+
+### 有界行为走读输入
+
+以下为三个输入组，交同一名未参与实施或测试编写的独立者判断下一动作、需要的证据及阻塞边界。它们是规则走读，不是真实项目执行或耗时实验；已有设计上下文，不声称盲测。
+
+1. 未纳入旧计划的有限原型，用户已确认首版仅 iPhone，四份产品文档待同步；范围、后果和查证方式明确，无有效独立失败。随后另一个有旧独立门禁的计划变更退款后的权益撤回规则。分别判断处理方式和复核时点。
+2. 网站曾因未来续期缺少安排而独立失败。用户已确认当前交付边界，未来事项的职责、触发条件和证据已落实到后续计划；该后续计划仍在设计。当前公网边界、证书可用和恢复能力已有实际验证，但本次通过结论尚未产生。判断独立结论与落档顺序；若当前恢复仍有缺陷，结论如何变化。
+3. workset 返回多个计划，当前计划仅显示末三条证据，较早有一条有效独立失败；还存在直接依赖及不能归属的诊断。当前项目只更新过文档格式，随后更新入口。判断展示、回查和阶段策略；限量或入口更新能否改变有效门禁。
+
+项目同步范围：摩托车仅使用现有 `init --update-agent-rules-only` 更新 AGENTS/CLAUDE 受管块，并核对外部字节不变；ScreenshotStitcher 不建立 PLAN_MAP/全套治理，空闲后仅补最小 AGENTS 发现说明，指向现有产品文档，按需使用已安装 skill，保持原型与真实验收边界。项目状态变化时重新核对，不覆盖其他任务新内容。
+
+### 源规则独立结论与同步交接
+
+[独立完成复核](../reviews/plan-governance-usage-adjustments-review-20260907.md)已通过三份源规则及三个输入组，未发现源规则阻塞；真实安装/入口同步尚未执行。报告写入后的 139 个文档链接及锚点检查、空白检查通过。源复核结束后两个项目任务仍活跃，保留空闲交接条件，不将预检计作部署完成。
+
+同步预检的未受管文件没有被修改。按相对路径排序的 SHA-256 字典经 `json.dumps(..., sort_keys=True)` 后再次计算 SHA-256：Codex 3 项为 `e552c3a99bb7ca7d720745f22be9a0cb7a4b274383d89f4ae53520058b6bd805`，Claude 2 项为 `784cccdd432210c2e52d0dbceccf2ce46ac385732a78e1b7ea07336d8c7fe913`。实际同步前重新核对文件集合，同步后比较逐文件字节；不得仅凭历史摘要推定当前安全。
+
+摩托车入口只读预演采用现有初始化器生成内容：各有一个受管块，替换后两份文件的块外字节分别完全保持，docs 未写入；这不是实际项目升级结果。后续执行命令和防止过期覆盖的边界见[计划中的同步交接](../plans/plan-governance-workflow-streamlining.md#本次实施结果)。不另派同范围记录复核，不把真实功能/性能验收或整体用户接受预记为完成。
+
+### 本机及项目入口同步完成
+
+2026-09-07 用户明确“没事，同步吧”，授权立即执行，无须继续等待任务空闲。以上“尚未执行”保留为源复核和预检时的历史状态；本节是实际同步结果。受审三份参考指纹未变，沿用既有独立结论；本轮仅同步与文档自查。
+
+- 仓库 `node bin/plan-governance-cli.mjs setup --target all --dry-run --force` 重新确认各三份参考是唯一差异，均仍匹配原安装基线；随后执行 `setup --target all --force`，退出 0。Codex/Claude 各 10 项 manifest 资源与受审仓库逐字节一致；Codex 3 项、Claude 2 项非受管文件集合和逐文件摘要保持。第二次 `setup --target all --dry-run` 退出 0，全部已是最新。
+- 摩托车执行 `node bin/plan-governance-cli.mjs init --root /Users/jafish/Documents/work/motorcycle-manual-app --update-agent-rules-only`，退出 0。AGENTS/CLAUDE 分别从 9,396/8,585 字节变为 4,749/3,938 字节，块外逐字节保持；同步窗口内核对 PLAN_MAP 与 51 份计划，共 52 文件无变化。普通 `check` 前后均退出 0、0 ERROR、28 WARNING，stdout/stderr 完全一致，旧阶段策略和有效阻塞保持。
+- ScreenshotStitcher 原无 AGENTS，本轮以独占创建方式新增 22 行最小入口；六个本地文档链接和空白/末尾换行检查通过。没有新建 CLAUDE、PLAN_MAP 或治理目录，没有修改产品文档、代码或运行构建。该实施由 `/root/skill_instruction_audit` 完成，不记为额外独立复核。
+- 本机 npm CLI 的 package.json 和包内 skill 资源保持；CLI 仍为 1.0.1，其 `guide` 未包含这次未发布的开发规则。后续治理优先读取已同步的安装 skill，不把同版本号的 npm guide 与开发参考混读。本轮未改版本、发布、提交或推送 Git。
+
+| 项目入口 | 同步后 SHA-256 |
+|---|---|
+| motorcycle-manual-app/AGENTS.md | `312ea3d51f8b80a6516002f7a612b11fcf98e0d24277966a8aa93729cccf1a57` |
+| motorcycle-manual-app/CLAUDE.md | `f377ff99bfcd3d7cd6b8a44c758e78ebb054ee39920f0ca8c964f2ada4977f15` |
+| ScreenshotStitcher/AGENTS.md | `e7df995fc817eec4933424b341330942ac0b4fdccd01fe63f0e0f29d9193315d` |
+
+六份旧参考及摩托车两个旧入口的回滚副本位于 `/var/folders/t0/t1h7z_pd6716d4kstbbmxxyc0000gn/T/plan-governance-sync-20260907-z8ftbmvc`，同目录 `sync-result.json` 记录本轮命令结果摘要。持久证据为本节的实际命令、结果与指纹；同步完成不证明正在运行的任务已重新读取规则，也不代替后续实际减负体验验收。
+
+同步落档检查：149 个本地链接/锚点通过；本仓库 `check . --strict-readiness` 退出 0、0 ERROR、13 个既有 WARNING；`git diff --check` 通过。再次核对两套安装资源及三个项目入口仍匹配同步指纹，原有分发维护文档的未提交内容保持。此次同步待办已完成，整体计划继续等待实际使用验收。
+
+后续发布：用户随后授权发版，1.0.2 已通过统一验证并完成官方版本、dist-tag 和包校验值核对，见[发布维护](../plans/plan-governance-distribution-setup.md#2026-09-07-102-发布维护)。以上“未发布”说明保留为同步轮结束时的状态；本机全局 CLI 仍为 1.0.1。
