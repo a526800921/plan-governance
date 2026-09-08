@@ -558,3 +558,18 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - `npm install -g plan-governance-cli@1.0.3 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；实际全局包版本为 1.0.3，18 份发布文件逐字节匹配仓库。全局路径 `/Users/jafish/.nvm/versions/node/v22.23.0/lib/node_modules/plan-governance-cli`。
 - 已安装 CLI 的 `setup --target all --force --dry-run` 确认仅各替换 planning/verification 后，执行 `setup --target all --force` 成功。两目标 20 份受管文件与发布源逐字节一致，5 份非受管文件及全部文件集合保持；全局两个 guide 输出匹配源，二次无 force dry-run 全部最新。
 - 发布及本地更新完成；registry 再次确认已恢复。实际源内容已独立通过，本轮只复验发布/安装边界，不增加重复独立复核。其他项目计划策略与活跃会话未改动，Git 未提交/推送，整体实际使用验收继续保留。
+
+## 2026-09-09 1.1.0 发布与本地更新
+
+用户明确要求“npm发布1.1.0，然后同步本地”，授权发布已提交的单次复核及 GPT-6 提示精简内容，并更新全局 CLI 与 Codex/Claude skill。源实施及独立检查见[GPT-6 提示精简实施](plan-governance-workflow-streamlining.md#gpt-6-提示精简实施)。
+
+- 官方预检版本列表无 1.1.0、latest 为 1.0.3；`npm run release:npm -- --dry-run 1.1.0` 退出 0。
+- `npm run release:npm -- 1.1.0` 退出 0：严格治理通过、654 项 Python 测试通过/覆盖率 93.63%、103 项 Node 测试通过/0 skipped；工作区版本从 1.0.3 升至 1.1.0，发布返回成功。原 registry `https://mirrors.tencent.com/npm/` 已恢复并复查。
+- 发布包 18 文件，shasum `766c714ae6b5d48101a4c39502863a4b389ecc81`，integrity `sha512-+MTmIm9AnswCVx3q1ZMe5tAvNtxNezVljEWh0dux8621c/EWpcuHkdJZBU2MZA8vbiggl+ZygKMay2QjRX3dwg==`；本地 `npm pack --dry-run --json` 与发布日志 shasum 一致，未生成 tgz。发布日志 `/tmp/plan-governance-release-1.1.0.log`。
+- 官方提示包仍在处理，紧随发布的查询短暂 E404，未重复发布。可见性和安装结果随后追加。
+- 两套 skill 的 25 个既有文件已完整备份到 `/Users/jafish/.codex/backups/plan-governance-1.1.0-vmh_8soy`，20 项受管文件与旧安装包一致，无本地定制差异；备份包含逐文件 SHA-256。
+
+- 官方完整元数据随后确认 `version: 1.1.0`、`latest: 1.1.0`，shasum/integrity 与上述本地包一致；使用官方包元数据附加查询参数绕过短暂旧缓存完成核对。
+- `npm install -g plan-governance-cli@1.1.0 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0，全局安装版本为 1.1.0，18 份发布文件与仓库逐字节一致。
+- 已安装 CLI 的 `setup --target all --force --dry-run` 确认每目标六份更新，随后 `setup --target all --force` 成功；20 份受管文件一致，5 份非受管文件及全部文件集合保持。从 `/tmp` 执行四个 guide 主题，stdout 均匹配源；二次无 force dry-run 全部最新。
+- 发布及本地同步完成，registry 再次复查已恢复。复用源内容已有独立检查，本轮执行发布及安装边界自验；整体实际使用验收继续保留。版本与证据变更留在工作区，本轮未提交或推送 Git。
