@@ -1,4 +1,4 @@
 interface:
   display_name: "Plan Governance"
   short_description: "用计划、证据和检查管理分阶段工作"
-  default_prompt: "使用 $plan-governance 管理这个跨阶段变更，维护计划文档、Step 0 证据和完成检查；按共享规范选择低风险自验或高影响独立复核，并保留用户验收闭环。"
+  default_prompt: "使用 $plan-governance 管理这个跨阶段变更，维护计划文档、Step 0 证据和完成检查；按当前有效策略验证，在已有授权内完成交付，保留适用用户验收。"

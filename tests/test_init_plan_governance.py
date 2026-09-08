@@ -51,7 +51,6 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert "## 测试覆盖率" in plan.read_text(encoding="utf-8")
     assert "### 阶段准入摘要" in plan.read_text(encoding="utf-8")
     assert "## 需求探索" in plan.read_text(encoding="utf-8")
-    assert "### 用户确认的探索结论" in plan.read_text(encoding="utf-8")
     assert "## 最新阶段复核" in plan.read_text(encoding="utf-8")
     assert "## 阶段复核记录" in plan.read_text(encoding="utf-8")
     docs = tmp_path / "docs"

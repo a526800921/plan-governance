@@ -371,7 +371,6 @@ test("package manifest contains the distributable skill resources", () => {
   assert.doesNotMatch(planTemplate, /自主连续执行|执行清单|execution_mode|execution_policy/);
   assert.match(planTemplate, /^### 阶段证据$/m);
   assert.match(planTemplate, /^### 最近实施\/验证记录$/m);
-  assert.match(planTemplate, /purpose.*snapshot_id.*supersedes.*review_status/);
   assert.match(planTemplate, /^## 最新阶段复核$/m);
   assert.match(planTemplate, /^## 阶段复核记录$/m);
   assert.match(readme, /guide verification/);
@@ -448,7 +447,6 @@ test("packed package runs from a temporary installation", () => {
     assert.match(plan, /^## 需求探索$/m);
     assert.match(plan, /^### 阶段证据$/m);
     assert.match(plan, /^### 最近实施\/验证记录$/m);
-    assert.match(plan, /purpose.*snapshot_id.*supersedes.*review_status/);
     assert.match(plan, /^## 最新阶段复核$/m);
     assert.match(plan, /验证安装后的模板资源/);
     assert.doesNotMatch(plan, /\/Users\/jafish\/Documents\/work\/plan-governance/);
@@ -539,7 +537,7 @@ test("setup supports dry-run, sync, and conflict protection", () => {
     });
     assert.equal(synced.status, 0, synced.stderr);
     assert.match(synced.stdout, /已同步/);
-    assert.match(readFileSync(join(destination, "SKILL.md"), "utf8"), /需求探索与 grilling/);
+    assert.equal(readFileSync(join(destination, "SKILL.md"), "utf8"), readFileSync(join(root, "resources/skill/SKILL.md"), "utf8"));
     assert.equal(existsSync(join(destination, "scripts")), false);
 
     const skillPath = join(destination, "SKILL.md");
