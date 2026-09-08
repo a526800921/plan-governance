@@ -498,6 +498,14 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 用户随后明确要求“提交推送”，授权将本仓库中的规则调整、独立复核、安装同步记录和 1.0.2 版本/发布记录一并提交并推送 origin/main。以上未提交说明保留为发布轮结束时的状态；实际提交及远端身份以 Git 历史为准，不扩大为整体实际使用验收通过。
 
+### 1.0.2 本地更新
+
+用户随后要求“更新本地cli版本”。官方 1.0.2 的版本及完整性元数据与上述发布证据一致；执行 `npm install -g plan-governance-cli@1.0.2 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund`，退出 0，实际全局包版本已为 1.0.2。
+
+- 安装包的 18 项生产文件与已发布仓库内容逐字节一致；从 `/tmp` 运行已安装 CLI 的四个 `guide` 主题，均退出 0，stdout 与相应包内资源一致。
+- Codex/Claude 已安装 skill 的 13/12 个既有文件全部保持；`setup --target all --dry-run` 显示 20 项受管资源全部最新，无须再次覆盖。CLI guide 与上一轮直接同步的 skill 现已一致。
+- 原 registry `https://mirrors.tencent.com/npm/` 保持。复用相同发布内容的完整验证证据，本轮只做安装与资源检查，不重复发行测试。更新记录留在工作区，本轮未重新发布、提交或推送。
+
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
@@ -534,3 +542,19 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 - 依赖：[plan-governance-npm-cli](plan-governance-npm-cli.md)，提供公共 npm 包和全局 CLI 入口。
 - 当前不新增 ADR 或 migration；阶段 2 如果涉及用户目录覆盖窗口或跨工具差异，再单独创建 migration 文档。
+
+
+## 2026-09-08 1.0.3 发布与本地更新
+
+用户明确要求“发布npm，然后更新本地”，授权发布当前规则增量，并更新全局 CLI 与 Codex/Claude 已安装 skill。源规则独立结论见[复核粒度实施证据](plan-governance-workflow-streamlining.md#本次实施进展)。本次不修改其他项目计划策略，不自动提交或推送 Git。
+
+- 官方预检 `latest: 1.0.2`，版本列表没有 1.0.3；先执行 `npm run release:npm -- --dry-run patch`，退出 0。
+- `npm run release:npm -- patch` 退出 0：严格治理通过、613 项 Python 测试通过/覆盖率 93.57%、103 项 Node 测试通过/0 skipped；自动从工作区 1.0.2 升到 1.0.3，并返回发布成功。发布后原 registry `https://mirrors.tencent.com/npm/` 已恢复并复查。
+- 发布包 18 文件，shasum `fff0cb5abebb3da8b731abbb1b414f6f13ca9fe2`，integrity `sha512-KfjDZiUR8L6N9fcSc8DRwktqgEySUIq+YInfvl3CYtRfO0wa67ADpnm+pDtGwRC1oE6lfgPORaPZW7btF4J1Uw==`；本地 `npm pack --dry-run --json` 与发布日志 shasum 相同，未生成 tgz。发布日志 `/tmp/plan-governance-release-1.0.3.log`。
+- npm 提示新包仍需处理；紧随发布的官方查询短暂 E404，未重复发布。官方可见性与本地安装结果随后追加。
+- 更新前全局 CLI 为 1.0.2，两套 skill 共 20 项受管资源与旧发布包一致，没有定制差异；已记录 25 个既有文件的 SHA-256，将四份待覆盖参考备份至 `/Users/jafish/.codex/backups/plan-governance-1.0.3-rwfpqrx9`。保留 manifest 外文件与其他项目状态。
+
+- 官方随后确认 `version: 1.0.3`、`latest: 1.0.3`，shasum/integrity 与上列本地包完全一致。实际查询 `npm view plan-governance-cli@1.0.3 version dist.shasum dist.integrity dist-tags --json --registry=https://registry.npmjs.org/ --prefer-online` 退出 0。
+- `npm install -g plan-governance-cli@1.0.3 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；实际全局包版本为 1.0.3，18 份发布文件逐字节匹配仓库。全局路径 `/Users/jafish/.nvm/versions/node/v22.23.0/lib/node_modules/plan-governance-cli`。
+- 已安装 CLI 的 `setup --target all --force --dry-run` 确认仅各替换 planning/verification 后，执行 `setup --target all --force` 成功。两目标 20 份受管文件与发布源逐字节一致，5 份非受管文件及全部文件集合保持；全局两个 guide 输出匹配源，二次无 force dry-run 全部最新。
+- 发布及本地更新完成；registry 再次确认已恢复。实际源内容已独立通过，本轮只复验发布/安装边界，不增加重复独立复核。其他项目计划策略与活跃会话未改动，Git 未提交/推送，整体实际使用验收继续保留。

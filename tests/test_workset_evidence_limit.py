@@ -215,6 +215,25 @@ def test_hidden_independent_failure_still_blocks_after_later_self_check(tmp_path
     assert snapshot(tmp_path) == before
 
 
+@pytest.mark.parametrize("strict", [False, True])
+def test_single_review_repair_is_preserved_in_limited_workset(tmp_path, capsys, strict):
+    text = risk_plan(history=record("未通过", method="独立") + "\n" + record(kind="修复自验"))
+    text = text.replace("| 复核策略 | 风险分流 |", "| 复核策略 | 单次独立复核 |")
+    rows = evidence_rows(2)
+    rows[0][2:5] = ["独立发现", "原问题证据", "未通过"]
+    rows[1][2] = "修复自验通过"
+    project(tmp_path, rows, text=text)
+    before = snapshot(tmp_path)
+    full, full_status, full_err = run_json(tmp_path, capsys, strict=strict)
+    limited, status, err = run_json(tmp_path, capsys, limit=1, strict=strict)
+    assert_only_evidence_changed(full, limited, 1)
+    assert limited["plans"][0]["readiness"] == "ready"
+    assert limited["plans"][0]["next_action"]["kind"] == "implement"
+    assert status == full_status == 0
+    assert err == full_err
+    assert snapshot(tmp_path) == before
+
+
 @pytest.mark.parametrize("problem", ["unresolved_blocker", "missing_step0"])
 def test_gate_diagnostics_and_exit_codes_do_not_depend_on_window(tmp_path, capsys, problem):
     if problem == "unresolved_blocker":

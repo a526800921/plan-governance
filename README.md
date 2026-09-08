@@ -205,9 +205,9 @@ plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCor
 
 ## 持续推进
 
-在已授权的跨轮任务中可使用 `goal`；skill 本身不定义整计划自主执行运行时。低风险改动由当前 AI 自验，高影响或有效独立失败保留必要独立复核；已有计划缺省独立门禁兼容保留。
+在已授权的跨轮任务中可使用 `goal`；skill 本身不定义整计划自主执行运行时。普通改动自验，高风险或高影响同范围只独立复核一次，修复后自验；旧计划显式采用新策略，保留历史。
 
-[验证规范](resources/skill/references/verification.md)统一维护风险分流、证据复用、失败重审与用户验收；其他会话从同一 skill 读取。需要独立复核且授权明确时自动安排只读 subagent，不为普通小改逐次派发；技术完成待用户验收的适用功能计划仍保持实施中。
+[验证规范](resources/skill/references/verification.md)统一维护风险分流、证据复用、修复自验与用户验收；其他会话从同一 skill 读取。需要独立复核且授权明确时自动安排只读 subagent，不为普通小改逐次派发；技术完成待用户验收的适用功能计划仍保持实施中。
 
 1.0.1 起支持可选的最近记录窗口：
 
@@ -375,7 +375,7 @@ python3 -m pytest
 
 状态与当前阶段由 `docs/PLAN_MAP.md` 维护。每阶段必须具备自身 Step 0、验证/完成和失败边界、无有效阻塞及适用复核，不能凭上一阶段完成自动待实施。
 
-旧计划缺省沿用独立准入；新模板显式采用风险分流，低风险自验与高影响独立分别如实记录，旧独立失败不能被自验遮蔽。固定字段、历史保护和严格检查语义以[阶段门规范](resources/skill/references/verification.md#step-0-与阶段门)为准。
+旧计划缺省沿用独立准入；新模板使用单次独立复核策略，普通改动自验，高风险或高影响独立检查一次后由实施者修复自验，原发现保留。固定字段、历史保护和严格检查语义以[阶段门规范](resources/skill/references/verification.md#step-0-与阶段门)为准。
 
 使用 `check --strict-readiness` 做准入/CI/发布机械检查；默认检查兼容告警，机械通过不代替真实风险判断、业务验收或用户接受。
 
