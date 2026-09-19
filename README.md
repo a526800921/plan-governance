@@ -205,17 +205,24 @@ plan-governance-cli graph code impact --repo modelpad --file Sources/ModelPadCor
 
 ## 持续推进
 
-在已授权的跨轮任务中可使用 `goal`；skill 本身不定义整计划自主执行运行时。普通改动自验，高风险或高影响同范围只独立复核一次，修复后自验；旧计划显式采用新策略，保留历史。
+在已授权的跨轮任务中可使用 `goal`；skill 本身不定义整计划自主执行运行时。普通改动自验，高风险或高影响同范围只独立复核一次，修复后自验；旧策略名和旧记录格式采用相同行为并保留历史，无需逐计划迁移。
 
-[验证规范](resources/skill/references/verification.md)统一维护风险分流、证据复用、修复自验与用户验收；其他会话从同一 skill 读取。需要独立复核且授权明确时自动安排只读 subagent，不为普通小改逐次派发；技术完成待用户验收的适用功能计划仍保持实施中。
+[验证规范](resources/skill/references/verification.md)统一维护单次复核、任务复用、证据复用、修复自验与用户验收；其他会话从同一 skill 读取。需要独立复核且授权明确时自动安排只读 subagent，复用已有同范围任务/结果，等待异常先核准任务 ID 和状态，且复核者不得再委派复核；不为普通小改逐次派发。技术完成待用户验收的适用功能计划仍保持实施中。
 
-1.0.1 起支持可选的最近记录窗口：
+恢复已有计划时可读取派生工作集：
+
+```bash
+plan-governance-cli workset . --json
+plan-governance-cli workset . --json --strict-readiness
+```
+
+工作集返回活跃计划、阶段、阻塞、下一动作、并行提示和最近证据，不写计划或自动执行动作；严格模式让活跃计划的机械准入缺陷返回非零。需要缩小恢复上下文时使用最近记录窗口：
 
 ```bash
 plan-governance-cli workset . --json --evidence-limit 3
 ```
 
-每个计划保留末尾三条记录，并给出省略数量和原文位置；默认完整输出和门禁判断保持。窗口用于恢复阅读，必要时去掉参数回查完整记录，详见 [CLI 参考](resources/skill/references/cli.md#当前工作集)。已发布的 1.0.0 尚不支持此参数。
+每个计划保留末尾三条记录，并给出省略数量和原文位置；默认完整输出和门禁判断保持。窗口用于恢复阅读，必要时去掉参数回查完整记录，详见 [CLI 参考](resources/skill/references/cli.md#当前工作集)。
 
 ## 按需读取规则
 
@@ -230,10 +237,10 @@ plan-governance-cli guide cli             # CLI 操作
 
 SKILL 保留任务边界、自主执行原则和按需入口，三份 references 按需读取并随 manifest/setup/npm 分发。已有项目只刷新受管入口，不迁移旧计划、不改用户块外内容。选择同一版本的规范来源，安装副本与仓库同版本号也可能有不同内容。
 
-也可以不全局安装，直接使用锁定版本：
+也可以不全局安装，直接使用当前公开版本：
 
 ```bash
-npx --yes --package plan-governance-cli@1.0.1 plan-governance-cli check . --strict-readiness
+npx --yes --package plan-governance-cli@latest plan-governance-cli check . --strict-readiness
 ```
 
 npm 包内部仍使用版本化的 Python 检查器，但用户不需要直接调用或复制该脚本。旧项目已有本地脚本时仍可保留作为兼容或回滚路径。
@@ -252,11 +259,10 @@ npm 包内部仍使用版本化的 Python 检查器，但用户不需要直接�
 
 ```bash
 plan-governance-cli setup --target codex --dry-run
-plan-governance-cli setup --target claude --dry-run
-plan-governance-cli setup --target all
+plan-governance-cli setup --target codex --force
 ```
 
-`setup` 只同步 npm 包 manifest 指定的 skill、代理元数据和模板文件；默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录。当前版本不自动安装 hook 配置。
+`setup` 只向 Codex 同步 npm 包 manifest 指定的 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧 `--target claude`、`--target all`、重复 target、混合 help 或缺失 target 都会在写入前失败；既有 Claude 目录不会被删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录。项目初始化器对 `CLAUDE.md` 的显式入口维护不受此限制；当前实现不自动安装 hook 配置。
 
 初始化项目时使用包内初始化器：
 
@@ -366,7 +372,7 @@ python3 -m pytest
 | `设计中` | 正在明确范围、契约和门禁 |
 | `待实施` | 当前阶段门禁已通过，但尚未开始 |
 | `实施中` | 当前阶段正在修改代码或文档 |
-| `已完成` | 实现、测试、证据和文档已同步 |
+| `已完成` | 实现、测试、证据、文档及适用用户验收均已完成 |
 | `已替代` | 被另一个计划取代 |
 | `已合并` | 并入另一个计划 |
 | `已废弃` | 明确不再推进 |
@@ -375,7 +381,7 @@ python3 -m pytest
 
 状态与当前阶段由 `docs/PLAN_MAP.md` 维护。每阶段必须具备自身 Step 0、验证/完成和失败边界、无有效阻塞及适用复核，不能凭上一阶段完成自动待实施。
 
-旧计划缺省沿用独立准入；新模板使用单次独立复核策略，普通改动自验，高风险或高影响独立检查一次后由实施者修复自验，原发现保留。固定字段、历史保护和严格检查语义以[阶段门规范](resources/skill/references/verification.md#step-0-与阶段门)为准。
+新旧计划统一采用单次复核行为：普通改动自验，高风险或高影响独立检查一次后由实施者修复自验，原发现保留。旧 `风险分流` 标签和缺省六列格式只作为兼容记录形式，不恢复多次独立门禁；固定字段、历史保护和严格检查语义以[阶段门规范](resources/skill/references/verification.md#step-0-与阶段门)为准。
 
 使用 `check --strict-readiness` 做准入/CI/发布机械检查；默认检查兼容告警，机械通过不代替真实风险判断、业务验收或用户接受。
 

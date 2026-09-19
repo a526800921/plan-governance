@@ -96,14 +96,14 @@ def test_explicit_pass_punctuation_preserves_legacy_compatibility(tmp_path, caps
 
 
 @pytest.mark.parametrize("legacy", [True, False])
-def test_punctuation_pass_recovers_independent_failure(tmp_path, capsys, legacy):
+def test_second_independent_pass_with_punctuation_cannot_recover_failure(tmp_path, capsys, legacy):
     if legacy:
         history = legacy_record("未通过") + "\n" + legacy_record("通过。")
         text = with_legacy(risk_plan(), "通过。", history=history)
     else:
         history = record("未通过", method="独立") + "\n" + record("通过。", method="独立") + "\n" + record()
         text = risk_plan(history=history)
-    assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
+    assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
 
 
 @pytest.mark.parametrize("conclusion", ["通过不了", "通过不了。", "可能通过", "可能通过。", "通过？", "通过?"])
@@ -288,7 +288,7 @@ def test_self_review_cannot_erase_any_independent_failure(tmp_path, capsys, kind
 
 
 @pytest.mark.parametrize("legacy", [True, False])
-def test_independent_recovery_unblocks_without_deleting_history(tmp_path, capsys, legacy):
+def test_repeated_independent_review_cannot_clear_finding(tmp_path, capsys, legacy):
     if legacy:
         history = legacy_record("未通过") + "\n" + legacy_record(kind="阶段完成复核")
         text = with_legacy(risk_plan(), "通过", history=history)
@@ -296,7 +296,7 @@ def test_independent_recovery_unblocks_without_deleting_history(tmp_path, capsys
         history = record("未通过", method="独立") + "\n" + record(method="独立", kind="阶段完成复核") + "\n" + record()
         text = risk_plan(history=history)
     assert "未通过" in text
-    assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
+    assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
 
 
 def test_self_review_failure_can_be_repaired_by_self_review(tmp_path, capsys):
@@ -306,7 +306,7 @@ def test_self_review_failure_can_be_repaired_by_self_review(tmp_path, capsys):
 
 @pytest.mark.parametrize("legacy", [True, False])
 @pytest.mark.parametrize("problem", ["证据冲突", "超时", "复核入口不可用", "证据失效"])
-def test_explicit_independent_pass_can_describe_repaired_failure(tmp_path, capsys, legacy, problem):
+def test_explicit_second_independent_pass_cannot_describe_away_failure(tmp_path, capsys, legacy, problem):
     conclusion = f"通过：已修复{problem}"
     if legacy:
         history = legacy_record(problem) + "\n" + legacy_record(conclusion)
@@ -314,6 +314,15 @@ def test_explicit_independent_pass_can_describe_repaired_failure(tmp_path, capsy
     else:
         history = record(problem, method="独立") + "\n" + record(conclusion, method="独立") + "\n" + record()
         text = risk_plan(history=history)
+    assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
+
+
+@pytest.mark.parametrize("problem", ["证据冲突", "超时", "复核入口不可用", "证据失效"])
+def test_repair_self_check_can_describe_resolved_business_failure(tmp_path, capsys, problem):
+    conclusion = f"通过：已修复{problem}"
+    history = record(f"未通过：{problem}", method="独立", risk="高影响")
+    history += "\n" + record(conclusion, method="自验", risk="高影响", kind="修复自验")
+    text = risk_plan(history=history, method="自验", risk="高影响", conclusion=conclusion)
     assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
 
 

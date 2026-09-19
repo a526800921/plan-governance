@@ -79,11 +79,23 @@ function loadManifest() {
 }
 
 function parseSetupArgs(args) {
+  if (args.length === 1 && ["-h", "--help"].includes(args[0])) {
+    console.log("用法：plan-governance-cli setup --target codex [--destination DIR] [--dry-run] [--force]");
+    return null;
+  }
+
   const options = { target: null, destination: null, dryRun: false, force: false };
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--target") {
-      options.target = args[++index];
+      if (options.target !== null) {
+        throw new Error("setup 的 --target 只能指定一次");
+      }
+      const value = args[++index];
+      if (!value || value.startsWith("-")) {
+        throw new Error("setup 的 --target 缺少值");
+      }
+      options.target = value;
     } else if (arg === "--destination") {
       options.destination = args[++index];
     } else if (arg === "--dry-run") {
@@ -91,18 +103,14 @@ function parseSetupArgs(args) {
     } else if (arg === "--force") {
       options.force = true;
     } else if (arg === "-h" || arg === "--help") {
-      console.log("用法：plan-governance-cli setup --target codex|claude|all [--destination DIR] [--dry-run] [--force]");
-      return null;
+      throw new Error("setup 的 --help 必须单独使用");
     } else {
       throw new Error(`setup 不支持参数：${arg}`);
     }
   }
 
-  if (!options.target || !["codex", "claude", "all"].includes(options.target)) {
-    throw new Error("setup 必须指定 --target codex、claude 或 all");
-  }
-  if (options.destination && options.target === "all") {
-    throw new Error("--destination 只能与单个 setup target 一起使用");
+  if (options.target !== "codex") {
+    throw new Error("setup 仅支持 --target codex");
   }
   return options;
 }
@@ -112,12 +120,11 @@ function expandTarget(target) {
   return target.replace(/^~(?=\/|$)/, home);
 }
 
-function targetRoots(manifest, options) {
-  const names = options.target === "all" ? ["codex", "claude"] : [options.target];
-  return names.map((name) => ({
-    name,
-    root: resolve(options.destination ? options.destination : expandTarget(manifest.skill.targets[name])),
-  }));
+function targetRoot(manifest, options) {
+  return {
+    name: "codex",
+    root: resolve(options.destination ? options.destination : expandTarget(manifest.skill.targets.codex)),
+  };
 }
 
 function resourceFiles(manifest) {
@@ -148,17 +155,16 @@ function setup(args) {
 
   const plans = [];
   try {
-    for (const target of targetRoots(manifest, options)) {
-      for (const file of files) {
-        accessSync(file.source, constants.R_OK);
-        const destination = resolve(target.root, file.relative);
-        const existing = existsSync(destination) ? readFileSync(destination, "utf8") : null;
-        const sourceContent = readFileSync(file.source, "utf8");
-        if (existing !== null && existing !== sourceContent && !options.force) {
-          throw new Error(`目标文件存在本地差异，未覆盖：${destination}（如确认覆盖请加 --force）`);
-        }
-        plans.push({ target: target.name, destination, existing, sourceContent });
+    const target = targetRoot(manifest, options);
+    for (const file of files) {
+      accessSync(file.source, constants.R_OK);
+      const destination = resolve(target.root, file.relative);
+      const existing = existsSync(destination) ? readFileSync(destination, "utf8") : null;
+      const sourceContent = readFileSync(file.source, "utf8");
+      if (existing !== null && existing !== sourceContent && !options.force) {
+        throw new Error(`目标文件存在本地差异，未覆盖：${destination}（如确认覆盖请加 --force）`);
       }
+      plans.push({ target: target.name, destination, existing, sourceContent });
     }
   } catch (error) {
     return fail(error.message);

@@ -81,6 +81,45 @@ def test_previous_phase_review_is_not_current_baseline(tmp_path, capsys):
     assert_risk(tmp_path, capsys, single_plan(history=history))
 
 
+def test_explicit_cross_phase_baseline_reuse_avoids_second_review(tmp_path, capsys):
+    evidence = "[阶段 0 独立复核](#阶段-0)"
+    history = record(method="独立", risk="高影响", phase="阶段 0")
+    history += "\n" + record(method="自验", risk="高影响", kind="复核基线复用", evidence=evidence)
+    text = latest_field(single_plan(history=history, risk="高影响"), "证据", evidence)
+    assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
+    assert text.count("| 独立 |") == 1
+
+
+def test_cross_phase_reuse_requires_resolved_prior_baseline(tmp_path, capsys):
+    evidence = "[阶段 0 独立复核](#阶段-0)"
+    history = record("未通过：仍有缺陷", method="独立", risk="高影响", phase="阶段 0")
+    history += "\n" + record(method="自验", risk="高影响", kind="复核基线复用", evidence=evidence)
+    text = latest_field(single_plan(history=history, risk="高影响"), "证据", evidence)
+    assert_risk(tmp_path, capsys, text)
+
+
+def test_future_phase_cannot_be_reused_as_prior_baseline(tmp_path, capsys):
+    evidence = "[阶段 2 独立复核](#阶段-2)"
+    history = record(method="独立", risk="高影响", phase="阶段 2")
+    history += "\n" + record(method="自验", risk="高影响", kind="复核基线复用", evidence=evidence)
+    text = latest_field(single_plan(history=history, risk="高影响"), "证据", evidence)
+    assert_risk(tmp_path, capsys, text)
+
+
+def test_historical_risk_label_uses_same_single_review_repair_flow(tmp_path, capsys):
+    history = record("未通过：发现问题", method="独立", risk="高影响")
+    history += "\n" + record(method="自验", risk="高影响", kind="修复自验")
+    assert_risk(tmp_path, capsys, risk_plan(history=history, method="自验", risk="高影响"),
+                readiness="ready", action="implement")
+
+
+def test_second_independent_pass_cannot_clear_single_review_finding(tmp_path, capsys):
+    history = record("未通过：发现问题", method="独立", risk="高影响")
+    history += "\n" + record(method="独立", risk="高影响", kind="重复独立复核")
+    assert_risk(tmp_path, capsys, single_plan(history=history, method="独立", risk="高影响"),
+                readiness="blocked", action="resolve_blocker")
+
+
 def test_generic_self_pass_does_not_hide_unresolved_findings(tmp_path, capsys):
     history = record("未通过", method="独立", risk="高影响") + "\n" + record(risk="高影响")
     assert_risk(tmp_path, capsys, single_plan(history=history), readiness="blocked", action="resolve_blocker")
@@ -125,6 +164,6 @@ def test_newer_legacy_failure_is_not_cleared_by_older_repair(tmp_path, capsys):
     assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
 
 
-def test_pending_single_review_dispatches_once(tmp_path, capsys):
+def test_pending_single_review_derives_one_independent_action(tmp_path, capsys):
     text = single_plan(history="", status="设计中", method="独立", conclusion="尚未进行")
     assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="independent_review")

@@ -18,9 +18,9 @@
 
 ## 分发与资源
 
-SKILL、三个 references、agents 元数据与 assets 由同一 npm 包的 manifest 分发。`plan-governance-cli setup --target codex|claude|all --dry-run` 查看同步差异；实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理用户目录残留。项目升级不迁移旧计划，受管块外内容必须保持。
+SKILL、三个 references、agents 元数据与 assets 由同一 npm 包的 manifest 分发。`plan-governance-cli setup --target codex --dry-run` 查看 Codex 同步差异；实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理用户目录残留。setup 不支持 Claude 或多目标同步，也不删除既有 Claude 目录；项目初始化器对 `CLAUDE.md` 的显式入口维护是独立能力。项目升级不迁移旧计划，受管块外内容必须保持。
 
-仅更新计划格式不等于更新项目入口；更新 AGENTS/CLAUDE 入口也不等于当前阶段已采用新复核策略。已有项目在任务交接、没有进行中的实施或复核时更新受管入口；阶段策略单独按 verification 兼容规则处理，不批量回写历史。安装副本与仓库开发规则有差异时说明本次选用来源，不能因版本号相同就混读正文。
+仅更新计划格式不等于更新项目入口。已有项目在任务交接、没有进行中的实施或复核时更新受管入口；升级不批量回写历史，旧策略名和六列格式按 verification 解释为统一单次行为。安装副本与仓库开发规则有差异时说明本次选用来源，不能因版本号相同就混读正文。
 
 ## 初始化、模板和检查脚本
 

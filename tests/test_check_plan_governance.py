@@ -1855,11 +1855,124 @@ def test_resolved_blockers_do_not_block(tmp_path, capsys, state):
     lambda p: p.replace("### 最新独立准入复核", "### 阶段准入摘要\n\n### 最新独立准入复核"),
     lambda p: p.replace("| 阶段 1 | 阶段目标 |", "| 阶段 1 | 重复 | Step 0 | pytest | 待实施 |\n| 阶段 1 | 阶段目标 |"),
     lambda p: p.replace("| 阶段 | 阶段 1 |", "| 阶段 | 阶段 2 |"),
-    lambda p: p.replace("| 阶段准入复核 | 阶段 1 | 通过 |", "| 阶段准入复核 | 阶段 1 | 未通过 |"),
 ])
 def test_ambiguous_readiness_never_implements(tmp_path, capsys, mutation):
     payload = assert_gate_result(tmp_path, capsys, mutation(readiness_plan_text()))
     assert payload["warnings"]
+
+
+def test_hidden_legacy_failure_is_a_blocker_not_an_ambiguity(tmp_path, capsys):
+    plan = readiness_plan_text().replace(
+        "| 阶段准入复核 | 阶段 1 | 通过 |", "| 阶段准入复核 | 阶段 1 | 未通过 |")
+    payload = assert_gate_result(tmp_path, capsys, plan, readiness="blocked", action="resolve_blocker")
+    assert "未修复的独立发现" in " ".join(payload["plans"][0]["blockers"])
+
+
+def test_legacy_format_accepts_ordinary_self_check_without_independent_review(tmp_path, capsys):
+    plan = readiness_plan_text().replace("阶段准入复核", "普通自验").replace("独立复核者", "当前 AI")
+    payload = assert_gate_result(tmp_path, capsys, plan,
+                                 check_codes=(0, 0), workset_codes=(0, 0),
+                                 readiness="ready", action="implement")
+    assert payload["plans"][0]["blockers"] == []
+
+
+def test_legacy_format_repairs_one_independent_finding_by_self_check(tmp_path, capsys):
+    plan = readiness_plan_text()
+    plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
+    plan = plan.replace("| 复核者 | 独立复核者 |", "| 复核者 | 当前 AI |")
+    original = "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    replacement = (
+        "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 未通过：发现问题 | `tests/fixtures/readiness.md` | 独立复核者 |\n"
+        "| 2026-07-14 | 修复自验 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 当前 AI |"
+    )
+    plan = plan.replace(original, replacement)
+    payload = assert_gate_result(tmp_path, capsys, plan,
+                                 check_codes=(0, 0), workset_codes=(0, 0),
+                                 readiness="ready", action="implement")
+    assert "未通过：发现问题" in plan
+    assert payload["plans"][0]["blockers"] == []
+
+
+def test_legacy_generic_self_check_cannot_erase_independent_finding(tmp_path, capsys):
+    plan = readiness_plan_text()
+    plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
+    plan = plan.replace("| 复核者 | 独立复核者 |", "| 复核者 | 当前 AI |")
+    original = "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    replacement = (
+        "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 未通过：发现问题 | `tests/fixtures/readiness.md` | 独立复核者 |\n"
+        "| 2026-07-14 | 普通自验 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 当前 AI |"
+    )
+    plan = plan.replace(original, replacement)
+    assert_gate_result(tmp_path, capsys, plan, readiness="blocked", action="resolve_blocker")
+
+
+def test_legacy_format_explicitly_reuses_cross_phase_baseline(tmp_path, capsys):
+    evidence = "[阶段 0 独立复核](#阶段-0)"
+    plan = readiness_plan_text()
+    plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
+    plan = plan.replace("| 复核者 | 独立复核者 |", "| 复核者 | 当前 AI |")
+    plan = plan.replace("| 证据 | `tests/fixtures/readiness.md` |", f"| 证据 | {evidence} |")
+    original = "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    replacement = (
+        "| 2026-07-13 | 阶段准入复核 | 阶段 0 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |\n"
+        f"| 2026-07-14 | 复核基线复用 | 阶段 1 | 通过 | {evidence} | 当前 AI |"
+    )
+    plan = plan.replace(original, replacement)
+    assert_gate_result(tmp_path, capsys, plan,
+                       check_codes=(0, 0), workset_codes=(0, 0),
+                       readiness="ready", action="implement")
+
+
+def test_legacy_format_cannot_reuse_future_phase_baseline(tmp_path, capsys):
+    evidence = "[阶段 2 独立复核](#阶段-2)"
+    plan = readiness_plan_text()
+    plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
+    plan = plan.replace("| 复核者 | 独立复核者 |", "| 复核者 | 当前 AI |")
+    plan = plan.replace("| 证据 | `tests/fixtures/readiness.md` |", f"| 证据 | {evidence} |")
+    original = "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    replacement = (
+        "| 2026-07-13 | 阶段准入复核 | 阶段 2 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |\n"
+        f"| 2026-07-14 | 复核基线复用 | 阶段 1 | 通过 | {evidence} | 当前 AI |"
+    )
+    plan = plan.replace(original, replacement)
+    assert_gate_result(tmp_path, capsys, plan)
+
+
+def test_legacy_truncated_self_check_record_cannot_enter_ready_state(tmp_path, capsys):
+    plan = readiness_plan_text().replace(
+        "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |",
+        "| 2026-07-13 | 普通自验 | 阶段 1 | 通过 |",
+    )
+    assert_gate_result(tmp_path, capsys, plan)
+
+
+def test_legacy_second_independent_pass_does_not_clear_finding(tmp_path, capsys):
+    plan = readiness_plan_text()
+    plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
+    original = "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    replacement = (
+        "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 未通过：发现问题 | `tests/fixtures/readiness.md` | 独立复核者 |\n"
+        "| 2026-07-14 | 阶段完成复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    )
+    plan = plan.replace(original, replacement)
+    assert_gate_result(tmp_path, capsys, plan, readiness="blocked", action="resolve_blocker")
+
+
+def test_legacy_pending_ordinary_self_check_derives_verify_action(tmp_path, capsys):
+    plan = readiness_plan_text(status="设计中").replace("阶段准入复核", "普通自验")
+    plan = plan.replace("| 结论 | 通过 |", "| 结论 | 待自验 |")
+    plan = plan.replace("| 阶段 1 | 通过 |", "| 阶段 1 | 待自验 |")
+    plan = plan.replace("独立复核者", "当前 AI")
+    assert_gate_result(
+        tmp_path,
+        capsys,
+        plan,
+        index=plan_map("| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |"),
+        check_codes=(0, 0),
+        workset_codes=(0, 0),
+        readiness="design",
+        action="verify",
+    )
 
 
 @pytest.mark.parametrize("status", ["设计中", "待实施", "实施中"])

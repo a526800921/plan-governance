@@ -2,8 +2,7 @@
   "manifestVersion": 1,
   "skill": {
     "targets": {
-      "codex": "~/.agents/skills/plan-governance",
-      "claude": "~/.claude/skills/plan-governance"
+      "codex": "~/.agents/skills/plan-governance"
     },
     "files": [
       "resources/skill/SKILL.md",

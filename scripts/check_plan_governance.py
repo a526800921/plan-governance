@@ -217,8 +217,144 @@ def review_outcome(conclusion):
     return "unknown"
 
 
+def valid_review_date(value):
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value or ""):
+        return None
+    try:
+        return parse_plan_date(value)
+    except ValueError:
+        return None
+
+
+def legacy_review_method(kind):
+    """六列旧记录用类型显式表达自验；其他历史类型仍按独立事实解释。"""
+    return "自验" if kind == "复核基线复用" or "自验" in kind else "独立"
+
+
+def phase_precedes(plan_text, candidate, current):
+    """只允许路线图中更早的阶段；标准数字阶段可在精简路线图中回退比较。"""
+    roadmap = [row[0] for row in phase_roadmap_rows(plan_text)]
+    if candidate in roadmap and current in roadmap:
+        return roadmap.index(candidate) < roadmap.index(current)
+    candidate_match = re.fullmatch(r"阶段\s*(\d+)", candidate or "")
+    current_match = re.fullmatch(r"阶段\s*(\d+)", current or "")
+    return bool(candidate_match and current_match
+                and int(candidate_match.group(1)) < int(current_match.group(1)))
+
+
+def legacy_review_state(plan_text, phase):
+    """在不改写六列历史的前提下应用统一单次复核闭环。"""
+    result = {"passed": False, "pending_action": None, "issues": [], "blockers": []}
+    issues, blockers = result["issues"], result["blockers"]
+    rows = review_history_rows(plan_text)
+    known_phases = {row[0] for row in phase_roadmap_rows(plan_text)}
+    valid_rows = []
+    previous_dates = {}
+    for row in rows:
+        if len(row) != 6:
+            kind = row[1] if len(row) > 1 else ""
+            row_phase = row[2] if len(row) > 2 else ""
+            if ("准入" in kind or "readiness" in kind.lower() or "自验" in kind
+                    or kind == "复核基线复用") and (not row_phase or row_phase == phase):
+                issues.append("旧独立复核记录必须使用日期、类型、阶段、结论、证据、复核者六列")
+            continue
+        kind, conclusion = row[1], row[3]
+        if not (
+            "准入" in kind
+            or "readiness" in kind.lower()
+            or "自验" in kind
+            or kind == "复核基线复用"
+            or (("完成验收" in kind or "完成复核" in kind) and review_outcome(conclusion) == "passed")
+        ):
+            continue
+        row_phase = row[2]
+        if row_phase != phase and row_phase not in known_phases and not re.fullmatch(r"阶段\s*\d+", row_phase):
+            continue
+        valid_rows.append(row)
+        parsed = valid_review_date(row[0])
+        previous = previous_dates.get(row_phase)
+        if parsed and previous and parsed < previous:
+            issues.append(f"旧独立复核记录 {row_phase} 日期逆序，无法确认最新结果")
+        if parsed:
+            previous_dates[row_phase] = parsed
+
+    def qualified(row):
+        return (len(row) == 6 and not any(is_placeholder(value) for value in row)
+                and valid_review_date(row[0]) is not None)
+
+    def completed_independent(row):
+        conclusion = row[3].strip()
+        return qualified(row) and legacy_review_method(row[1]) == "独立" and (
+            review_outcome(conclusion) == "passed" or
+            conclusion.startswith(("未通过", "不通过", "失败", "不满足", "拒绝", "证据冲突"))
+            and review_outcome(conclusion) == "failed"
+        )
+
+    prior_states = {}
+    for row in valid_rows:
+        if row[2] == phase or not phase_precedes(plan_text, row[2], phase):
+            continue
+        state = prior_states.setdefault(row[2], {"reviewed": False, "unresolved": False})
+        method = legacy_review_method(row[1])
+        outcome = review_outcome(row[3])
+        if method == "独立":
+            state["reviewed"] = completed_independent(row)
+            if outcome == "failed":
+                state["unresolved"] = True
+        elif (row[1] == "修复自验" and state["reviewed"] and outcome == "passed"
+              and qualified(row)):
+            state["unresolved"] = False
+    reusable_prior_phases = {
+        source_phase for source_phase, state in prior_states.items()
+        if state["reviewed"] and not state["unresolved"]
+    }
+
+    current = [row for row in valid_rows if row[2] == phase]
+    reviewed = False
+    unresolved = None
+    for row in current:
+        method = legacy_review_method(row[1])
+        outcome = review_outcome(row[3])
+        if outcome == "unknown":
+            issues.append("旧独立复核记录结论为空或未知")
+        if method == "独立":
+            reviewed = completed_independent(row)
+            if outcome == "failed":
+                unresolved = row[3]
+        elif row[1] == "复核基线复用":
+            referenced = [source for source in reusable_prior_phases if source in row[4]]
+            if not referenced:
+                issues.append("旧格式复核基线复用须在证据中指向已解决的前阶段独立基线")
+            elif outcome == "passed" and qualified(row):
+                reviewed = True
+        elif row[1] == "修复自验":
+            if not reviewed:
+                issues.append("旧格式修复自验缺少已完成的独立复核基线")
+            elif outcome == "passed" and qualified(row):
+                unresolved = None
+        if outcome == "passed" and not qualified(row):
+            issues.append("旧独立复核记录通过缺少有效日期、类型、证据或身份")
+
+    if unresolved:
+        blockers.append("旧独立复核记录存在未修复的独立发现：" + unresolved)
+    if current and review_outcome(current[-1][3]) == "failed":
+        blockers.append("旧独立复核记录最新结果：" + current[-1][3])
+
+    review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
+    outcome = review_outcome(review.get("结论", ""))
+    latest_matches = bool(current) and all(
+        review.get(field) == current[-1][index]
+        for field, index in [("日期", 0), ("阶段", 2), ("结论", 3), ("证据", 4), ("复核者", 5)]
+    )
+    result["passed"] = outcome == "passed" and latest_matches and not issues and not blockers
+    if outcome == "pending" and not issues and not blockers:
+        method = legacy_review_method(current[-1][1]) if current else "独立"
+        result["pending_action"] = "verify" if method == "自验" else "independent_review"
+    return result
+
+
 def risk_review_state(plan_text, phase):
-    """显式风险策略的共享事实判定；不评估风险真实性或自动检测证据漂移。"""
+    """显式风险策略的共享事实判定；历史策略名不再改变单次复核行为。"""
     summary_section = fixed_section(top_level_section(plan_text, "当前阶段"), "阶段准入摘要")
     policies = [row for row in markdown_table_rows(summary_section) if row[0] == "复核策略"]
     result = {"enabled": bool(policies), "passed": False, "pending_action": None,
@@ -226,13 +362,12 @@ def risk_review_state(plan_text, phase):
     if not policies:
         return result
     issues, blockers = result["issues"], result["blockers"]
-    single_review = len(policies) == 1 and len(policies[0]) == 2 and policies[0][1] == "单次独立复核"
     if len(policies) != 1 or len(policies[0]) != 2 or policies[0][1] not in {"风险分流", "单次独立复核"}:
         issues.append("复核策略必须唯一且为 风险分流/单次独立复核；空值、未知值或重复声明不能准入")
-    risks = {"低风险", "高影响"} | ({"高风险"} if single_review else set())
+    risks = {"低风险", "高影响", "高风险"}
     summary = key_value_table(summary_section)
     if "最新独立准入复核" in summary:
-        issues.append("风险分流的阶段准入摘要应以 最新阶段复核 替代 最新独立准入复核")
+        issues.append("显式复核策略的阶段准入摘要应以 最新阶段复核 替代 最新独立准入复核")
     if is_placeholder(summary.get("最新阶段复核")):
         issues.append("阶段准入摘要缺少有效的 最新阶段复核 链接")
 
@@ -251,8 +386,6 @@ def risk_review_state(plan_text, phase):
         issues.append("最新阶段复核风险必须为 " + "/".join(sorted(risks)) + "/待判断")
     if review.get("风险") == "待判断":
         issues.append("最新阶段复核风险待判断，不能准入")
-    if not single_review and review.get("方式") == "自验" and review.get("风险") != "低风险":
-        issues.append("自验只适用于低风险，不能代替高影响独立复核")
     if is_placeholder(review.get("风险依据")):
         issues.append("最新阶段复核风险依据为空或占位")
     if outcome == "unknown":
@@ -260,13 +393,7 @@ def risk_review_state(plan_text, phase):
     if outcome == "failed" and review.get("阶段") == phase:
         blockers.append("最新阶段复核：" + review["结论"])
 
-    def valid_date(value):
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
-            return None
-        try:
-            return parse_plan_date(value)
-        except ValueError:
-            return None
+    valid_date = valid_review_date
 
     def qualified(row, legacy=False):
         # 独立基线须有完整身份和证据；记录的结论另行判断。
@@ -288,7 +415,7 @@ def risk_review_state(plan_text, phase):
     def known_other_phase(value):
         return value != phase and (value in known_phases or re.fullmatch(r"阶段\s*\d+", value))
 
-    def current_history(title, width):
+    def history_rows(title, width):
         section = fixed_section(plan_text, title)
         rows = markdown_table_rows(section)
         expected = (["日期", "类型", "阶段", "方式", "风险", "结论", "证据", "复核者"]
@@ -297,32 +424,58 @@ def risk_review_state(plan_text, phase):
             issues.append(f"{title} 必须使用固定的 {width} 列表头")
         if rows.count(expected) > 1:
             issues.append(f"{title} 存在重复表头，无法确认记录结构")
-        current = []
-        previous_date = None
+        valid = []
+        previous_dates = {}
         for row in rows:
             if row == expected:
                 continue
             if len(row) > 2 and row[2] != phase:
-                if known_other_phase(row[2]):
+                if not known_other_phase(row[2]):
+                    issues.append(f"{title} 记录阶段为空或未知，不能忽略")
                     continue
-                issues.append(f"{title} 记录阶段为空或未知，不能忽略")
-                continue
-            if len(row) != width or len(row) < 3 or row[2] != phase:
+            if len(row) != width or len(row) < 3 or (row[2] != phase and not known_other_phase(row[2])):
                 issues.append(f"{title} 记录字段不足、列数不符或阶段不明")
                 continue
-            current.append(row)
+            valid.append(row)
             if is_placeholder(row[1]):
                 issues.append(f"{title} 类型为空或占位")
             parsed = valid_date(row[0])
             if not is_placeholder(row[0]) and parsed is None:
                 issues.append(f"{title} 日期不合法：{row[0]}")
+            previous_date = previous_dates.get(row[2])
             if parsed and previous_date and parsed < previous_date:
-                issues.append(f"{title} 当前阶段记录日期逆序，无法确认最新结果")
+                issues.append(f"{title} {row[2]} 记录日期逆序，无法确认最新结果")
             if parsed:
-                previous_date = parsed
-        return current
+                previous_dates[row[2]] = parsed
+        return valid
 
-    history = current_history("阶段复核记录", 8)
+    all_history = history_rows("阶段复核记录", 8)
+    history = [row for row in all_history if row[2] == phase]
+
+    prior_states = {}
+    for row in all_history:
+        if (row[2] == phase or not phase_precedes(plan_text, row[2], phase)
+                or row[3] not in {"自验", "独立"}):
+            continue
+        state = prior_states.setdefault(row[2], {"reviewed_high": False, "unresolved": False})
+        if row[3] == "独立":
+            if completed(row):
+                state["reviewed_high"] = row[4] in {"高风险", "高影响"}
+            else:
+                state["reviewed_high"] = False
+            row_outcome = review_outcome(row[5])
+            if row_outcome == "failed":
+                state["unresolved"] = True
+        elif (row[1] == "修复自验" and state["reviewed_high"]
+              and review_outcome(row[5]) == "passed"
+              and not any(is_placeholder(value) for value in row)
+              and valid_date(row[0]) is not None):
+            state["unresolved"] = False
+    reusable_prior_phases = {
+        source_phase for source_phase, state in prior_states.items()
+        if state["reviewed_high"] and not state["unresolved"]
+    }
+
     reviewed = False
     reviewed_high = False
     repair_date = None
@@ -330,31 +483,36 @@ def risk_review_state(plan_text, phase):
     for row in history:
         if row[3] not in {"自验", "独立"} or row[4] not in risks | {"待判断"}:
             issues.append("阶段复核记录方式或风险未知")
-        if not single_review and row[3] == "自验" and row[4] != "低风险":
-            issues.append("阶段复核记录自验只适用于低风险")
-        if single_review:
-            if row[3] == "独立":
-                if completed(row):
-                    reviewed = True
-                    reviewed_high = row[4] in {"高风险", "高影响"}
-                else:
-                    reviewed = reviewed_high = False
-                if review_outcome(row[5]) == "failed":
-                    unresolved_single = row[5]
-                elif review_outcome(row[5]) == "passed" and completed(row):
+        if row[3] == "独立":
+            if completed(row):
+                reviewed = True
+                reviewed_high = row[4] in {"高风险", "高影响"}
+            else:
+                reviewed = reviewed_high = False
+            if review_outcome(row[5]) == "failed":
+                unresolved_single = row[5]
+            elif review_outcome(row[5]) == "passed" and completed(row):
+                # 后续独立通过可形成新范围基线，但不能清除既有独立发现。
+                pass
+        elif row[3] == "自验":
+            if row[1] == "复核基线复用":
+                referenced = [source for source in reusable_prior_phases if source in row[6]]
+                if row[4] not in {"高风险", "高影响"} or not referenced:
+                    issues.append("复核基线复用须在证据中指向已解决的前阶段高风险/高影响独立基线")
+                elif (review_outcome(row[5]) == "passed"
+                      and not any(is_placeholder(value) for value in row)
+                      and valid_date(row[0]) is not None):
+                    reviewed = reviewed_high = True
+            elif row[4] in {"高风险", "高影响"} and not reviewed_high:
+                issues.append("高风险/高影响自验缺少同范围独立复核基线或明确的跨阶段复用记录")
+            if row[1] == "修复自验":
+                if not reviewed:
+                    issues.append("修复自验缺少已完成的独立复核基线")
+                elif (review_outcome(row[5]) == "passed" and row[4] in risks
+                      and not any(is_placeholder(value) for value in row)
+                      and valid_date(row[0]) is not None):
                     unresolved_single = None
                     repair_date = valid_date(row[0])
-            elif row[3] == "自验":
-                if row[4] in {"高风险", "高影响"} and not reviewed_high:
-                    issues.append("高风险/高影响自验缺少本阶段已完成的独立复核基线")
-                if row[1] == "修复自验":
-                    if not reviewed:
-                        issues.append("修复自验缺少已完成的独立复核基线")
-                    elif (review_outcome(row[5]) == "passed" and row[4] in risks
-                          and not any(is_placeholder(value) for value in row)
-                          and valid_date(row[0]) is not None):
-                        unresolved_single = None
-                        repair_date = valid_date(row[0])
         if review_outcome(row[5]) == "unknown":
             issues.append("阶段复核记录结论为空或未知")
         if review_outcome(row[5]) == "passed" and (
@@ -377,21 +535,11 @@ def risk_review_state(plan_text, phase):
     if (outcome == "passed" or not is_placeholder(review.get("日期"))) and valid_date(review.get("日期", "")) is None:
         issues.append("最新阶段复核日期不合法")
 
-    independent = [row for row in history if row[3] == "独立"] if not single_review else []
-    unresolved = None
-    for row in independent:
-        row_outcome = review_outcome(row[5])
-        if row_outcome == "failed":
-            unresolved = row[5]
-        elif row_outcome == "passed" and qualified(row):
-            unresolved = None
-    if unresolved:
-        blockers.append("阶段复核记录存在未解除的独立失败：" + unresolved)
-    if single_review and unresolved_single:
+    if unresolved_single:
         blockers.append("阶段复核记录存在未修复的独立发现：" + unresolved_single)
 
     # 旧独立记录仍是独立事实源；完成失败也不能被新自验覆盖。
-    legacy_history = current_history("独立复核记录", 6)
+    legacy_history = [row for row in history_rows("独立复核记录", 6) if row[2] == phase]
     legacy_section = fixed_section(plan_text, "最新独立准入复核")
     legacy = key_value_table(legacy_section)
     legacy_current = legacy.get("阶段") == phase
@@ -410,19 +558,19 @@ def risk_review_state(plan_text, phase):
     unresolved = None
     for row in legacy_history:
         row_outcome = review_outcome(row[3])
-        if single_review and not qualified(row, legacy=True):
+        if not qualified(row, legacy=True):
             issues.append("旧独立复核记录缺少有效日期、类型、证据或身份，迁移不能掩盖")
         if row_outcome == "failed":
             unresolved = row[3]
         elif row_outcome == "passed" and qualified(row, legacy=True):
-            unresolved = None
+            pass
         elif row_outcome == "passed":
             issues.append("旧独立通过记录缺少有效日期、类型、证据或身份")
         elif row_outcome == "unknown":
             issues.append("旧独立复核记录结论为空或未知")
     # 显式迁移后保留旧结论；新记录中的有效修复自验可解除旧发现。
     legacy_dates = [valid_date(row[0]) for row in legacy_history]
-    legacy_repaired = (single_review and repair_date is not None and bool(legacy_dates)
+    legacy_repaired = (repair_date is not None and bool(legacy_dates)
                        and all(date is not None and date <= repair_date for date in legacy_dates)
                        and not unresolved_single)
     if unresolved and not legacy_repaired:
@@ -557,10 +705,12 @@ def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors, 
     history = [
         row
         for row in review_history_rows(plan_text)
-        if len(row) >= 4
+        if len(row) == 6
         and row[2] == current_phase
         and (
             "准入" in row[1]
+            or "自验" in row[1]
+            or row[1] == "复核基线复用"
             or ("完成验收" in row[1] and row[3].startswith("通过"))
             or ("完成复核" in row[1] and row[3].startswith("通过"))
             or "readiness" in row[1].lower()
@@ -590,6 +740,16 @@ def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors, 
                 strict,
                 f"{plan_name}: 最新独立准入复核与历史记录最后一条结论冲突",
             )
+    legacy_state = legacy_review_state(plan_text, current_phase)
+    for issue in legacy_state["issues"] + legacy_state["blockers"]:
+        readiness_issue(warnings, errors, strict, f"{plan_name}: {issue}")
+    if not legacy_state["passed"] and not legacy_state["issues"] and not legacy_state["blockers"]:
+        readiness_issue(
+            warnings,
+            errors,
+            strict,
+            f"{plan_name}: 旧格式当前阶段记录未满足统一单次复核准入",
+        )
 
 
 def markdown_list_items(section):
@@ -1798,6 +1958,8 @@ def phase_gate(plan_map_text, plan_name, data, plan_text):
     if review_state["enabled"]:
         blockers.extend(review_state["blockers"])
     else:
+        legacy_state = legacy_review_state(plan_text, data["phase"])
+        blockers.extend(legacy_state["blockers"])
         review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
         conclusion = review.get("结论", "").strip()
         if review.get("阶段") == data["phase"] and conclusion.startswith(("未通过", "不通过", "失败", "不满足", "拒绝")):
@@ -1837,8 +1999,7 @@ def current_summary(plan_text):
 
 
 def current_review_passes(plan_text, phase):
-    review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
-    return review.get("阶段") == phase and review.get("结论", "").startswith("通过")
+    return legacy_review_state(plan_text, phase)["passed"]
 
 
 def structured_next_action(plan_text):
@@ -2202,11 +2363,14 @@ def workset_payload(root, include_history=False, strict=False):
                                "当前阶段复核声明无法确定"),
                 }
             elif not current_review_passes(plan_text, data["phase"]):
+                legacy_state = legacy_review_state(plan_text, data["phase"])
+                kind = legacy_state["pending_action"] or "independent_review"
                 readiness = "design"
                 action = {
                     "state": "known",
-                    "kind": "independent_review",
-                    "reason": "当前阶段尚无通过的最新独立准入复核",
+                    "kind": kind,
+                    "reason": ("当前阶段待自验" if kind == "verify" else
+                               "当前阶段尚无可用的单次独立复核基线"),
                 }
             else:
                 readiness = "design"

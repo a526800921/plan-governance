@@ -573,3 +573,23 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - `npm install -g plan-governance-cli@1.1.0 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0，全局安装版本为 1.1.0，18 份发布文件与仓库逐字节一致。
 - 已安装 CLI 的 `setup --target all --force --dry-run` 确认每目标六份更新，随后 `setup --target all --force` 成功；20 份受管文件一致，5 份非受管文件及全部文件集合保持。从 `/tmp` 执行四个 guide 主题，stdout 均匹配源；二次无 force dry-run 全部最新。
 - 发布及本地同步完成，registry 再次复查已恢复。复用源内容已有独立检查，本轮执行发布及安装边界自验；整体实际使用验收继续保留。版本与证据变更留在工作区，本轮未提交或推送 Git。
+
+## 2026-09-19 1.1.1 发布与 Codex 更新
+
+用户明确要求“发布，然后安装”，并补充 Claude 那一套不在默认同步范围。本次发布[新旧计划统一单次复核](plan-governance-workflow-streamlining.md#新旧计划统一单次复核提案2026-09-19)增量，安装精确版本的全局 CLI，只同步 Codex skill；不写 Claude skill、不迁移其他项目，也不自动提交或推送 Git。
+
+- 官方预检版本列表无 1.1.1、`latest` 为 1.1.0；`npm run release:npm -- --dry-run patch` 退出 0。`npm run release:npm -- patch` 随后退出 0：严格治理通过、671 项 Python 测试通过/覆盖率 93.11%、103 项 Node 测试通过/0 skipped；工作区版本从 1.1.0 升至 1.1.1，发布成功，原 registry `https://mirrors.tencent.com/npm/` 已恢复。
+- 发布包共 18 个文件，shasum `53452cf0be6108e26cd4502efae2cb4ba135bb75`，integrity `sha512-nrBCk4LFuJfQpi+E7+vPI4VYktexaag1QfVzYW6mUCgN1OINaLBT8X4BXG/xMpHOdbOSeTByXnDGDaEebxXNNw==`；本地 `npm pack --dry-run --json` 返回相同校验值，未生成 tgz。
+- 发布后官方查询曾短暂 E404，期间未重复发布；随后官方元数据确认 `version: 1.1.1`、`latest: 1.1.1`，tarball、shasum 和 integrity 与本地结果一致。
+- 更新前全局 CLI 为 1.1.0，Codex 的 10 项受管资源与旧安装包一致。现有 Codex skill 已完整备份至 `/Users/jafish/.codex/backups/plan-governance-1.1.1-x7hy6AJZ`，备份包含逐文件 SHA-256；Claude skill 仅记录只读整目录摘要 `9798e27cd92f0f5f5fe4f5429a811015fecadb582112e2f928eed1019b38440a`，不进入同步目标。
+- `npm install -g plan-governance-cli@1.1.1 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局安装版本为 1.1.1，18 份发布文件与仓库逐字节一致。
+- 已安装 CLI 的 `setup --target codex --force --dry-run` 显示仅 `SKILL.md` 与三份 references 需要更新，随后 `setup --target codex --force` 成功；Codex 的 10 份受管文件与发布源一致，3 份非受管文件及全部文件集合保持。从 `/tmp` 执行四个 guide 主题均匹配仓库，二次无 force dry-run 全部最新。
+- Claude skill 更新后的只读摘要仍为 `9798e27cd92f0f5f5fe4f5429a811015fecadb582112e2f928eed1019b38440a`，确认没有写入；registry 再次确认为原腾讯镜像。源内容复用本轮唯一一次独立检查，本次只做发布与安装边界自验；整体实际使用验收继续保留。
+
+## 2026-09-19 Codex 单目标同步契约调整
+
+用户在 1.1.1 安装后明确要求同步功能移除 Claude 支持。后续 `setup` 只接受显式 `--target codex`，manifest 不再声明 Claude 目标，旧 `--target claude` 与 `--target all` 返回失败且不写入；既有 Claude 目录不自动删除。该边界只针对 skill 同步，不移除项目初始化器显式维护 `CLAUDE.md` 的能力。
+
+本项在 1.1.1 发布完成后形成。唯一一次独立检查发现重复 `--target` 后值覆盖及混合 `--help` 可绕过旧目标拒绝；实施者已收紧为 target 恰好一次、help 只能独立使用，并为源码及临时安装包补齐两种重复顺序、两种混合 help 顺序、旧目标单次和缺失目标的无写入反例。修复后 `npm run verify` 通过：671 项 Python 测试、103 项 Node 测试全部通过，覆盖率 93.11%；skill 校验、严格治理和空白检查通过。
+
+当前只修改下一版本源码、测试和说明，尚未重新发布或安装；1.1.1 的官方包内容与上节证据不追写，本机全局 CLI 仍为已发布的 1.1.1 行为。

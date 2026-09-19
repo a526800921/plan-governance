@@ -9,6 +9,14 @@ import { tmpdir } from "node:os";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = resolve(root, "bin", "plan-governance-cli.mjs");
+const rejectedSetupArgumentSets = [
+  ["claude", ["--target", "claude"]],
+  ["all", ["--target", "all"]],
+  ["old-then-codex", ["--target", "all", "--target", "codex"]],
+  ["codex-then-old", ["--target", "codex", "--target", "claude"]],
+  ["old-then-help", ["--target", "claude", "--help"]],
+  ["help-then-old", ["--help", "--target", "claude"]],
+];
 
 function run(...args) {
   return spawnSync(process.execPath, [cli, ...args], {
@@ -349,6 +357,7 @@ test("CLI resolves the checker from the package directory", () => {
 
 test("package manifest contains the distributable skill resources", () => {
   const manifest = JSON.parse(readFileSync(resolve(root, "resources", "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.skill.targets, { codex: "~/.agents/skills/plan-governance" });
   for (const resource of manifest.skill.files) {
     accessSync(resolve(root, resource), constants.R_OK);
   }
@@ -498,20 +507,29 @@ test("packed package runs from a temporary installation", () => {
     assert.equal(installedNext.status, 1, installedNext.stderr);
     assert.match(installedNext.stderr, /goal/);
 
-    for (const target of ["codex", "claude"]) {
-      const destination = join(tempRoot, target, "skills", "plan-governance");
-      const setupArgs = [installedCli, "setup", "--target", target, "--destination", destination];
-      const dryRun = spawnSync(process.execPath, [...setupArgs, "--dry-run"], { cwd: root, encoding: "utf8" });
-      assert.equal(dryRun.status, 0, dryRun.stderr);
-      assert.equal(existsSync(destination), false);
+    const destination = join(tempRoot, "codex", "skills", "plan-governance");
+    const setupArgs = [installedCli, "setup", "--target", "codex", "--destination", destination];
+    const dryRun = spawnSync(process.execPath, [...setupArgs, "--dry-run"], { cwd: root, encoding: "utf8" });
+    assert.equal(dryRun.status, 0, dryRun.stderr);
+    assert.equal(existsSync(destination), false);
 
-      const synced = spawnSync(process.execPath, setupArgs, { cwd: root, encoding: "utf8" });
-      assert.equal(synced.status, 0, synced.stderr);
-      for (const resource of manifest.skill.files) {
-        const relative = resource.slice("resources/skill/".length);
-        assert.deepEqual(readFileSync(join(destination, relative)), sourceResources.get(resource), `${target}: ${resource}`);
-      }
-      assert.equal(existsSync(join(destination, "scripts")), false);
+    const synced = spawnSync(process.execPath, setupArgs, { cwd: root, encoding: "utf8" });
+    assert.equal(synced.status, 0, synced.stderr);
+    for (const resource of manifest.skill.files) {
+      const relative = resource.slice("resources/skill/".length);
+      assert.deepEqual(readFileSync(join(destination, relative)), sourceResources.get(resource), resource);
+    }
+    assert.equal(existsSync(join(destination, "scripts")), false);
+
+    for (const [label, args] of rejectedSetupArgumentSets) {
+      const unsupportedDestination = join(tempRoot, label, "skills", "plan-governance");
+      const rejected = spawnSync(process.execPath, [installedCli, "setup", ...args, "--destination", unsupportedDestination], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      assert.equal(rejected.status, 1);
+      assert.match(rejected.stderr, /setup (仅支持 --target codex|的 --target 只能指定一次|的 --help 必须单独使用)/);
+      assert.equal(existsSync(unsupportedDestination), false);
     }
     exerciseBindingIteration(installedCli, join(tempRoot, "binding-project"));
   } finally {
@@ -523,6 +541,29 @@ test("setup supports dry-run, sync, and conflict protection", () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-setup-"));
   const destination = join(tempRoot, "codex", "skills", "plan-governance");
   try {
+    const help = spawnSync(process.execPath, [cli, "setup", "--help"], { cwd: root, encoding: "utf8" });
+    assert.equal(help.status, 0, help.stderr);
+    assert.match(help.stdout, /setup --target codex/);
+    assert.doesNotMatch(help.stdout, /claude|\|all/);
+
+    const missingTarget = spawnSync(process.execPath, [cli, "setup", "--destination", destination], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(missingTarget.status, 1);
+    assert.match(missingTarget.stderr, /setup 仅支持 --target codex/);
+    assert.equal(existsSync(destination), false);
+
+    for (const [, args] of rejectedSetupArgumentSets) {
+      const rejected = spawnSync(process.execPath, [cli, "setup", ...args, "--destination", destination], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      assert.equal(rejected.status, 1);
+      assert.match(rejected.stderr, /setup (仅支持 --target codex|的 --target 只能指定一次|的 --help 必须单独使用)/);
+      assert.equal(existsSync(destination), false);
+    }
+
     const dryRun = spawnSync(process.execPath, [cli, "setup", "--target", "codex", "--destination", destination, "--dry-run"], {
       cwd: root,
       encoding: "utf8",
