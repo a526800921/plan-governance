@@ -111,7 +111,6 @@ plan-governance-cli init \
 .git/
 docs/PLAN_MAP.md
 docs/plans/api-compat-migration.md
-CLAUDE.md
 AGENTS.md
 ```
 
@@ -119,12 +118,11 @@ AGENTS.md
 
 如果目标目录还不是 Git 仓库，初始化流程会先执行 `git init`；已有 `.git/` 时会跳过，不重复初始化。
 
-`--update-agent-rules` 会创建或更新 `CLAUDE.md` 和 `AGENTS.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
+`--update-agent-rules` 会创建或更新 `AGENTS.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
 
-如果只需要更新单个入口，也可以使用：
+也可以使用含义更直接的别名：
 
 ```bash
---update-claude-md
 --update-agents-md
 ```
 
@@ -144,7 +142,7 @@ plan-governance-cli init \
   --update-agent-rules-only
 ```
 
-如果只更新单个入口，可以使用 `--update-claude-md-only` 或 `--update-agents-md-only`。
+`--update-agents-md-only` 与上述兼容别名作用相同，也只更新 `AGENTS.md`。
 
 如果要升级已有项目的辅助文件，刷新检查脚本并更新代理规则，但不覆盖 `docs/`，运行：
 
@@ -157,7 +155,7 @@ plan-governance-cli init \
 `--upgrade-existing` 会：
 
 - 按兼容模式覆盖更新项目中的 `scripts/check_plan_governance.py`
-- 创建或更新 `CLAUDE.md` 和 `AGENTS.md` 中带标记的计划治理章节
+- 创建或更新 `AGENTS.md` 中带标记的计划治理章节，既有其他代理入口保持原样
 - 保留已有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`
 - 提示缺失的治理文档
 
@@ -262,7 +260,7 @@ plan-governance-cli setup --target codex --dry-run
 plan-governance-cli setup --target codex --force
 ```
 
-`setup` 只向 Codex 同步 npm 包 manifest 指定的 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧 `--target claude`、`--target all`、重复 target、混合 help 或缺失 target 都会在写入前失败；既有 Claude 目录不会被删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录。项目初始化器对 `CLAUDE.md` 的显式入口维护不受此限制；当前实现不自动安装 hook 配置。
+`setup` 只向 Codex 同步 npm 包 manifest 指定的 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧版或重复 target、混合 help、缺失 target 都会在写入前失败；目标之外的用户目录不会被读取、修改或删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录；项目初始化器只维护 `AGENTS.md`，当前实现不自动安装 hook 配置。
 
 初始化项目时使用包内初始化器：
 
@@ -274,7 +272,7 @@ plan-governance-cli init --root . --plan api-compat-migration --title "API 兼�
 
 ## Hook runtime
 
-本仓库提供只读 hook runtime，供 Codex、Claude Code 或其他 Agent 的项目级 hooks 手动接入。脚本只输出短提示和检查结果，不修改治理文档，不更新 `最后更新`，不安装或修改全局配置。
+本仓库提供只读 hook runtime，供 Codex 项目级 hooks 手动接入。脚本只输出短提示和检查结果，不修改治理文档，不更新 `最后更新`，不安装或修改全局配置。
 
 ```bash
 plan-governance-cli hook --event session-start
@@ -382,6 +380,8 @@ python3 -m pytest
 状态与当前阶段由 `docs/PLAN_MAP.md` 维护。每阶段必须具备自身 Step 0、验证/完成和失败边界、无有效阻塞及适用复核，不能凭上一阶段完成自动待实施。
 
 新旧计划统一采用单次复核行为：普通改动自验，高风险或高影响独立检查一次后由实施者修复自验，原发现保留。旧 `风险分流` 标签和缺省六列格式只作为兼容记录形式，不恢复多次独立门禁；固定字段、历史保护和严格检查语义以[阶段门规范](resources/skill/references/verification.md#step-0-与阶段门)为准。
+
+派发独立复核时显式传入推理强度，不依赖全局 subagent 默认值：安全、权限、隐私、资金、数据完整性等高风险复核使用 `high`，其他独立复核使用 `medium`。该分层只影响本次复核的思考强度，不改变是否复核或单次复核规则。
 
 使用 `check --strict-readiness` 做准入/CI/发布机械检查；默认检查兼容告警，机械通过不代替真实风险判断、业务验收或用户接受。
 

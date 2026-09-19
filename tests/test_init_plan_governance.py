@@ -89,26 +89,6 @@ def test_main_can_copy_checker(tmp_path):
     assert checker.stat().st_mode & 0o111
 
 
-def test_main_can_create_claude_md(tmp_path):
-    result = init_plan_governance.main(
-        ["--root", str(tmp_path), "--plan", "demo", "--update-claude-md"]
-    )
-
-    claude_md = tmp_path / "CLAUDE.md"
-    text = claude_md.read_text(encoding="utf-8")
-    assert result == 0
-    assert "## 计划治理" in text
-    assert "docs/PLAN_MAP.md" in text
-    assert "## 计划治理" in text
-    assert "plan-governance-cli check ." in text
-    assert "plan-governance-cli guide" in text
-    assert "python3 scripts/check_plan_governance.py" not in text
-    assert "--strict-readiness" in text
-    assert "高影响" in text
-    assert init_plan_governance.CLAUDE_SECTION_BEGIN in text
-    assert init_plan_governance.CLAUDE_SECTION_END in text
-
-
 def test_main_can_create_agents_md(tmp_path):
     result = init_plan_governance.main(
         ["--root", str(tmp_path), "--plan", "demo", "--update-agents-md"]
@@ -127,26 +107,38 @@ def test_main_can_create_agents_md(tmp_path):
     assert init_plan_governance.AGENTS_SECTION_END in text
 
 
-def test_main_can_create_all_agent_rules(tmp_path):
+def test_main_can_create_agent_rules(tmp_path):
     result = init_plan_governance.main(
         ["--root", str(tmp_path), "--plan", "demo", "--update-agent-rules"]
     )
 
     assert result == 0
-    assert (tmp_path / "CLAUDE.md").exists()
     assert (tmp_path / "AGENTS.md").exists()
+    assert not (tmp_path / "CLAUDE.md").exists()
 
 
-def test_update_claude_md_only_does_not_require_plan_or_touch_docs(tmp_path, capsys):
-    result = init_plan_governance.main(
-        ["--root", str(tmp_path), "--update-claude-md-only"]
-    )
+@pytest.mark.parametrize("option", ["--update-claude-md", "--update-claude-md-only"])
+def test_removed_claude_options_fail_before_writes(tmp_path, option):
+    with pytest.raises(SystemExit):
+        init_plan_governance.main(
+            ["--root", str(tmp_path), "--plan", "demo", option]
+        )
 
-    assert result == 0
-    assert (tmp_path / "CLAUDE.md").exists()
+    assert not (tmp_path / "CLAUDE.md").exists()
+    assert not (tmp_path / "AGENTS.md").exists()
     assert not (tmp_path / ".git").exists()
     assert not (tmp_path / "docs").exists()
-    assert "未修改 docs" in capsys.readouterr().out
+
+
+def test_initializer_help_only_exposes_agents_entry(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        init_plan_governance.main(["--help"])
+
+    help_text = capsys.readouterr().out
+    assert exc_info.value.code == 0
+    assert "AGENTS.md" in help_text
+    assert "CLAUDE" not in help_text
+    assert "claude" not in help_text
 
 
 def test_update_agents_md_only_does_not_require_plan_or_touch_docs(tmp_path, capsys):
@@ -167,8 +159,8 @@ def test_update_agent_rules_only_does_not_require_plan_or_touch_docs(tmp_path, c
     )
 
     assert result == 0
-    assert (tmp_path / "CLAUDE.md").exists()
     assert (tmp_path / "AGENTS.md").exists()
+    assert not (tmp_path / "CLAUDE.md").exists()
     assert not (tmp_path / ".git").exists()
     assert not (tmp_path / "docs").exists()
     assert "代理规则已更新" in capsys.readouterr().out
@@ -218,8 +210,10 @@ def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, cap
     end = b"<!-- plan-governance:end -->"
     prefix = b"# Project rules\r\nCustom prefix.  \t\r\n"
     suffix = b"\r\n\r\nCustom suffix.  \t\r\n"
-    for filename in ("AGENTS.md", "CLAUDE.md"):
-        (tmp_path / filename).write_bytes(prefix + begin + b"\r\nold rules\r\n" + end + suffix)
+    (tmp_path / "AGENTS.md").write_bytes(prefix + begin + b"\r\nold rules\r\n" + end + suffix)
+    claude_md = tmp_path / "CLAUDE.md"
+    original_claude = b"# Existing Claude rules\r\nKeep unchanged.  \t\r\n"
+    claude_md.write_bytes(original_claude)
     checker = tmp_path / "scripts" / "check_plan_governance.py"
     checker.parent.mkdir(parents=True)
     checker.write_text("old checker", encoding="utf-8")
@@ -231,11 +225,11 @@ def test_upgrade_existing_updates_helpers_without_overwriting_docs(tmp_path, cap
         assert (tmp_path / relative).read_bytes() == content, relative
     assert {path.relative_to(docs).as_posix() for path in docs.rglob("*")} == original_docs
     generated = init_plan_governance.agent_rules_body().encode("utf-8")
-    for filename in ("AGENTS.md", "CLAUDE.md"):
-        updated = (tmp_path / filename).read_bytes()
-        assert updated.startswith(prefix + begin + b"\n")
-        assert updated.endswith(end + suffix)
-        assert updated.split(begin, 1)[1].split(end, 1)[0] == b"\n" + generated
+    updated = (tmp_path / "AGENTS.md").read_bytes()
+    assert updated.startswith(prefix + begin + b"\n")
+    assert updated.endswith(end + suffix)
+    assert updated.split(begin, 1)[1].split(end, 1)[0] == b"\n" + generated
+    assert claude_md.read_bytes() == original_claude
     output = capsys.readouterr().out
     if option == "--upgrade-existing":
         assert "old checker" not in checker.read_text(encoding="utf-8")
@@ -331,37 +325,6 @@ def test_normal_init_still_requires_plan(tmp_path):
         init_plan_governance.main(["--root", str(tmp_path)])
 
 
-def test_update_claude_md_appends_to_existing_file(tmp_path):
-    claude_md = tmp_path / "CLAUDE.md"
-    claude_md.write_text("# 项目规则\n\n已有内容。\n", encoding="utf-8")
-
-    init_plan_governance.update_claude_md(tmp_path)
-
-    text = claude_md.read_text(encoding="utf-8")
-    assert text.startswith("# 项目规则\n\n已有内容。")
-    assert text.count("## 计划治理") == 1
-
-
-def test_update_claude_md_replaces_existing_managed_section(tmp_path):
-    claude_md = tmp_path / "CLAUDE.md"
-    claude_md.write_text(
-        "# 项目规则\n\n"
-        f"{init_plan_governance.CLAUDE_SECTION_BEGIN}\n"
-        "旧规则\n"
-        f"{init_plan_governance.CLAUDE_SECTION_END}\n\n"
-        "后续内容。\n",
-        encoding="utf-8",
-    )
-
-    init_plan_governance.update_claude_md(tmp_path)
-
-    text = claude_md.read_text(encoding="utf-8")
-    assert "旧规则" not in text
-    assert "后续内容。" in text
-    assert text.count(init_plan_governance.CLAUDE_SECTION_BEGIN) == 1
-    assert text.count("## 计划治理") == 1
-
-
 def test_update_agents_md_appends_to_existing_file(tmp_path):
     agents_md = tmp_path / "AGENTS.md"
     agents_md.write_text("# 项目规则\n\n已有内容。\n", encoding="utf-8")
@@ -393,16 +356,10 @@ def test_update_agents_md_replaces_existing_managed_section(tmp_path):
     assert text.count("## 计划治理") == 1
 
 
-@pytest.mark.parametrize(
-    ("filename", "option"),
-    [
-        ("AGENTS.md", "--update-agents-md-only"),
-        ("CLAUDE.md", "--update-claude-md-only"),
-    ],
-)
 @pytest.mark.parametrize("existing_section", [False, True], ids=["append-trailing", "replace-crlf"])
-def test_update_rules_preserves_unmanaged_bytes_and_is_idempotent(tmp_path, filename, option, existing_section):
-    target = tmp_path / filename
+def test_update_rules_preserves_unmanaged_bytes_and_is_idempotent(tmp_path, existing_section):
+    target = tmp_path / "AGENTS.md"
+    option = "--update-agents-md-only"
     begin = b"<!-- plan-governance:start -->"
     end = b"<!-- plan-governance:end -->"
     if existing_section:

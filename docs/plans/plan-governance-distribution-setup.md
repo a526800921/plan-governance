@@ -593,3 +593,20 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 本项在 1.1.1 发布完成后形成。唯一一次独立检查发现重复 `--target` 后值覆盖及混合 `--help` 可绕过旧目标拒绝；实施者已收紧为 target 恰好一次、help 只能独立使用，并为源码及临时安装包补齐两种重复顺序、两种混合 help 顺序、旧目标单次和缺失目标的无写入反例。修复后 `npm run verify` 通过：671 项 Python 测试、103 项 Node 测试全部通过，覆盖率 93.11%；skill 校验、严格治理和空白检查通过。
 
 当前只修改下一版本源码、测试和说明，尚未重新发布或安装；1.1.1 的官方包内容与上节证据不追写，本机全局 CLI 仍为已发布的 1.1.1 行为。
+
+## 2026-09-19 Claude 支持完全移除源码调整
+
+用户进一步要求移除 Claude 支持。下一版本源码已在前述 Codex 单目标 setup 基础上删除初始化器中的 Claude 常量、函数和显式参数；通用 `--update-agent-rules*` 兼容别名只维护 `AGENTS.md`，`--upgrade-existing` 不再改动其他代理入口。根 `CLAUDE.md` 仅含受管块，已从仓库删除；README、CLI 参考和初始化器帮助不再展示 Claude 能力。既有项目文件和用户目录保持，测试保留旧参数作为拒绝/无写入反例。
+
+聚焦 Python 29 项、打包相关 Node 3 项通过；完整 `npm run verify` 通过，包含 668 项 Python、93.08% 覆盖率及 103 项 Node 测试。唯一独立只读复核任务 `01a0b9af-e35e-79e1-a187-0bc85593aa8a` 以显式 `medium` 通过，无发现。当前仍未发布或安装新版本：官方及本机全局 CLI 保持 1.1.1 的旧行为；只同步了 Codex 已安装 skill 的当前 `cli.md` 参考，不写或卸载 `~/.claude`。后续发布与全局安装须另行授权。
+
+## 2026-09-19 1.1.2 发布与 Codex 更新
+
+用户随后明确要求“发布然后安装”，授权发布上述 Codex 单目标同步、独立复核推理强度分层及 Claude 支持完全移除成果，并安装精确版本的全局 CLI。安装目标仅为 Codex；不写、不迁移也不卸载现有 Claude 目录，不迁移其他项目，不自动提交或推送 Git。
+
+- 官方预检确认 `latest: 1.1.1` 且版本列表不存在 1.1.2；`npm run release:npm -- --dry-run patch` 退出 0。正式执行 `npm run release:npm -- patch` 退出 0：严格治理检查通过并保留四条既有依赖 WARNING，668 项 Python 测试通过、覆盖率 93.08%，103 项 Node 测试通过；工作区版本从 1.1.1 升至 1.1.2。
+- 发布包共 18 个文件，shasum `5848e4947e2af3c303733c01d508e6e3a0a19b48`，integrity `sha512-TNaa/818AShWGaZdB3NlJQ8psduQRgbDfvA11mq9Rc9g087wARwh7IxgcYEdP8I+dDHKAkqnk1XChy/Dk3pmyA==`。发布后官方查询短暂 E404，期间没有重复发布；随后官方元数据确认 `version: 1.1.2`、`latest: 1.1.2`、tarball 及两项校验值均与本地 `npm pack --dry-run --json` 一致。
+- 更新前 Codex skill 已备份至 `/Users/jafish/.codex/backups/plan-governance-1.1.2-DSGaZt`。`npm install -g plan-governance-cli@1.1.2 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局版本为 1.1.2，18 份发布文件与工作区逐字节一致。
+- 已安装 CLI 执行 `setup --target codex --force` 成功，10 项受管资源均为最新且与发布源一致；随后 dry-run 仍全部显示最新。实际安装版 `setup --target claude`、`setup --target all` 及旧 `init --update-claude-md` 均非零退出并且没有创建目标目录，帮助只展示 Codex/AGENTS 能力。
+- Claude skill 安装前后的只读摘要均为 `9798e27cd92f0f5f5fe4f5429a811015fecadb582112e2f928eed1019b38440a`，确认本轮没有写入；既有 Claude 目录不再是受支持目标，但不会被自动删除。npm registry 已恢复并复查为 `https://mirrors.tencent.com/npm/`。
+- 源内容复用此前唯一一次 `medium` 独立复核，本次发布与安装仅做分发边界自验，不增加重复复核。整体实际使用验收继续保留；版本及证据变更留在工作区，本轮未提交或推送 Git。

@@ -383,6 +383,7 @@ test("package manifest contains the distributable skill resources", () => {
   assert.match(planTemplate, /^## 最新阶段复核$/m);
   assert.match(planTemplate, /^## 阶段复核记录$/m);
   assert.match(readme, /guide verification/);
+  assert.doesNotMatch(readme, /claude/i);
   assert.deepEqual(manifest.hooks, []);
 });
 
@@ -468,6 +469,41 @@ test("packed package runs from a temporary installation", () => {
     for (const directory of ["specs", "adr", "migrations", "reviews", "fixtures", "attestations"]) {
       assert.equal(existsSync(join(projectRoot, "docs", directory)), false, directory);
     }
+
+    const initHelp = spawnSync(process.execPath, [installedCli, "init", "--help"], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(initHelp.status, 0, initHelp.stderr);
+    assert.match(initHelp.stdout, /AGENTS\.md/);
+    assert.doesNotMatch(initHelp.stdout, /claude/i);
+
+    const agentRulesRoot = join(tempRoot, "agent-rules-project");
+    const initializedWithRules = spawnSync(process.execPath, [
+      installedCli,
+      "init",
+      "--root",
+      agentRulesRoot,
+      "--plan",
+      "agent-rules",
+      "--update-agent-rules",
+    ], { cwd: root, encoding: "utf8" });
+    assert.equal(initializedWithRules.status, 0, initializedWithRules.stderr);
+    assert.equal(existsSync(join(agentRulesRoot, "AGENTS.md")), true);
+    assert.equal(existsSync(join(agentRulesRoot, "CLAUDE.md")), false);
+
+    const removedTargetRoot = join(tempRoot, "removed-target-project");
+    const removedTarget = spawnSync(process.execPath, [
+      installedCli,
+      "init",
+      "--root",
+      removedTargetRoot,
+      "--plan",
+      "removed-target",
+      "--update-claude-md",
+    ], { cwd: root, encoding: "utf8" });
+    assert.equal(removedTarget.status, 2);
+    assert.equal(existsSync(removedTargetRoot), false);
 
     const installedWorkset = spawnSync(process.execPath, [
       installedCli,

@@ -19,8 +19,6 @@ VALID_STATUSES = {
     "已废弃",
 }
 
-CLAUDE_SECTION_BEGIN = "<!-- plan-governance:start -->"
-CLAUDE_SECTION_END = "<!-- plan-governance:end -->"
 AGENTS_SECTION_BEGIN = "<!-- plan-governance:start -->"
 AGENTS_SECTION_END = "<!-- plan-governance:end -->"
 
@@ -72,10 +70,6 @@ def managed_section(begin, end):
     return f"{begin}\n{agent_rules_body()}{end}\n"
 
 
-def claude_md_section():
-    return managed_section(CLAUDE_SECTION_BEGIN, CLAUDE_SECTION_END)
-
-
 def agents_md_section():
     return managed_section(AGENTS_SECTION_BEGIN, AGENTS_SECTION_END)
 
@@ -105,16 +99,6 @@ def update_managed_file(root, filename, section, begin, end):
     return target
 
 
-def update_claude_md(root):
-    return update_managed_file(
-        root,
-        "CLAUDE.md",
-        claude_md_section(),
-        CLAUDE_SECTION_BEGIN,
-        CLAUDE_SECTION_END,
-    )
-
-
 def update_agents_md(root):
     return update_managed_file(
         root,
@@ -126,7 +110,7 @@ def update_agents_md(root):
 
 
 def update_agent_rules(root):
-    return [update_claude_md(root), update_agents_md(root)]
+    return [update_agents_md(root)]
 
 
 def plan_map_content(plan_slug, title, status, phase):
@@ -303,19 +287,16 @@ def parse_args(argv):
     parser.add_argument("--status", default="设计中", choices=sorted(VALID_STATUSES), help="初始状态。")
     parser.add_argument("--phase", default="阶段 0", help="当前阶段名称。")
     parser.add_argument("--copy-checker", action="store_true", help="复制检查脚本到目标仓库 scripts/。")
-    parser.add_argument("--update-claude-md", action="store_true", help="创建或更新目标仓库 CLAUDE.md 中的计划治理规则。")
     parser.add_argument("--update-agents-md", action="store_true", help="创建或更新目标仓库 AGENTS.md 中的计划治理规则。")
-    parser.add_argument("--update-agent-rules", action="store_true", help="同时创建或更新 CLAUDE.md 和 AGENTS.md 中的计划治理规则。")
-    parser.add_argument("--update-claude-md-only", action="store_true", help="只创建或更新 CLAUDE.md，不初始化或覆盖 docs/。")
+    parser.add_argument("--update-agent-rules", action="store_true", help="创建或更新目标仓库 AGENTS.md 中的计划治理规则。")
     parser.add_argument("--update-agents-md-only", action="store_true", help="只创建或更新 AGENTS.md，不初始化或覆盖 docs/。")
-    parser.add_argument("--update-agent-rules-only", action="store_true", help="只创建或更新 CLAUDE.md 和 AGENTS.md，不初始化或覆盖 docs/。")
+    parser.add_argument("--update-agent-rules-only", action="store_true", help="只创建或更新 AGENTS.md，不初始化或覆盖 docs/。")
     parser.add_argument("--upgrade-existing", action="store_true", help="升级已有项目的辅助文件：刷新检查脚本和代理规则，不覆盖 docs/。")
     parser.add_argument("--migrate-plan-map-last-updated", action="store_true", help="将旧五列表 PLAN_MAP.md 迁移为包含最后更新的六列表。")
     parser.add_argument("--last-updated-date", default=date.today().isoformat(), help="迁移 PLAN_MAP.md 时填入的最后更新日期，默认今天。")
     parser.add_argument("--force", action="store_true", help="允许覆盖已存在的治理文件。")
     args = parser.parse_args(argv)
     only_modes = [
-        args.update_claude_md_only,
         args.update_agents_md_only,
         args.update_agent_rules_only,
         args.upgrade_existing,
@@ -331,12 +312,6 @@ def parse_args(argv):
 def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
     root = Path(args.root).expanduser().resolve()
-
-    if args.update_claude_md_only:
-        target = update_claude_md(root)
-        print(f"已写入：{target}")
-        print("CLAUDE.md 已更新；未修改 docs/。")
-        return 0
 
     if args.update_agents_md_only:
         target = update_agents_md(root)
@@ -390,11 +365,8 @@ def main(argv=None):
         created.append(copy_checker(root, args.force))
     if args.update_agent_rules:
         created.extend(update_agent_rules(root))
-    else:
-        if args.update_claude_md:
-            created.append(update_claude_md(root))
-        if args.update_agents_md:
-            created.append(update_agents_md(root))
+    elif args.update_agents_md:
+        created.append(update_agents_md(root))
 
     for path in created:
         print(f"已写入：{path}")
