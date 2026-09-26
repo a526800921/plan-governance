@@ -35,8 +35,11 @@
 docs/
   PLAN_MAP.md
   plans/
-    <plan-name>.md
+    YYYYMMDD/
+      <plan-name>.md
 ```
+
+`docs/plans/*.md` 是兼容读取的旧式平铺位置；新计划一律放在日期目录中。需要整理其他项目的存量计划时，用户明确提出迁移后再单独使用 `plan-governance-migration` skill。
 
 按需增加：
 

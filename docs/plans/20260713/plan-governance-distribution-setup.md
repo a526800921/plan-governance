@@ -610,3 +610,22 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 已安装 CLI 执行 `setup --target codex --force` 成功，10 项受管资源均为最新且与发布源一致；随后 dry-run 仍全部显示最新。实际安装版 `setup --target claude`、`setup --target all` 及旧 `init --update-claude-md` 均非零退出并且没有创建目标目录，帮助只展示 Codex/AGENTS 能力。
 - Claude skill 安装前后的只读摘要均为 `9798e27cd92f0f5f5fe4f5429a811015fecadb582112e2f928eed1019b38440a`，确认本轮没有写入；既有 Claude 目录不再是受支持目标，但不会被自动删除。npm registry 已恢复并复查为 `https://mirrors.tencent.com/npm/`。
 - 源内容复用此前唯一一次 `medium` 独立复核，本次发布与安装仅做分发边界自验，不增加重复复核。整体实际使用验收继续保留；版本及证据变更留在工作区，本轮未提交或推送 Git。
+
+## 2026-09-26 1.1.3 发布与 Codex 更新
+
+发布本次计划目录规则调整和独立 `plan-governance-migration` skill，并安装到本机 Codex。范围仅限 Codex；Claude 目录及其他项目不操作，不提交或推送 Git。
+
+- 官方预检为 `latest: 1.1.2`；`npm run release:npm -- --dry-run patch` 退出 0。一次旧的浏览器认证流程以 `/done` E404 结束，未发布；改用新建的 granular token 后，`npm whoami --registry=https://registry.npmjs.org/` 返回 `jafish`。随后 `npm run release:npm -- patch` 退出 0：严格治理检查通过（保留四条既有依赖 WARNING）、682 项 Python 测试及 103 项 Node 测试通过；工作区版本升至 1.1.3。
+- npm 发布输出为 20 个文件，shasum `09ecfa622f8e685b8710d5b689aa27e92571a82b`，integrity `sha512-q2pwm1aB6TKLj1uxe0odwZRtTiJqHSBP5vfYQCLljeAmTlCFn8f9DYUdDZuRxE2tdXQgpoiQ5Opq9tsuozms1w==`。发布后官方查询短暂返回 E404；等待 registry 处理完成后，官方元数据确认 `version: 1.1.3`、`latest: 1.1.3`，完整 shasum/integrity 与发布输出一致；期间没有重复发布。
+- `npm install -g plan-governance-cli@1.1.3 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局版本确认是 1.1.3。安装包的主 skill 和 migration skill 共 12 份受管资源均与仓库资源逐字节一致。
+- 更新前 Codex skill 已备份至 `/Users/jafish/.codex/backups/plan-governance-1.1.3-20260926-170757`，含 13 个文件及 SHA-256 清单。已安装 CLI 的 `setup --target codex --force --dry-run` 显示更新主 skill 4 个文件、新增 migration skill 2 个文件；正式同步退出 0。同步后 12/12 受管文件与 npm 包一致，原有 13/13 文件均保留，其中 3 份非受管文件未改变；二次 dry-run 显示全部最新。
+- release script 恢复到执行前的官方 registry `https://registry.npmjs.org/`；全局 CLI 与两个 Codex skill 均已更新。整体实际使用验收继续保留，本轮未提交或推送 Git。
+
+## 2026-09-26 1.2.0 发布与 Codex 更新
+
+修正 README 的目录结构示例，明确新计划使用 `docs/plans/YYYYMMDD/`，旧式平铺计划仅保持兼容读取；在 npm 包元数据中加入 GitHub repository。将本次文档和仓库信息一并发布，并核验本机分发状态。
+
+- 发布前官方 `latest` 为 `1.1.3`，版本列表不含 `1.2.0`；`npm run release:npm -- --dry-run patch` 退出 0。随后 `npm run release:npm -- 1.2.0` 退出 0：严格治理检查通过（保留四条既有依赖 WARNING）、682 项 Python 测试通过（总覆盖率 93.06%）、103 项 Node 测试通过。
+- npm 在发布时将 repository URL 规范化为 `git+https://github.com/a526800921/plan-governance.git`；工作区 `package.json` 已同步为该规范值。官方 registry 短暂处理后确认 `version: 1.2.0`、`latest: 1.2.0`、repository URL 及 dist 元数据；shasum `9f9998df3dbe57b87258f3f64689ac343795374b`，integrity `sha512-4unaFVLlHJgDMVPKDmDfWGch2eRXAc5tC3Bl2Gl8E8fUR0Gdezo7UcQjJyKFPlLtewbLPQtwakKpr/uIX1bzGA==`。registry 已恢复为 `https://registry.npmjs.org/`。
+- 全局安装 `plan-governance-cli@1.2.0` 已核实。Codex 主 skill 与独立迁移 skill 的 12 项受管资源在更新前已全部与 npm 包一致；`setup --target codex --force --dry-run` 与正式同步均退出 0，实际没有覆盖文件。更新前快照保存在 `/Users/jafish/.codex/backups/plan-governance-1.2.0-20260926-172049`（含 SHA-256 清单）。
+- npm 上的 `1.2.0` README 正文已回查，包含日期目录和独立 migration skill 说明；发布后 `plan-governance-cli check .` 与 `git diff --check` 均通过（治理检查保留相同四条依赖 WARNING）。README、npm repository 元数据、官方发布和本机 CLI/skill 状态均已核实；本轮未提交或推送 Git。

@@ -1,7 +1,11 @@
 {
   "name": "plan-governance-cli",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "统一入口的计划治理检查 CLI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a526800921/plan-governance.git"
+  },
   "private": false,
   "type": "module",
   "bin": {
