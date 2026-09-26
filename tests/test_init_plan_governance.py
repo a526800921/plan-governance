@@ -1,4 +1,5 @@
 import importlib.util
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -45,8 +46,9 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert result == 0
     assert (tmp_path / ".git").exists()
     assert (tmp_path / "docs" / "PLAN_MAP.md").exists()
-    plan = tmp_path / "docs" / "plans" / "api-migration.md"
+    plan = tmp_path / "docs" / "plans" / date.today().strftime("%Y%m%d") / "api-migration.md"
     assert plan.exists()
+    assert f"plans/{date.today():%Y%m%d}/api-migration.md" in (tmp_path / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
     assert "分阶段迁移 API。" in plan.read_text(encoding="utf-8")
     assert "## 测试覆盖率" in plan.read_text(encoding="utf-8")
     assert "### 阶段准入摘要" in plan.read_text(encoding="utf-8")
@@ -55,7 +57,7 @@ def test_main_creates_plan_files(tmp_path, capsys):
     assert "## 阶段复核记录" in plan.read_text(encoding="utf-8")
     docs = tmp_path / "docs"
     assert {path.relative_to(docs).as_posix() for path in docs.rglob("*")} == {
-        "PLAN_MAP.md", "plans", "plans/api-migration.md",
+        "PLAN_MAP.md", "plans", f"plans/{date.today():%Y%m%d}", f"plans/{date.today():%Y%m%d}/api-migration.md",
     }
     assert "初始化完成" in capsys.readouterr().out
 
@@ -247,7 +249,32 @@ def test_upgrade_existing_reports_missing_docs(tmp_path, capsys):
     output = capsys.readouterr().out
     assert result == 0
     assert "WARNING: 缺少 docs/PLAN_MAP.md" in output
-    assert "WARNING: 缺少 docs/plans/*.md" in output
+    assert "WARNING: 缺少 docs/plans 下的平铺或 YYYYMMDD 日期目录计划" in output
+
+
+def test_upgrade_existing_accepts_date_directory_plan(tmp_path, capsys):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "PLAN_MAP.md").write_text("# PLAN_MAP\n", encoding="utf-8")
+    plans = tmp_path / "docs" / "plans" / "20260926"
+    plans.mkdir(parents=True)
+    (plans / "demo.md").write_text("# Demo\n", encoding="utf-8")
+
+    result = init_plan_governance.main(["--root", str(tmp_path), "--upgrade-existing"])
+
+    assert result == 0
+    assert "WARNING" not in capsys.readouterr().out
+
+
+def test_upgrade_existing_rejects_invalid_calendar_date_directory(tmp_path, capsys):
+    plans = tmp_path / "docs" / "plans" / "20260230"
+    plans.mkdir(parents=True)
+    (plans / "demo.md").write_text("# Demo\n", encoding="utf-8")
+
+    result = init_plan_governance.main(["--root", str(tmp_path), "--upgrade-existing"])
+
+    assert result == 0
+    assert "WARNING: 缺少 docs/plans 下的平铺或 YYYYMMDD 日期目录计划" in capsys.readouterr().out
 
 
 def test_migrate_plan_map_last_updated_converts_legacy_table(tmp_path, capsys):

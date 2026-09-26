@@ -1,7 +1,7 @@
 # ModelPad 架构图谱阶段 1 验收记录
 
 > 验收日期：2026-07-24
-> 适用计划：[架构图谱治理与三层图谱衔接](plans/architecture-graph-governance.md)
+> 适用计划：[架构图谱治理与三层图谱衔接](plans/20260722/architecture-graph-governance.md)
 
 ## 验收范围
 

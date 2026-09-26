@@ -102,6 +102,20 @@ def test_default_json_and_shared_payload_remain_complete(tmp_path, capsys):
     assert snapshot(tmp_path) == before
 
 
+def test_date_directory_plan_is_loaded_from_the_indexed_path(tmp_path, capsys):
+    rows = evidence_rows(2)
+    project(tmp_path, rows, path="docs/plans/20260926/demo.md")
+
+    payload, status, err = run_json(tmp_path, capsys, limit=1)
+
+    assert status == 0
+    assert err == ""
+    assert payload["plans"][0]["recent_evidence"] == rows[-1:]
+    assert payload["plans"][0]["recent_evidence_window"]["source"] == {
+        "path": "docs/plans/20260926/demo.md", "section": RECENT_TITLE,
+    }
+
+
 @pytest.mark.parametrize("count,limit", [(18, 3), (0, 3), (2, 5)])
 def test_explicit_window_has_counts_even_when_nothing_is_omitted(tmp_path, capsys, count, limit):
     project(tmp_path, evidence_rows(count))

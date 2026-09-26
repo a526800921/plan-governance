@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Governance Migration"
+  short_description: "按创建日期迁移存量计划并修复文档引用"
+  default_prompt: "使用 $plan-governance-migration 将这些存量计划迁入日期目录，先核对迁移清单和日期来源，再按授权执行并验证引用。"

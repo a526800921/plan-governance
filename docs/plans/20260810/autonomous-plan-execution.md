@@ -210,7 +210,7 @@
 | 验证方式 | [验证方式](#验证方式) |
 | 失败/回滚边界 | [风险和回滚](#风险和回滚) |
 | 当前阻塞项 | 阶段 0 修订设计已通过独立复核；阶段 1 尚未完成自身 Step 0、样本矩阵、验证方式、完成条件和独立准入 |
-| 最新独立准入复核 | [2026-08-10 独立复核：通过（阶段 1 仍需自身准入）](../reviews/plan-governance-stage0-independent-review-20260810.md) |
+| 最新独立准入复核 | [2026-08-10 独立复核：通过（阶段 1 仍需自身准入）](../../reviews/plan-governance-stage0-independent-review-20260810.md) |
 
 ### 实施步骤
 
@@ -283,15 +283,15 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 日期 | 2026-08-10 |
 | 阶段 | 阶段 0 |
 | 结论 | 通过：修订后的阶段 0 设计达到阶段 1 `待实施` 准入要求；阶段 1 仍须自身 Step 0 和独立准入 |
-| 证据 | [独立复核报告](../reviews/plan-governance-stage0-independent-review-20260810.md)；`plan-governance-cli check . --strict-readiness`；`npm test` 37/37 |
+| 证据 | [独立复核报告](../../reviews/plan-governance-stage0-independent-review-20260810.md)；`plan-governance-cli check . --strict-readiness`；`npm test` 37/37 |
 | 复核者 | Dalton（独立只读复核 subagent） |
 
 ### 阶段 0 历史独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
-| 2026-08-10 | 阶段 0 准入复核 | 阶段 0 | 未通过：方向通过但尚未达到阶段 1 `待实施` 标准 | [独立复核报告](../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
-| 2026-08-10 | 阶段 0 修订后准入复核 | 阶段 0 | 通过：修订后的阶段 0 设计达到阶段 1 `待实施` 准入要求；阶段 1 仍须自身 Step 0 和独立准入 | [独立复核报告](../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 0 准入复核 | 阶段 0 | 未通过：方向通过但尚未达到阶段 1 `待实施` 标准 | [独立复核报告](../../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 0 修订后准入复核 | 阶段 0 | 通过：修订后的阶段 0 设计达到阶段 1 `待实施` 准入要求；阶段 1 仍须自身 Step 0 和独立准入 | [独立复核报告](../../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
 
 ### 阶段 0 历史未决问题
 
@@ -325,7 +325,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 ## 关联 ADR、迁移、spec 或 issue
 
 - 上游计划：[plan-governance-operability-optimization](plan-governance-operability-optimization.md)
-- 相关已完成计划：[phase-entry-gate-hardening](phase-entry-gate-hardening.md)、[agent-runtime-integration](agent-runtime-integration.md)、[plan-governance-npm-cli](plan-governance-npm-cli.md)
+- 相关已完成计划：[phase-entry-gate-hardening](../20260713/phase-entry-gate-hardening.md)、[agent-runtime-integration](../20260706/agent-runtime-integration.md)、[plan-governance-npm-cli](../20260713/plan-governance-npm-cli.md)
 - 当前不创建 ADR 或 migration。阶段 0 若确定步骤模型需要不可兼容的外部 manifest 或状态迁移，再单独创建相应文档。
 
 ## 当前阶段
@@ -346,11 +346,11 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 准入状态 | 已完成 |
 | 阶段状态 | 已完成 |
 | Step 0 | [阶段 3 Step 0 证据](#阶段3-step-0-证据) |
-| 样本矩阵 | [阶段 3 模板/skill 样本](../fixtures/autonomous-plan-execution-stage3-template-cases.md)；[阶段 3 样本矩阵](#阶段3样本矩阵) |
+| 样本矩阵 | [阶段 3 模板/skill 样本](../../fixtures/autonomous-plan-execution-stage3-template-cases.md)；[阶段 3 样本矩阵](#阶段3样本矩阵) |
 | 验证方式 | [阶段3验证方式、完成条件和失败/回滚边界](#阶段3验证方式完成条件和失败回滚边界) |
 | 失败/回滚边界 | [阶段3验证方式、完成条件和失败/回滚边界](#阶段3验证方式完成条件和失败回滚边界) |
 | 当前阻塞项 | 无；阶段 3 已完成，当前计划没有后续阶段 |
-| 最新独立准入复核 | [2026-08-12 阶段 3 完成验收：通过](../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md) |
+| 最新独立准入复核 | [2026-08-12 阶段 3 完成验收：通过](../../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md) |
 
 ### 实施步骤
 
@@ -389,7 +389,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 - 当前真实计划 `autonomous-plan-execution` 未声明自主模式；阶段 1/2 的 `plan steps validate` 和 `plan next` 均应返回 `not_enabled`，这是旧计划兼容和无写入基线。
 - 2026-08-12 实现前基线：Python 126 passed、总覆盖率 90.67%、npm 40/40；基础治理、停滞检查和 `git diff --check` 通过。
 
-可复现的完整基线命令和输出边界见[阶段 3 模板/skill 样本](../fixtures/autonomous-plan-execution-stage3-template-cases.md)中的 B1—B4；这些命令只使用临时目录或当前仓库，不修改全局安装资源。
+可复现的完整基线命令和输出边界见[阶段 3 模板/skill 样本](../../fixtures/autonomous-plan-execution-stage3-template-cases.md)中的 B1—B4；这些命令只使用临时目录或当前仓库，不修改全局安装资源。
 
 ### 阶段 3 实施授权记录
 
@@ -473,7 +473,7 @@ git diff --check
 | 验证方式 | [验证方式](#验证方式) |
 | 失败/回滚边界 | [风险和回滚](#风险和回滚) |
 | 当前阻塞项 | 无；阶段 1 已完成，阶段 2 仍需自身 Step 0、验证方式、完成条件和独立准入复核 |
-| 最新独立准入复核 | [2026-08-10 独立复核：通过，达到阶段 1 `待实施` 标准](../reviews/plan-governance-stage1-independent-review-20260810.md) |
+| 最新独立准入复核 | [2026-08-10 独立复核：通过，达到阶段 1 `待实施` 标准](../../reviews/plan-governance-stage1-independent-review-20260810.md) |
 
 #### 阶段1历史实施步骤
 
@@ -664,7 +664,7 @@ hook 只消费上述稳定结果并输出 `next_action.kind`、原因和 ready/b
 
 ### 阶段2样本矩阵
 
-完整输入片段、预期 JSON 字段和失败判定记录在 [阶段 2 next 样本](../fixtures/autonomous-plan-execution-stage2-next-cases.md)。N1—N8 已有真实 Python/Node 行为测试；以下命令保留为 fixture 覆盖检查和实施回归入口：
+完整输入片段、预期 JSON 字段和失败判定记录在 [阶段 2 next 样本](../../fixtures/autonomous-plan-execution-stage2-next-cases.md)。N1—N8 已有真实 Python/Node 行为测试；以下命令保留为 fixture 覆盖检查和实施回归入口：
 
 | 样本 | 输入或基线 | 可执行命令 | 预期结果 | 失败判定 | 输出位置 |
 |---|---|---|---|---|---|
@@ -728,7 +728,7 @@ node bin/plan-governance-cli.mjs check . --pre-commit
 | 日期 | 2026-08-12 |
 | 阶段 | 阶段 3 |
 | 结论 | 通过：阶段 3 完成验收通过 |
-| 证据 | [阶段 3 完成验收复核报告](../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](#阶段3完成证据)；[阶段 3 样本矩阵](#阶段3样本矩阵) |
+| 证据 | [阶段 3 完成验收复核报告](../../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md)；[阶段 3 完成证据](#阶段3完成证据)；[阶段 3 样本矩阵](#阶段3样本矩阵) |
 | 复核者 | Schrodinger（独立只读复核 subagent） |
 
 ## 独立复核记录
@@ -736,12 +736,12 @@ node bin/plan-governance-cli.mjs check . --pre-commit
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
 | - | - | 阶段 1 | 尚未进行；阶段 1 Step 0 尚未完成 | 本阶段 Step 0 和样本矩阵 | - |
-| 2026-08-10 | 阶段 1 Step 0 独立准入复核 | 阶段 1 | 未通过：只有实现前基线和设计案例，尚无新入口行为测试，未达到 `待实施` 标准 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Kepler（独立只读复核 subagent） |
-| 2026-08-10 | 阶段 1 实现后独立准入复核 | 阶段 1 | 通过 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Locke（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 通过：达到阶段 2 `待实施` 标准；允许切换当前阶段并开始阶段 2 实施，阶段 3 不自动放行 | [阶段 2 独立准入复核报告](../reviews/autonomous-plan-execution-stage2-independent-review-20260811.md) | Aristotle（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 实施后完成验收 | 阶段 2 | 通过：阶段 2 完成验收通过；阶段 2 已关闭，阶段 3 不自动放行 | [阶段 2 完成验收复核报告](../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
-| 2026-08-12 | 阶段 3 Step 0 独立准入复核 | 阶段 3 | 通过：达到阶段 3 `待实施` 标准；允许开始阶段 3 实施 | [阶段 3 独立准入复核报告](../reviews/autonomous-plan-execution-stage3-readiness-review-20260812.md) | Aristotle（独立只读复核 subagent） |
-| 2026-08-12 | 阶段 3 实施后完成验收 | 阶段 3 | 通过：阶段 3 完成验收通过 | [阶段 3 完成验收复核报告](../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 1 Step 0 独立准入复核 | 阶段 1 | 未通过：只有实现前基线和设计案例，尚无新入口行为测试，未达到 `待实施` 标准 | [阶段 1 独立复核报告](../../reviews/plan-governance-stage1-independent-review-20260810.md) | Kepler（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 1 实现后独立准入复核 | 阶段 1 | 通过 | [阶段 1 独立复核报告](../../reviews/plan-governance-stage1-independent-review-20260810.md) | Locke（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 通过：达到阶段 2 `待实施` 标准；允许切换当前阶段并开始阶段 2 实施，阶段 3 不自动放行 | [阶段 2 独立准入复核报告](../../reviews/autonomous-plan-execution-stage2-independent-review-20260811.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 实施后完成验收 | 阶段 2 | 通过：阶段 2 完成验收通过；阶段 2 已关闭，阶段 3 不自动放行 | [阶段 2 完成验收复核报告](../../reviews/autonomous-plan-execution-stage2-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-12 | 阶段 3 Step 0 独立准入复核 | 阶段 3 | 通过：达到阶段 3 `待实施` 标准；允许开始阶段 3 实施 | [阶段 3 独立准入复核报告](../../reviews/autonomous-plan-execution-stage3-readiness-review-20260812.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-12 | 阶段 3 实施后完成验收 | 阶段 3 | 通过：阶段 3 完成验收通过 | [阶段 3 完成验收复核报告](../../reviews/autonomous-plan-execution-stage3-completion-review-20260812.md) | Schrodinger（独立只读复核 subagent） |
 
 ## 未决问题
 

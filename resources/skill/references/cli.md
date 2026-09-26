@@ -18,7 +18,7 @@
 
 ## 分发与资源
 
-SKILL、三个 references、agents 元数据与 assets 由同一 npm 包的 manifest 分发。`plan-governance-cli setup --target codex --dry-run` 查看 Codex 同步差异；实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理目标之外的用户目录。setup 只支持 Codex 单目标同步；项目初始化器只维护 `AGENTS.md`。项目升级不迁移旧计划，受管块外内容必须保持。
+主治理 skill 和独立 migration skill 由同一 npm 包的 manifest 分别分发。`plan-governance-cli setup --target codex --dry-run` 查看两个 skill 的同步差异；`--destination DIR` 将主 skill 放入指定目录，并将迁移 skill 放在其同级目录。实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理目标之外的用户目录。setup 只支持 Codex 单目标同步；项目初始化器只维护 `AGENTS.md`。项目升级不迁移旧计划，受管块外内容必须保持。
 
 仅更新计划格式不等于更新项目入口。已有项目在任务交接、没有进行中的实施或复核时更新受管入口；升级不批量回写历史，旧策略名和六列格式按 verification 解释为统一单次行为。安装副本与仓库开发规则有差异时说明本次选用来源，不能因版本号相同就混读正文。
 
@@ -28,7 +28,7 @@ SKILL、三个 references、agents 元数据与 assets 由同一 npm 包的 mani
 - `../assets/plan.template.md`：计划文档模板。
 - `../assets/adr.template.md`：可选 ADR 模板。
 - `../assets/migration.template.md`：可选迁移模板。
-- `scripts/init_plan_governance.py`：初始化 Git 仓库、`docs/PLAN_MAP.md` 和首个 `docs/plans/<plan>.md`；也可升级已有项目的代理规则和检查脚本。
+- `scripts/init_plan_governance.py`：初始化 Git 仓库、`docs/PLAN_MAP.md` 和首个 `docs/plans/YYYYMMDD/<plan>.md`；检查器仍读取旧式根目录计划。也可升级已有项目的代理规则和检查脚本。
 - `scripts/check_plan_governance.py`：检查状态、最后更新、计划链接、依赖、阻塞项、完成证据、测试覆盖率证据，并提供可选漂移、pre-commit、停滞和 attestation 生命周期检查。
 - `scripts/plan_governance_hook.py`：只读 hook runtime，可由项目级 Agent hooks 手动调用；只输出短提示和检查结果，不修改治理文档、不更新状态、不安装 hooks。
 

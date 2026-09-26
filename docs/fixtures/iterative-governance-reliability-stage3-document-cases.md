@@ -1,6 +1,6 @@
 # 持续迭代治理优化：阶段 3 文档与任务样本
 
-日期：2026-09-06；所属计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md#当前阶段)。本文件记录实施前基线、输入和验证入口，不作为新规范的第二事实源。以下前半保存实施前基线；本阶段实施和后测另见文末记录。
+日期：2026-09-06；所属计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md#当前阶段)。本文件记录实施前基线、输入和验证入口，不作为新规范的第二事实源。以下前半保存实施前基线；本阶段实施和后测另见文末记录。
 
 ## 基线类型
 
@@ -69,7 +69,7 @@ PYCODE
 
 ## 实施后验证入口
 
-目标契约、预期和失败判定只在[阶段 3 目标矩阵](../plans/iterative-governance-reliability.md#阶段-3-目标矩阵)定义。准入后执行：
+目标契约、预期和失败判定只在[阶段 3 目标矩阵](../plans/20260906/iterative-governance-reliability.md#阶段-3-目标矩阵)定义。准入后执行：
 
 - `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -p no:cacheprovider tests/test_init_plan_governance.py --no-cov`
 - `node --test tests/npm_cli.test.mjs`

@@ -2,14 +2,14 @@
 
 ## 收口记录（2026-09-09）
 
-- **状态：已替代**；由[协作流程减负与技能结构优化](plan-governance-workflow-streamlining.md#单次复核结论与修复)中的单次独立复核及自主衔接规则承接。
-- 用户在回顾本计划后反馈“这个好像是解决了”。结合[实际使用抽查](plan-governance-workflow-streamlining.md#使用验收与执行抽查2026-09-08)中两个任务无需用户追加指令便自动派发/衔接复核的证据，以及 [1.1.0 发布与本地同步](plan-governance-distribution-setup.md#2026-09-09-110-发布与本地更新)，原先“等待用户要求去复核”的问题不再作为独立活跃计划推进。
+- **状态：已替代**；由[协作流程减负与技能结构优化](../20260906/plan-governance-workflow-streamlining.md#单次复核结论与修复)中的单次独立复核及自主衔接规则承接。
+- 用户在回顾本计划后反馈“这个好像是解决了”。结合[实际使用抽查](../20260906/plan-governance-workflow-streamlining.md#使用验收与执行抽查2026-09-08)中两个任务无需用户追加指令便自动派发/衔接复核的证据，以及 [1.1.0 发布与本地同步](../20260713/plan-governance-distribution-setup.md#2026-09-09-110-发布与本地更新)，原先“等待用户要求去复核”的问题不再作为独立活跃计划推进。
 - 阶段 0、1 已完成的事实保留；阶段 2 原六类宿主回放未完成、独立准入未通过的记录继续保留，不改写为验收通过。旧方案要求的固定阶段双门复核已由后续策略替代，剩余旧方案回放不再单独排期；这不证明失败、不可用、超时和冲突的所有宿主路径均已实测。
 - 本次仅同步文档终态及关系，不迁移其他计划策略、不解除其他计划的实际缺陷，也不代表减负主计划整体使用验收完成。下文为收口前的设计及证据快照。
 
 ## 背景
 
-当前 `plan-governance` 的跨轮持续推进由 Codex `goal` 承载；旧的“自主连续执行”计划已经废弃。现有阶段准入规则要求当前阶段在进入 `待实施` 前必须有独立准入复核，但没有规定执行者在小阶段到达该门禁时可以自动派发复核者。阶段关系、当前工作集和证据状态沿用已完成的 [plan-governance-operability-optimization](plan-governance-operability-optimization.md) 计划。
+当前 `plan-governance` 的跨轮持续推进由 Codex `goal` 承载；旧的“自主连续执行”计划已经废弃。现有阶段准入规则要求当前阶段在进入 `待实施` 前必须有独立准入复核，但没有规定执行者在小阶段到达该门禁时可以自动派发复核者。阶段关系、当前工作集和证据状态沿用已完成的 [plan-governance-operability-optimization](../20260810/plan-governance-operability-optimization.md) 计划。
 
 因此，计划执行会在一个通常不需要用户决策的小阶段停下来等待独立复核。这个停顿把“需要独立判断”误表现成“需要用户确认”，降低了连续推进体验；但直接恢复旧的整计划自主执行又会重新引入已废弃的执行模式，并可能越过高影响决策边界。
 
@@ -141,7 +141,7 @@
 - 已冻结阶段内自动派发独立只读复核的目标、范围、非目标、独立性、高影响停止边界和“不为每个微小动作单独复核”的效率边界。
 - 已记录规则源现状：当前 skill 只声明跨轮持续由 `goal` 管理，不定义阶段门触发后的自动派发；仓库没有计划执行宿主的实现代码。
 - 当前 Codex 会话的实际能力已通过复核确认：`multi_agent_v1__spawn_agent` 可创建新上下文的 subagent，`multi_agent_v1__wait_agent` 可等待结果，`multi_agent_v1__send_input` 可处理异步返回；复核任务可以保持只读并不修改工作区。这是当前宿主的能力证据，不是仓库内已有通用 runtime 的证明。
-- 第一轮独立复核发现问题，第二轮由未参与修订的 Nietzsche subagent 复核通过并明确达到阶段 0 `待实施` 标准；历史结论保留在[独立复核记录](#独立复核记录)和[复核报告](../reviews/phase-local-review-dispatch-stage0-independent-review-20260905.md)中。
+- 第一轮独立复核发现问题，第二轮由未参与修订的 Nietzsche subagent 复核通过并明确达到阶段 0 `待实施` 标准；历史结论保留在[独立复核记录](#独立复核记录)和[复核报告](../../reviews/phase-local-review-dispatch-stage0-independent-review-20260905.md)中。
 - 阶段 0 没有代码实现；它只关闭设计基线。阶段 1 默认从 `设计中` 开始，必须完成自己的 Step 0、样本矩阵和独立准入后才能实施。
 
 ## 阶段 1 完成证据
@@ -160,7 +160,7 @@
 | 验证方式 | [阶段 1 验证方式](#阶段-1-验证方式) |
 | 失败/回滚边界 | [阶段 1 风险和回滚](#阶段-1-风险和回滚已关闭) |
 | 当前阻塞项 | 无；阶段 1 已完成，宿主回放属于阶段 2 |
-| 最新独立准入复核 | [2026-09-05 阶段 1 完成验收：通过](../reviews/phase-local-review-dispatch-stage1-completion-review-20260905.md) |
+| 最新独立准入复核 | [2026-09-05 阶段 1 完成验收：通过](../../reviews/phase-local-review-dispatch-stage1-completion-review-20260905.md) |
 
 ### 阶段 1 实施步骤
 
@@ -199,10 +199,10 @@
 |---|---|---|---|---|---|
 | 2026-09-05 | 阶段 0 完成 | 阶段内复核调度设计、宿主能力和独立边界已冻结；阶段 0 关闭，阶段 1 进入设计中 | [阶段 0 完成证据](#阶段-0-完成证据) | 通过 | Codex |
 | 2026-09-05 | 阶段 1 Step 0 | 规则源缺口和当前宿主独立 subagent 能力已固定为实施前基线 | [阶段 1 Step 0 证据](#阶段-1-step-0-证据) | 通过 | Codex |
-| 2026-09-05 | 阶段 1 独立准入复核（第二轮） | 阶段 1 设计准入通过，达到 `待实施` 标准；阶段 1 宿主回放范围已明确留给阶段 2 | [阶段 1 复核报告第二轮追加记录](../reviews/phase-local-review-dispatch-stage1-readiness-review-20260905.md#第二轮复核追加记录) | 通过 | Lovelace（独立只读复核 subagent） |
+| 2026-09-05 | 阶段 1 独立准入复核（第二轮） | 阶段 1 设计准入通过，达到 `待实施` 标准；阶段 1 宿主回放范围已明确留给阶段 2 | [阶段 1 复核报告第二轮追加记录](../../reviews/phase-local-review-dispatch-stage1-readiness-review-20260905.md#第二轮复核追加记录) | 通过 | Lovelace（独立只读复核 subagent） |
 | 2026-09-05 | 阶段 1 实施验证 | 针对性 pytest 34 项、全量 pytest 120 项通过（总覆盖率 91.64%），npm 39 项通过；治理普通/严格/stale/pre-commit/drift 和 Codex setup dry-run 通过；drift 无未覆盖目标 | [阶段 1 验证方式](#阶段-1-验证方式) | 通过 | Codex |
 | 2026-09-05 | 阶段 1 实施启动 | 更新规则源、代理生成器、模板、README、代理元数据和测试；未实现通用 runtime 或宿主回放 | [阶段 1 范围](#阶段-1-完成证据) | 完成 | Codex |
-| 2026-09-05 | 阶段 1 独立完成验收 | 复核者基于当前工作树和可复现命令确认阶段 1 完成；阶段 2 宿主回放不提前纳入 | [阶段 1 完成验收报告](../reviews/phase-local-review-dispatch-stage1-completion-review-20260905.md) | 通过 | Kant（独立只读完成验收 subagent） |
+| 2026-09-05 | 阶段 1 独立完成验收 | 复核者基于当前工作树和可复现命令确认阶段 1 完成；阶段 2 宿主回放不提前纳入 | [阶段 1 完成验收报告](../../reviews/phase-local-review-dispatch-stage1-completion-review-20260905.md) | 通过 | Kant（独立只读完成验收 subagent） |
 
 阶段 1 记录已关闭；阶段 2 需要重新建立自己的 Step 0、样本矩阵和独立准入复核。
 
@@ -257,14 +257,14 @@
 
 - 阶段 1 已完成规则源、代理入口、模板、说明、测试和 Codex skill 资源同步，但没有声称仓库内存在通用计划执行 runtime。
 - 当前 Codex 会话已实际观察到 `multi_agent_v1__spawn_agent`、`multi_agent_v1__wait_agent`、`multi_agent_v1__send_input` 和 `multi_agent_v1__close_agent`；这只是当前宿主能力证据，不能解释为仓库内已有通用 runtime。
-- 阶段 2 的回放协议和六类场景 fixture 已记录在[阶段 2 宿主回放 fixture](../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md)，仍需追加实际回放输出和独立准入结论，不能用阶段 1 的文档一致性测试替代宿主回放。
+- 阶段 2 的回放协议和六类场景 fixture 已记录在[阶段 2 宿主回放 fixture](../../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md)，仍需追加实际回放输出和独立准入结论，不能用阶段 1 的文档一致性测试替代宿主回放。
 - 阶段 2 实施前必须补齐目标宿主版本/能力、六类场景 fixture、失败判定、回滚边界和输出位置；在此之前保持 `设计中`。
 
 ### 阶段 2 样本矩阵
 
 | 样本/fixture | 输入或基线 | 可执行命令 | 预期结果 | 失败判定 | 输出位置 |
 |---|---|---|---|---|---|
-| 目标宿主入口 | 当前 Codex 会话的 `multi_agent_v1__spawn_agent`、`wait_agent`、`send_input`、`close_agent` 能力 | 当前会话工具调用；回放协议见 [fixture](../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md) | 能定位创建独立只读复核、等待、处理中断/异步结果和关闭入口 | 入口不可用、语义不明或只能共享实施上下文 | fixture 运行记录 |
+| 目标宿主入口 | 当前 Codex 会话的 `multi_agent_v1__spawn_agent`、`wait_agent`、`send_input`、`close_agent` 能力 | 当前会话工具调用；回放协议见 [fixture](../../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md) | 能定位创建独立只读复核、等待、处理中断/异步结果和关闭入口 | 入口不可用、语义不明或只能共享实施上下文 | fixture 运行记录 |
 | 普通低影响阶段 | 阶段 2 最小计划 fixture | 当前会话创建独立只读 subagent 并等待；结果追加到 fixture | 自动派发独立只读复核，复核通过后继续，不等待用户逐项确认 | 未派发、要求用户逐项确认或未消费通过结果 | fixture 回放输出 |
 | 高影响边界 | 含外部授权/不可逆动作的策略 fixture | 只读策略回放，不执行真实外部动作 | 在动作前请求用户确认，subagent 不代替授权 | 未确认即执行或自动放行 | fixture 回放输出 |
 | 失败/不可用/超时/冲突 | 失败复核者、不可用入口和冲突证据 fixture | 按 fixture 协议做安全停机回放；不可模拟时保留阻塞 | 保留阻塞并报告；仅同等独立性复核者可替代 | 自我批准、静默跳过、无限等待或安全替代单独放行 | fixture 回放输出 |
@@ -272,7 +272,7 @@
 ### 阶段 2 验证方式
 
 - 先完成目标宿主只读能力探测和 fixture 固定，再执行样本矩阵中的普通、高影响、通过、失败、不可用/超时和证据冲突回放。
-- 当前 Codex 会话的能力入口和六类场景协议记录在[阶段 2 宿主回放 fixture](../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md)；实际结果必须追加到该 fixture。
+- 当前 Codex 会话的能力入口和六类场景协议记录在[阶段 2 宿主回放 fixture](../../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md)；实际结果必须追加到该 fixture。
 - 核对复核任务使用新上下文、只读、不修改工作区、绑定被审查 revision，并返回计划、阶段、范围、命令、证据、结论、阻塞项和复核者标识。
 - 核对普通阶段门通过后继续，且没有为每个微小动作单独派发；高影响、失败、不可用、超时和冲突按规则停机。
 - 阶段 2 完成验收必须由未参与实施的独立复核者执行，并同步 `PLAN_MAP.md` 和本计划的最新复核结论。
@@ -285,7 +285,7 @@
 
 | 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
 |---|---|---|---|---|---|
-| 2026-09-05 | 当前 Codex 宿主能力回放 | 主会话创建、等待和关闭独立只读 subagent 成功；普通派发证据成立；子上下文不提供嵌套多 agent 工具，不作为主入口失败；其余场景仅完成安全策略回放 | [宿主回放 fixture](../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md#2026-09-05-回放执行记录plato) | 部分通过，六类独立宿主输出待补 | Codex / Plato（回放执行者） |
+| 2026-09-05 | 当前 Codex 宿主能力回放 | 主会话创建、等待和关闭独立只读 subagent 成功；普通派发证据成立；子上下文不提供嵌套多 agent 工具，不作为主入口失败；其余场景仅完成安全策略回放 | [宿主回放 fixture](../../fixtures/phase-local-review-dispatch-stage2-host-replay-20260905.md#2026-09-05-回放执行记录plato) | 部分通过，六类独立宿主输出待补 | Codex / Plato（回放执行者） |
 
 ### 阶段 2 完成条件
 
@@ -302,19 +302,19 @@
 | 日期 | 2026-09-05 |
 | 阶段 | 阶段 2 |
 | 结论 | 未通过：六类场景缺少完整、独立、可复现的宿主运行输出 |
-| 证据 | [阶段 2 Step 0 证据](#阶段-2-step-0-证据)、[阶段 2 样本矩阵](#阶段-2-样本矩阵)、[阶段 2 Step 0 独立复核报告](../reviews/phase-local-review-dispatch-stage2-step0-review-20260905.md) |
+| 证据 | [阶段 2 Step 0 证据](#阶段-2-step-0-证据)、[阶段 2 样本矩阵](#阶段-2-样本矩阵)、[阶段 2 Step 0 独立复核报告](../../reviews/phase-local-review-dispatch-stage2-step0-review-20260905.md) |
 | 复核者 | Russell（独立只读复核 subagent） |
 
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
-| 2026-09-05 | 阶段 0 设计准入复核 | 阶段 0 | 未通过：阶段阻塞归属、样本矩阵和不可用回退边界需修订 | [复核报告](../reviews/phase-local-review-dispatch-stage0-independent-review-20260905.md) | Peirce（独立只读复核 subagent） |
-| 2026-09-05 | 阶段 0 设计准入复核（第二轮） | 阶段 0 | 通过，达到 `待实施` 标准 | [复核报告第二轮追加记录](../reviews/phase-local-review-dispatch-stage0-independent-review-20260905.md#第二轮复核追加记录) | Nietzsche（独立只读复核 subagent） |
-| 2026-09-05 | 阶段 1 Step 0 准入复核（第一轮） | 阶段 1 | 未通过：宿主能力与通用 runtime 表述混淆，阶段范围和回放证据需收窄/补充 | [阶段 1 复核报告](../reviews/phase-local-review-dispatch-stage1-readiness-review-20260905.md) | Huygens（独立只读复核 subagent） |
-| 2026-09-05 | 阶段 1 Step 0 准入复核（第二轮） | 阶段 1 | 通过，达到 `待实施` 标准 | [复核报告第二轮追加记录](../reviews/phase-local-review-dispatch-stage1-readiness-review-20260905.md#第二轮复核追加记录) | Lovelace（独立只读复核 subagent） |
-| 2026-09-05 | 阶段 1 完成验收 | 阶段 1 | 通过，阶段 1 已完成 | [阶段 1 完成验收报告](../reviews/phase-local-review-dispatch-stage1-completion-review-20260905.md) | Kant（独立只读完成验收 subagent） |
-| 2026-09-05 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 未通过：六类场景缺少完整、独立、可复现的宿主运行输出 | [阶段 2 Step 0 独立复核报告](../reviews/phase-local-review-dispatch-stage2-step0-review-20260905.md) | Russell（独立只读复核 subagent） |
+| 2026-09-05 | 阶段 0 设计准入复核 | 阶段 0 | 未通过：阶段阻塞归属、样本矩阵和不可用回退边界需修订 | [复核报告](../../reviews/phase-local-review-dispatch-stage0-independent-review-20260905.md) | Peirce（独立只读复核 subagent） |
+| 2026-09-05 | 阶段 0 设计准入复核（第二轮） | 阶段 0 | 通过，达到 `待实施` 标准 | [复核报告第二轮追加记录](../../reviews/phase-local-review-dispatch-stage0-independent-review-20260905.md#第二轮复核追加记录) | Nietzsche（独立只读复核 subagent） |
+| 2026-09-05 | 阶段 1 Step 0 准入复核（第一轮） | 阶段 1 | 未通过：宿主能力与通用 runtime 表述混淆，阶段范围和回放证据需收窄/补充 | [阶段 1 复核报告](../../reviews/phase-local-review-dispatch-stage1-readiness-review-20260905.md) | Huygens（独立只读复核 subagent） |
+| 2026-09-05 | 阶段 1 Step 0 准入复核（第二轮） | 阶段 1 | 通过，达到 `待实施` 标准 | [复核报告第二轮追加记录](../../reviews/phase-local-review-dispatch-stage1-readiness-review-20260905.md#第二轮复核追加记录) | Lovelace（独立只读复核 subagent） |
+| 2026-09-05 | 阶段 1 完成验收 | 阶段 1 | 通过，阶段 1 已完成 | [阶段 1 完成验收报告](../../reviews/phase-local-review-dispatch-stage1-completion-review-20260905.md) | Kant（独立只读完成验收 subagent） |
+| 2026-09-05 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 未通过：六类场景缺少完整、独立、可复现的宿主运行输出 | [阶段 2 Step 0 独立复核报告](../../reviews/phase-local-review-dispatch-stage2-step0-review-20260905.md) | Russell（独立只读复核 subagent） |
 
 ## 未决问题
 
@@ -347,5 +347,5 @@
 
 ## 关联 ADR、迁移、spec 或 issue
 
-- 现有阶段准入契约：[phase-entry-gate-hardening](phase-entry-gate-hardening.md)
-- 现有独立验收契约：[independent-acceptance-rules](independent-acceptance-rules.md)
+- 现有阶段准入契约：[phase-entry-gate-hardening](../20260713/phase-entry-gate-hardening.md)
+- 现有独立验收契约：[independent-acceptance-rules](../20260704/independent-acceptance-rules.md)

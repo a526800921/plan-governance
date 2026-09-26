@@ -437,13 +437,13 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 ## 2026-09-06 验证入口维护
 
-本次由 [iterative-governance-reliability 阶段 2](iterative-governance-reliability.md#阶段-2-行为契约)统一 CI 和发布前验证，并补齐部分切源失败后的恢复责任。现行检查集合、顺序、失败/回滚及 dry-run 边界以该专项契约为准；上面的历史发布记录保留当时行为。当前仅实施及验证，完成结论见该计划的独立复核；未升级版本、发布、全局安装或修改实际 registry。
+本次由 [iterative-governance-reliability 阶段 2](../20260906/iterative-governance-reliability.md#阶段-2-行为契约)统一 CI 和发布前验证，并补齐部分切源失败后的恢复责任。现行检查集合、顺序、失败/回滚及 dry-run 边界以该专项契约为准；上面的历史发布记录保留当时行为。当前仅实施及验证，完成结论见该计划的独立复核；未升级版本、发布、全局安装或修改实际 registry。
 
 ## 2026-09-06 1.0.0 发布维护
 
 用户明确要求将当前已通过独立技术验收的成果发布为 `1.0.0`，并更新本地依赖。本次授权覆盖版本元数据、公共 npm 发布、全局 CLI 升级及 Codex/Claude 已安装 skill 的 manifest 资源同步；不迁移其他项目、不配置 hook、不删除 manifest 外文件。发布授权不补写减负计划的真实使用效果或用户最终接受。
 
-- 发布基线：工作区 `0.3.5`，当前优化源码及资源已通过独立技术完成复核；复用[减负计划技术验收](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md)。发布前仅更新 README 锁定版本示例，版本文件由统一发布脚本更新。
+- 发布基线：工作区 `0.3.5`，当前优化源码及资源已通过独立技术完成复核；复用[减负计划技术验收](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md)。发布前仅更新 README 锁定版本示例，版本文件由统一发布脚本更新。
 - 预检：官方 registry 当前 `latest: 0.3.5`，版本列表无 `1.0.0`；npm 登录检查及 `nrm` 可用性通过，不记录账户或凭证。原 registry 为 `https://mirrors.tencent.com/npm/`。
 - `npm run release:npm -- --dry-run 1.0.0` 通过；预览顺序为完整 verify、保存原 registry、切官方源、`npm version 1.0.0 --no-git-tag-version`、公开发布、恢复原 registry。打包清单仅 18 项生产文件，包含三份 references 和 spec 模板，不含测试、项目计划或凭证。
 - 执行与验证：正式使用 `npm run release:npm -- 1.0.0`；发布成功后核对官方版本、latest 及包完整性，再从官方 registry 安装明确的 `1.0.0`。skill 先预演、核对本地定制与清单，再按本次更新授权同步，二次预演和逐文件比较确认结果。
@@ -461,7 +461,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 用户要求“推送 1.0.1”，本次按已实现的最近证据限量输出发布公共 npm 包，并提交推送 Git；全局 CLI/已安装 skill 更新另按授权处理。该维护不新增阶段，不代表减负计划实际使用验收完成。
 
-- 发布基线：HEAD `4734621`，工作区版本 `1.0.0`；功能及回归范围见[限量输出实现与自验](plan-governance-workflow-streamlining.md#workset-最近证据限量输出)。版本由统一发布脚本更新，README 和 CLI 参考同步最低支持版本。
+- 发布基线：HEAD `4734621`，工作区版本 `1.0.0`；功能及回归范围见[限量输出实现与自验](../20260906/plan-governance-workflow-streamlining.md#workset-最近证据限量输出)。版本由统一发布脚本更新，README 和 CLI 参考同步最低支持版本。
 - 预检：官方 registry 的 `1.0.1` 查询返回 E404，`latest: 1.0.0`；远端 `main` 为 `4734621`，与本地 HEAD 一致。
 - 执行方式：先 `npm run release:npm -- --dry-run patch`，正式执行 `npm run release:npm -- 1.0.1`；完整 verify 通过后脚本才切源、升级并发布，随后恢复原 registry。
 - 完成条件：官方版本及 latest 为 `1.0.1`，发布包 shasum/integrity 与本地相同内容一致，registry 恢复，发布记录落档并推送当前提交到远端。失败或结果不明先查 registry，禁止重复发布；Git 推送不覆盖远端新增提交。
@@ -485,7 +485,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 ## 2026-09-07 1.0.2 发布维护
 
-用户要求“可以发一版”，授权将已完成并同步本机的 U1—U5 规则调整发布为下一补丁版本。发布从工作区 `1.0.1` 使用 `patch` 生成 `1.0.2`；本次不包含 Git 提交/推送或升级全局 CLI。源规则及同步证据见[使用反馈调整](plan-governance-workflow-streamlining.md#本次实施结果)和[独立完成复核](../reviews/plan-governance-usage-adjustments-review-20260907.md)。整体实际使用验收不因发布自动完成。
+用户要求“可以发一版”，授权将已完成并同步本机的 U1—U5 规则调整发布为下一补丁版本。发布从工作区 `1.0.1` 使用 `patch` 生成 `1.0.2`；本次不包含 Git 提交/推送或升级全局 CLI。源规则及同步证据见[使用反馈调整](../20260906/plan-governance-workflow-streamlining.md#本次实施结果)和[独立完成复核](../../reviews/plan-governance-usage-adjustments-review-20260907.md)。整体实际使用验收不因发布自动完成。
 
 - 发布前官方 registry 查询：`latest: 1.0.1`，`plan-governance-cli@1.0.2` 返回 E404，不重复发布既有版本。
 - `npm run release:npm -- --dry-run patch` 退出 0；原 registry 为 `https://mirrors.tencent.com/npm/`。正式发布使用 `npm run release:npm -- patch`，由同一脚本先执行完整 verify，再切源、升级版本、发布及恢复 registry。
@@ -546,7 +546,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 ## 2026-09-08 1.0.3 发布与本地更新
 
-用户明确要求“发布npm，然后更新本地”，授权发布当前规则增量，并更新全局 CLI 与 Codex/Claude 已安装 skill。源规则独立结论见[复核粒度实施证据](plan-governance-workflow-streamlining.md#本次实施进展)。本次不修改其他项目计划策略，不自动提交或推送 Git。
+用户明确要求“发布npm，然后更新本地”，授权发布当前规则增量，并更新全局 CLI 与 Codex/Claude 已安装 skill。源规则独立结论见[复核粒度实施证据](../20260906/plan-governance-workflow-streamlining.md#本次实施进展)。本次不修改其他项目计划策略，不自动提交或推送 Git。
 
 - 官方预检 `latest: 1.0.2`，版本列表没有 1.0.3；先执行 `npm run release:npm -- --dry-run patch`，退出 0。
 - `npm run release:npm -- patch` 退出 0：严格治理通过、613 项 Python 测试通过/覆盖率 93.57%、103 项 Node 测试通过/0 skipped；自动从工作区 1.0.2 升到 1.0.3，并返回发布成功。发布后原 registry `https://mirrors.tencent.com/npm/` 已恢复并复查。
@@ -561,7 +561,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 ## 2026-09-09 1.1.0 发布与本地更新
 
-用户明确要求“npm发布1.1.0，然后同步本地”，授权发布已提交的单次复核及 GPT-6 提示精简内容，并更新全局 CLI 与 Codex/Claude skill。源实施及独立检查见[GPT-6 提示精简实施](plan-governance-workflow-streamlining.md#gpt-6-提示精简实施)。
+用户明确要求“npm发布1.1.0，然后同步本地”，授权发布已提交的单次复核及 GPT-6 提示精简内容，并更新全局 CLI 与 Codex/Claude skill。源实施及独立检查见[GPT-6 提示精简实施](../20260906/plan-governance-workflow-streamlining.md#gpt-6-提示精简实施)。
 
 - 官方预检版本列表无 1.1.0、latest 为 1.0.3；`npm run release:npm -- --dry-run 1.1.0` 退出 0。
 - `npm run release:npm -- 1.1.0` 退出 0：严格治理通过、654 项 Python 测试通过/覆盖率 93.63%、103 项 Node 测试通过/0 skipped；工作区版本从 1.0.3 升至 1.1.0，发布返回成功。原 registry `https://mirrors.tencent.com/npm/` 已恢复并复查。
@@ -576,7 +576,7 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 
 ## 2026-09-19 1.1.1 发布与 Codex 更新
 
-用户明确要求“发布，然后安装”，并补充 Claude 那一套不在默认同步范围。本次发布[新旧计划统一单次复核](plan-governance-workflow-streamlining.md#新旧计划统一单次复核提案2026-09-19)增量，安装精确版本的全局 CLI，只同步 Codex skill；不写 Claude skill、不迁移其他项目，也不自动提交或推送 Git。
+用户明确要求“发布，然后安装”，并补充 Claude 那一套不在默认同步范围。本次发布[新旧计划统一单次复核](../20260906/plan-governance-workflow-streamlining.md#新旧计划统一单次复核提案2026-09-19)增量，安装精确版本的全局 CLI，只同步 Codex skill；不写 Claude skill、不迁移其他项目，也不自动提交或推送 Git。
 
 - 官方预检版本列表无 1.1.1、`latest` 为 1.1.0；`npm run release:npm -- --dry-run patch` 退出 0。`npm run release:npm -- patch` 随后退出 0：严格治理通过、671 项 Python 测试通过/覆盖率 93.11%、103 项 Node 测试通过/0 skipped；工作区版本从 1.1.0 升至 1.1.1，发布成功，原 registry `https://mirrors.tencent.com/npm/` 已恢复。
 - 发布包共 18 个文件，shasum `53452cf0be6108e26cd4502efae2cb4ba135bb75`，integrity `sha512-nrBCk4LFuJfQpi+E7+vPI4VYktexaag1QfVzYW6mUCgN1OINaLBT8X4BXG/xMpHOdbOSeTByXnDGDaEebxXNNw==`；本地 `npm pack --dry-run --json` 返回相同校验值，未生成 tgz。

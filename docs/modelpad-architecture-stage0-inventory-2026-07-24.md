@@ -1,7 +1,7 @@
 # ModelPad 架构图谱阶段 0 只读盘点
 
 > 盘点日期：2026-07-24
-> 适用计划：[架构图谱治理与三层图谱衔接](plans/architecture-graph-governance.md)
+> 适用计划：[架构图谱治理与三层图谱衔接](plans/20260722/architecture-graph-governance.md)
 > 状态：五组边界和最小跨层关系已由用户确认；字段和 Schema 仍未冻结为 ModelPad 正式图谱。
 
 ## 盘点范围

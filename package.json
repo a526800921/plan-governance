@@ -11,6 +11,7 @@
     "bin/plan-governance-cli.mjs",
     "resources/manifest.json",
     "resources/skill",
+    "resources/migration-skill",
     "scripts/check_plan_governance.py",
     "scripts/init_plan_governance.py",
     "scripts/plan_governance_hook.py",

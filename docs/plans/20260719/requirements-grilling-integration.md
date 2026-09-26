@@ -8,7 +8,7 @@
 
 本计划把 `grill-me` 纳入 `plan-governance` 的前置探索流程，目标是减少因未收敛需求造成的返工，同时不为普通小任务增加固定文档负担。
 
-本计划依赖已完成的 [phase-entry-gate-hardening](phase-entry-gate-hardening.md)，复用其既有的计划状态、阶段准入和独立复核边界；也依赖 [plan-governance-distribution-setup](plan-governance-distribution-setup.md)，复用其 npm 资源清单、显式 skill 同步和用户目录保护契约。
+本计划依赖已完成的 [phase-entry-gate-hardening](../20260713/phase-entry-gate-hardening.md)，复用其既有的计划状态、阶段准入和独立复核边界；也依赖 [plan-governance-distribution-setup](../20260713/plan-governance-distribution-setup.md)，复用其 npm 资源清单、显式 skill 同步和用户目录保护契约。
 
 ## 目标
 

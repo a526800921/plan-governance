@@ -1,7 +1,7 @@
 # ModelPad 架构图谱阶段 2 GitNexus 回放
 
 > 回放日期：2026-07-24
-> 适用计划：[架构图谱治理与三层图谱衔接](plans/architecture-graph-governance.md)
+> 适用计划：[架构图谱治理与三层图谱衔接](plans/20260722/architecture-graph-governance.md)
 
 ## 只读范围
 

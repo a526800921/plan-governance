@@ -2,7 +2,7 @@
 
 ## 背景
 
-[计划治理体系评审报告](../../plan-governance-system-review-20260810.md) 以 `motorcycle-manual-app` 2026-08-10 的真实工作区为样本，确认现有 `plan-governance` 在 Step 0、独立复核、事实源分层和失败边界方面有效；同时暴露出四类可操作性缺口：
+[计划治理体系评审报告](../../../plan-governance-system-review-20260810.md) 以 `motorcycle-manual-app` 2026-08-10 的真实工作区为样本，确认现有 `plan-governance` 在 Step 0、独立复核、事实源分层和失败边界方面有效；同时暴露出四类可操作性缺口：
 
 1. 活跃计划、历史计划和完成证据混在同一主视图，无法快速调度当前工作。
 2. 依赖只能表达计划级先后，不能表达阶段门、软依赖和可并行边界。
@@ -263,7 +263,7 @@
 | 验证方式 | [验证方式](#验证方式) |
 | 失败/回滚边界 | [风险和回滚](#风险和回滚) |
 | 当前阻塞项 | 阶段 0 修订设计已通过独立复核；阶段 1 尚未完成自身 Step 0、样本矩阵、验证方式、完成条件和独立准入 |
-| 最新独立准入复核 | [2026-08-10 独立复核：通过（阶段 1 仍需自身准入）](../reviews/plan-governance-stage0-independent-review-20260810.md) |
+| 最新独立准入复核 | [2026-08-10 独立复核：通过（阶段 1 仍需自身准入）](../../reviews/plan-governance-stage0-independent-review-20260810.md) |
 
 ### 实施步骤
 
@@ -343,15 +343,15 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 日期 | 2026-08-10 |
 | 阶段 | 阶段 0 |
 | 结论 | 通过：修订后的阶段 0 设计达到阶段 1 `待实施` 准入要求；阶段 1 仍须自身 Step 0 和独立准入 |
-| 证据 | [独立复核报告](../reviews/plan-governance-stage0-independent-review-20260810.md)；`plan-governance-cli check . --strict-readiness`；`npm test` 37/37 |
+| 证据 | [独立复核报告](../../reviews/plan-governance-stage0-independent-review-20260810.md)；`plan-governance-cli check . --strict-readiness`；`npm test` 37/37 |
 | 复核者 | Dalton（独立只读复核 subagent） |
 
 ### 阶段 0 历史独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
-| 2026-08-10 | 阶段 0 准入复核 | 阶段 0 | 未通过：方向通过但尚未达到阶段 1 `待实施` 标准 | [独立复核报告](../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
-| 2026-08-10 | 阶段 0 修订后准入复核 | 阶段 0 | 通过：修订后的阶段 0 设计达到阶段 1 `待实施` 准入要求；阶段 1 仍须自身 Step 0 和独立准入 | [独立复核报告](../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 0 准入复核 | 阶段 0 | 未通过：方向通过但尚未达到阶段 1 `待实施` 标准 | [独立复核报告](../../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 0 修订后准入复核 | 阶段 0 | 通过：修订后的阶段 0 设计达到阶段 1 `待实施` 准入要求；阶段 1 仍须自身 Step 0 和独立准入 | [独立复核报告](../../reviews/plan-governance-stage0-independent-review-20260810.md) | Dalton（独立只读复核 subagent） |
 
 ### 阶段 0 历史未决问题
 
@@ -380,8 +380,8 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ## 关联 ADR、迁移、spec 或 issue
 
-- 背景评审：[计划治理体系评审报告](../../plan-governance-system-review-20260810.md)
-- 相关已完成计划：[plan-drift-check-enhancements](plan-drift-check-enhancements.md)、[phase-entry-gate-hardening](phase-entry-gate-hardening.md)、[agent-runtime-integration](agent-runtime-integration.md)、[architecture-graph-governance](architecture-graph-governance.md)
+- 背景评审：[计划治理体系评审报告](../../../plan-governance-system-review-20260810.md)
+- 相关已完成计划：[plan-drift-check-enhancements](../20260705/plan-drift-check-enhancements.md)、[phase-entry-gate-hardening](../20260713/phase-entry-gate-hardening.md)、[agent-runtime-integration](../20260706/agent-runtime-integration.md)、[architecture-graph-governance](../20260722/architecture-graph-governance.md)
 - 当前不创建 ADR 或 migration；阶段 0 若确定需要不可兼容的文件 schema 迁移，再单独新建对应文档。
 
 ## 阶段 1 历史实施记录
@@ -406,7 +406,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 验证方式 | [验证方式](#验证方式) |
 | 失败/回滚边界 | [风险和回滚](#风险和回滚) |
 | 当前阻塞项 | 无；阶段 2 仍需自身 Step 0、验证方式、完成条件和独立准入复核 |
-| 最新独立准入复核 | [2026-08-10 独立复核：通过，达到阶段 1 `待实施` 标准](../reviews/plan-governance-stage1-independent-review-20260810.md) |
+| 最新独立准入复核 | [2026-08-10 独立复核：通过，达到阶段 1 `待实施` 标准](../../reviews/plan-governance-stage1-independent-review-20260810.md) |
 
 ### 实施步骤
 
@@ -494,7 +494,7 @@ git diff --check
 | 日期 | 2026-08-11 |
 | 阶段 | 阶段 2 |
 | 结论 | 通过：阶段 2 已完成；R1—R7、完成条件、实施回归和独立验收均通过，阶段 3 未放行 |
-| 证据 | [阶段 2 完成验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md)；[阶段 2 完成验收](#阶段-2-完成验收)；[阶段 2 关系校验样本](../fixtures/plan-governance-stage2-relation-cases.md) |
+| 证据 | [阶段 2 完成验收复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md)；[阶段 2 完成验收](#阶段-2-完成验收)；[阶段 2 关系校验样本](../../fixtures/plan-governance-stage2-relation-cases.md) |
 | 复核者 | Banach（独立只读复核 subagent） |
 
 ## 独立复核记录
@@ -502,20 +502,20 @@ git diff --check
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
 | - | - | 阶段 1 | 尚未进行；阶段 1 Step 0 尚未完成 | 本阶段 Step 0 和样本矩阵 | - |
-| 2026-08-10 | 阶段 1 Step 0 独立准入复核 | 阶段 1 | 未通过：只有实现前基线和设计案例，尚无新入口行为测试，未达到 `待实施` 标准 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Kepler（独立只读复核 subagent） |
-| 2026-08-10 | 阶段 1 实现后独立准入复核 | 阶段 1 | 通过 | [阶段 1 独立复核报告](../reviews/plan-governance-stage1-independent-review-20260810.md) | Locke（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 未通过：R1—R7 尚未提供可执行输入/输出/退出码，shared_write_risk 兼容规则和关系校验语义仍未冻结 | [阶段 2 准入复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Hume（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 修订后独立准入复核 | 阶段 2 | 未通过：候选实现和主要测试已通过，但 R2/R5、真实阶段引用、四列/九列兼容和证据分层仍有缺口 | [阶段 2 准入复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Wegener（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 第三轮独立准入复核 | 阶段 2 | 未通过：主要实现和回归已通过，但合法关系差异、旧依赖保留、目标阶段错误、证据路径和四列/九列冲突反例仍需补强 | [阶段 2 准入复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Volta（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 第四轮独立准入复核 | 阶段 2 | 未通过：仅剩阶段 2 完成条件章节和 R6 命令覆盖范围两个文档准入缺口 | [阶段 2 准入复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Boyle（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 修订后最终独立准入复核 | 阶段 2 | 通过：阶段 2 达到 `待实施` 标准；R1—R7、完成条件和 R6 命令覆盖均已确认 | [阶段 2 准入复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Boyle（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 首次完成验收 | 阶段 2 | 未通过：技术项已通过，但完成后的阶段状态、PLAN_MAP 完成证据和独立验收记录尚未同步 | [阶段 2 完成验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Banach（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 2 完成验收复核 | 阶段 2 | 通过：阶段 2 已完成；R1—R7、完成条件、实施回归和独立验收均通过，阶段 3 未放行 | [阶段 2 完成验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md) | Banach（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 3 Step 0 独立准入复核 | 阶段 3 | 未通过：Step 0 的工作区基线表述不准确，S5 模板命令存在假阳性；已记录修订边界，阶段 3 未提前切换 | [阶段 3 准入复核报告](../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 3 修订后最终独立准入复核 | 阶段 3 | 通过：阶段 3 达到 `待实施` 标准；S1—S6、基线、兼容边界和回滚条件已确认 | [阶段 3 准入复核报告](../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 3 首次完成验收复核 | 阶段 3 | 未通过：技术实现和 S1—S6 已通过，但阶段状态、实施步骤和 `PLAN_MAP.md` 完成证据尚未同步 | [阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 3 完成验收复核 | 阶段 3 | 通过：阶段 3 已完成；S1—S6、完成条件、关闭窗口、实施回归、治理同步和独立验收均通过 | [阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
-| 2026-08-11 | 阶段 3 验收后覆盖率补强复核 | 阶段 3 | 通过：coverage follow-up 仅新增测试和证据同步，无生产逻辑或公共契约变化；Python 122 passed/91.36%、npm 39/39 和治理检查均通过 | [覆盖率补强记录](../reviews/plan-governance-stage3-completion-review-20260811.md#验收后覆盖率补强记录) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 1 Step 0 独立准入复核 | 阶段 1 | 未通过：只有实现前基线和设计案例，尚无新入口行为测试，未达到 `待实施` 标准 | [阶段 1 独立复核报告](../../reviews/plan-governance-stage1-independent-review-20260810.md) | Kepler（独立只读复核 subagent） |
+| 2026-08-10 | 阶段 1 实现后独立准入复核 | 阶段 1 | 通过 | [阶段 1 独立复核报告](../../reviews/plan-governance-stage1-independent-review-20260810.md) | Locke（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 Step 0 独立准入复核 | 阶段 2 | 未通过：R1—R7 尚未提供可执行输入/输出/退出码，shared_write_risk 兼容规则和关系校验语义仍未冻结 | [阶段 2 准入复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Hume（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 修订后独立准入复核 | 阶段 2 | 未通过：候选实现和主要测试已通过，但 R2/R5、真实阶段引用、四列/九列兼容和证据分层仍有缺口 | [阶段 2 准入复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Wegener（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 第三轮独立准入复核 | 阶段 2 | 未通过：主要实现和回归已通过，但合法关系差异、旧依赖保留、目标阶段错误、证据路径和四列/九列冲突反例仍需补强 | [阶段 2 准入复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Volta（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 第四轮独立准入复核 | 阶段 2 | 未通过：仅剩阶段 2 完成条件章节和 R6 命令覆盖范围两个文档准入缺口 | [阶段 2 准入复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Boyle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 修订后最终独立准入复核 | 阶段 2 | 通过：阶段 2 达到 `待实施` 标准；R1—R7、完成条件和 R6 命令覆盖均已确认 | [阶段 2 准入复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Boyle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 首次完成验收 | 阶段 2 | 未通过：技术项已通过，但完成后的阶段状态、PLAN_MAP 完成证据和独立验收记录尚未同步 | [阶段 2 完成验收复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Banach（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 2 完成验收复核 | 阶段 2 | 通过：阶段 2 已完成；R1—R7、完成条件、实施回归和独立验收均通过，阶段 3 未放行 | [阶段 2 完成验收复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md) | Banach（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 Step 0 独立准入复核 | 阶段 3 | 未通过：Step 0 的工作区基线表述不准确，S5 模板命令存在假阳性；已记录修订边界，阶段 3 未提前切换 | [阶段 3 准入复核报告](../../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 修订后最终独立准入复核 | 阶段 3 | 通过：阶段 3 达到 `待实施` 标准；S1—S6、基线、兼容边界和回滚条件已确认 | [阶段 3 准入复核报告](../../reviews/plan-governance-stage3-readiness-review-20260811.md) | Aristotle（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 首次完成验收复核 | 阶段 3 | 未通过：技术实现和 S1—S6 已通过，但阶段状态、实施步骤和 `PLAN_MAP.md` 完成证据尚未同步 | [阶段 3 完成验收复核报告](../../reviews/plan-governance-stage3-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 完成验收复核 | 阶段 3 | 通过：阶段 3 已完成；S1—S6、完成条件、关闭窗口、实施回归、治理同步和独立验收均通过 | [阶段 3 完成验收复核报告](../../reviews/plan-governance-stage3-completion-review-20260811.md) | Schrodinger（独立只读复核 subagent） |
+| 2026-08-11 | 阶段 3 验收后覆盖率补强复核 | 阶段 3 | 通过：coverage follow-up 仅新增测试和证据同步，无生产逻辑或公共契约变化；Python 122 passed/91.36%、npm 39/39 和治理检查均通过 | [覆盖率补强记录](../../reviews/plan-governance-stage3-completion-review-20260811.md#验收后覆盖率补强记录) | Schrodinger（独立只读复核 subagent） |
 
 ## 未决问题
 
@@ -554,7 +554,7 @@ git diff --check
 - 当前检查器已有计划级依赖环检测；阶段关系环不能直接复用计划级依赖结果，否则会丢失阶段身份和关系类型。
 - 当前 `PLAN_MAP.md` 的共享写入表是人工说明，尚未具备固定的机器字段，不能被解释为已完成的结构化约束。
 - 当前仓库运行 `node bin/plan-governance-cli.mjs check . --strict-readiness` 通过，仅有两个活跃计划共享影响目标的预期 WARNING；这是阶段 2 实现前基线。
-- 候选关系样本已拆分为 R1—R7，见 [`plan-governance-stage2-relation-cases.md`](../fixtures/plan-governance-stage2-relation-cases.md)；阶段 2 实现前必须由独立复核者确认契约和失败边界。
+- 候选关系样本已拆分为 R1—R7，见 [`plan-governance-stage2-relation-cases.md`](../../fixtures/plan-governance-stage2-relation-cases.md)；阶段 2 实现前必须由独立复核者确认契约和失败边界。
 
 ### 候选契约和兼容边界
 
@@ -562,7 +562,7 @@ git diff --check
 
 现有四列表 `并行与共享写入约束` 继续作为人工说明；可选九列表 `机器可检查共享写入约束` 才进入机器校验。只有四列表保持旧兼容；两者同时存在时九列表是机器校验事实源，四列表不覆盖九列表；九列表缺失或结构错误只影响机器校验，不把人工说明误判为已通过的机器约束。
 
-该候选方案的详细七列/九列表头、R1—R7 输入、预期结果和失败判定以[阶段 2 关系校验样本](../fixtures/plan-governance-stage2-relation-cases.md)为准；在独立准入复核通过前，不将其视为已冻结公共契约。
+该候选方案的详细七列/九列表头、R1—R7 输入、预期结果和失败判定以[阶段 2 关系校验样本](../../fixtures/plan-governance-stage2-relation-cases.md)为准；在独立准入复核通过前，不将其视为已冻结公共契约。
 
 ### 阶段 2 验证和回滚边界
 
@@ -593,7 +593,7 @@ git diff --check
 
 ### 阶段 2 完成验收
 
-阶段 2 技术验收已完成：R1—R7、全量 Python/npm 测试、覆盖率、严格治理、停滞检查、语法/格式、反向引用、事实源扫描、直接 fixture 回放和只读 hash 均通过。独立验收者确认没有计划外行为变化，指出的唯一收口项是将阶段完成状态、完成证据和独立验收记录同步到本计划及 `PLAN_MAP.md`；本次已完成该同步，最终独立确认记录见[阶段 2 验收复核报告](../reviews/plan-governance-stage2-readiness-review-20260811.md)。
+阶段 2 技术验收已完成：R1—R7、全量 Python/npm 测试、覆盖率、严格治理、停滞检查、语法/格式、反向引用、事实源扫描、直接 fixture 回放和只读 hash 均通过。独立验收者确认没有计划外行为变化，指出的唯一收口项是将阶段完成状态、完成证据和独立验收记录同步到本计划及 `PLAN_MAP.md`；本次已完成该同步，最终独立确认记录见[阶段 2 验收复核报告](../../reviews/plan-governance-stage2-readiness-review-20260811.md)。
 
 ## 阶段 3 实施记录
 
@@ -613,13 +613,13 @@ git diff --check
 - 当前 `--drift` 和 `--pre-commit` 已有统一入口，但治理文件、计划自身和显式阶段证据的精确归属规则仍需阶段 3 机器校验收口。
 - 当前 `--check-attestations` 已对旧快照 hash 漂移输出 WARNING，已有旧 JSON 缺少 purpose 的兼容事实；purpose、supersedes、review_status 和有效 current 派生尚未实现。
 - 阶段 0 已冻结“准入、最近实施/验证记录、attestation 三者分层”以及不强制历史迁移的原则；阶段 3 只把该原则转换为可执行 fixture 和回归，不重新定义生命周期语义。
-- 阶段 3 S1—S6 的输入、命令、预期、失败判定和输出位置见[阶段 3 可操作性收口样本](../fixtures/plan-governance-stage3-operability-cases.md)。
+- 阶段 3 S1—S6 的输入、命令、预期、失败判定和输出位置见[阶段 3 可操作性收口样本](../../fixtures/plan-governance-stage3-operability-cases.md)。
 
 ### 阶段 3 实施契约和兼容边界
 
 阶段 3 复用现有 `check --drift`、`--pre-commit`、`--check-attestations` 和模板初始化入口，不新增独立治理命令。Drift 归属不明确时保留 WARNING；attestation 旧格式按 `phase_completion` 兼容读取；新 purpose 关系只在结构合法且有效 current 唯一时输出，hash 漂移仍为 WARNING；模板新增字段均为可选，不要求旧计划迁移。
 
-阶段 3 已冻结并实现候选字段、快照命名、`snapshot_id` 格式、替代关系和状态优先级；具体行为以本节和[阶段 3 样本](../fixtures/plan-governance-stage3-operability-cases.md)为准。新关系入口通过 `--attest-purpose` 与现有 `--attest` 组合提供，未传 purpose 时保持旧 JSON 路径和字段兼容。
+阶段 3 已冻结并实现候选字段、快照命名、`snapshot_id` 格式、替代关系和状态优先级；具体行为以本节和[阶段 3 样本](../../fixtures/plan-governance-stage3-operability-cases.md)为准。新关系入口通过 `--attest-purpose` 与现有 `--attest` 组合提供，未传 purpose 时保持旧 JSON 路径和字段兼容。
 
 ### 阶段 3 验证和回滚边界
 
@@ -659,11 +659,11 @@ git diff --check
 | 准入状态 | 已完成 |
 | 阶段状态 | 已完成 |
 | Step 0 | [阶段 3 Step 0 证据](#阶段-3-step-0-证据) |
-| 样本矩阵 | [阶段 3 可操作性收口样本](../fixtures/plan-governance-stage3-operability-cases.md) |
+| 样本矩阵 | [阶段 3 可操作性收口样本](../../fixtures/plan-governance-stage3-operability-cases.md) |
 | 验证方式 | [阶段 3 验证方式](#阶段-3-验证方式) |
 | 失败/回滚边界 | [阶段 3 验证和回滚边界](#阶段-3-验证和回滚边界) |
 | 当前阻塞项 | 无；阶段 3 实现、验证和完成验收记录已同步，不自动放行后续阶段 |
-| 最新独立准入复核 | [2026-08-11 阶段 3 最终独立准入复核：通过](../reviews/plan-governance-stage3-readiness-review-20260811.md) |
+| 最新独立准入复核 | [2026-08-11 阶段 3 最终独立准入复核：通过](../../reviews/plan-governance-stage3-readiness-review-20260811.md) |
 
 ### 阶段证据
 
@@ -705,11 +705,11 @@ git diff --check
 2. 实现 drift 精确归属、attestation 可选关系和状态派生，保留默认 WARNING 兼容语义。已完成。
 3. 更新模板/README/skill 资源并验证安装包清单和冲突保护。已完成。
 4. 运行全量回归、严格治理、停滞、drift、attestation、反向引用和只读 hash。已完成。
-5. 由未参与阶段 3 实现的复核者独立验收，通过后关闭阶段 3；不自动放行后续阶段。已完成，最终结论见[阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md)。
+5. 由未参与阶段 3 实现的复核者独立验收，通过后关闭阶段 3；不自动放行后续阶段。已完成，最终结论见[阶段 3 完成验收复核报告](../../reviews/plan-governance-stage3-completion-review-20260811.md)。
 
 ## 完成证据
 
-阶段 3 已完成 S1—S6 真实行为回放：drift/pre-commit 精确归属、完成计划关闭窗口、非法阶段证据、状态/进展分层、旧/新 attestation 生命周期、模板/旧计划兼容和只读 hash 均有测试证据；完成后的覆盖率补强也已完成。`python3 -m pytest -q` 通过 122 项、覆盖率 91.36%；`npm test` 通过 39/39；`check . --strict-readiness`、`--stale-days 10`、`--drift`、`--pre-commit`、`--check-attestations --strict-readiness`、语法检查和 `git diff --check` 均通过。独立完成验收记录见[阶段 3 完成验收复核报告](../reviews/plan-governance-stage3-completion-review-20260811.md)；覆盖率补强为验收后的测试-only follow-up，不改变原独立验收结论。
+阶段 3 已完成 S1—S6 真实行为回放：drift/pre-commit 精确归属、完成计划关闭窗口、非法阶段证据、状态/进展分层、旧/新 attestation 生命周期、模板/旧计划兼容和只读 hash 均有测试证据；完成后的覆盖率补强也已完成。`python3 -m pytest -q` 通过 122 项、覆盖率 91.36%；`npm test` 通过 39/39；`check . --strict-readiness`、`--stale-days 10`、`--drift`、`--pre-commit`、`--check-attestations --strict-readiness`、语法检查和 `git diff --check` 均通过。独立完成验收记录见[阶段 3 完成验收复核报告](../../reviews/plan-governance-stage3-completion-review-20260811.md)；覆盖率补强为验收后的测试-only follow-up，不改变原独立验收结论。
 
 ## 后续改进（不阻塞阶段 3 完成）
 
@@ -730,7 +730,7 @@ git diff --check
 | 日期 | 2026-08-11 |
 | 阶段 | 阶段 3 |
 | 结论 | 通过：阶段 3 达到 `待实施` 标准；S1—S6、基线、兼容边界和回滚条件已确认 |
-| 证据 | [阶段 3 准入复核报告](../reviews/plan-governance-stage3-readiness-review-20260811.md)；[阶段 3 Step 0 证据](#阶段-3-step-0-证据)；[阶段 3 可操作性收口样本](../fixtures/plan-governance-stage3-operability-cases.md) |
+| 证据 | [阶段 3 准入复核报告](../../reviews/plan-governance-stage3-readiness-review-20260811.md)；[阶段 3 Step 0 证据](#阶段-3-step-0-证据)；[阶段 3 可操作性收口样本](../../fixtures/plan-governance-stage3-operability-cases.md) |
 | 复核者 | Aristotle（独立只读复核 subagent） |
 
 ## 阶段 2 历史实施记录
@@ -751,11 +751,11 @@ git diff --check
 | 准入状态 | 实施中 |
 | 阶段状态 | 已完成 |
 | Step 0 | [阶段 2 Step 0 证据](#阶段-2-step-0-证据) |
-| 样本矩阵 | [阶段 2 关系校验样本](../fixtures/plan-governance-stage2-relation-cases.md) |
+| 样本矩阵 | [阶段 2 关系校验样本](../../fixtures/plan-governance-stage2-relation-cases.md) |
 | 验证方式 | [阶段 2 验证方式](#阶段-2-验证方式) |
 | 失败/回滚边界 | [阶段 2 验证和回滚边界](#阶段-2-验证和回滚边界) |
 | 当前阻塞项 | 无；阶段 2 已完成，阶段 3 保持设计中并需自身准入 |
-| 最新独立准入复核 | [2026-08-11 阶段 2 完成验收：通过](../reviews/plan-governance-stage2-readiness-review-20260811.md) |
+| 最新独立准入复核 | [2026-08-11 阶段 2 完成验收：通过](../../reviews/plan-governance-stage2-readiness-review-20260811.md) |
 
 ### 阶段 2 验证方式
 

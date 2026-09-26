@@ -1,7 +1,7 @@
 # 架构图谱治理计划评审
 
 > 评审日期：2026-07-24
-> 对象：[架构图谱治理与三层图谱衔接](plans/architecture-graph-governance.md)
+> 对象：[架构图谱治理与三层图谱衔接](plans/20260722/architecture-graph-governance.md)
 > 性质：独立分析报告；计划正文与 `PLAN_MAP.md` 仍是规范事实源。
 
 ## 结论

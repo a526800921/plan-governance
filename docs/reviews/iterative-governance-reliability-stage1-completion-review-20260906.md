@@ -2,7 +2,7 @@
 
 ## 第一轮：未通过
 
-- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md)，阶段 1。
+- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md)，阶段 1。
 - 复核者：`/root/iterative_stage1_acceptance`，新上下文独立只读，未参与实施、未修改工作区。
 - Revision：`336b728d7dacc335a35f2cf97ab39356e3a82ba0` 加派发时混合工作树。
 - 范围：计划、阶段 1 fixture、地图相关行、checker/hook 和三个对应测试文件。

@@ -86,4 +86,4 @@
 
 本次文档检查实际结果：报告本地文件链接存在，`git diff --check` 通过；仓库 `node bin/plan-governance-cli.mjs check .` 退出 0，13 条既有 WARNING。修改仅为本报告、当前计划审查摘要与地图证据入口。
 
-用户随后确认调整，六项建议的实际实施、一次独立行为检查及验证结果见[当前计划实施记录](../plans/plan-governance-workflow-streamlining.md#gpt-6-提示精简实施)。本文保留审查时的基线和建议，不回写为当时已完成。
+用户随后确认调整，六项建议的实际实施、一次独立行为检查及验证结果见[当前计划实施记录](../plans/20260906/plan-governance-workflow-streamlining.md#gpt-6-提示精简实施)。本文保留审查时的基线和建议，不回写为当时已完成。

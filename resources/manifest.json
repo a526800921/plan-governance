@@ -17,6 +17,19 @@
       "resources/skill/references/cli.md"
     ]
   },
+  "additionalSkills": [
+    {
+      "name": "plan-governance-migration",
+      "targets": {
+        "codex": "~/.agents/skills/plan-governance-migration"
+      },
+      "prefix": "resources/migration-skill/",
+      "files": [
+        "resources/migration-skill/SKILL.md",
+        "resources/migration-skill/agents/openai.yaml"
+      ]
+    }
+  ],
   "runtime": [
     "scripts/check_plan_governance.py",
     "scripts/init_plan_governance.py",

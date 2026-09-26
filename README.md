@@ -55,12 +55,12 @@ docs/
 | 文档 | 权威内容 |
 |---|---|
 | `docs/PLAN_MAP.md` | 计划索引、状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项、证据链接 |
-| `docs/plans/*.md` | 本次目标、范围、行为差异、阶段、Step 0、验证与完成条件；链接现行契约 |
+| `docs/plans/YYYYMMDD/*.md` | 新计划的目标、范围、行为差异、阶段、Step 0、验证与完成条件；旧式 `docs/plans/*.md` 继续兼容 |
 | 已有 Schema/OpenAPI 或按需的 `docs/specs/*.md` | 跨迭代的现行契约；优先复用已有来源，文字 spec 补充行为/失败语义，不重复字段定义 |
 | `docs/adr/*.md` | 关键架构决策、备选方案和后果 |
 | `docs/migrations/*.md` | 兼容策略、迁移步骤、回滚方式和旧行为保留窗口 |
 
-`docs/plans/*.md` 保持平铺。目录按真实内容增加：`docs/reviews/` 放独立复核，`docs/fixtures/` 放人工样本/回放说明，`tests/fixtures/` 放可执行输入，`docs/attestations/` 放按需快照。init 只创建最小结构；可选 [spec 模板](resources/skill/assets/spec.template.md) 随 skill 分发，不自动创建目标项目 spec 或空目录。
+新计划按创建时的本地日期存放在 `docs/plans/YYYYMMDD/<plan>.md`；修改时不改变日期目录。根目录旧计划继续可读，工具升级不会自动迁移。用户明确要求迁移存量计划时，单独调用 `plan-governance-migration` skill。其他目录按真实内容增加：`docs/reviews/` 放独立复核，`docs/fixtures/` 放人工样本/回放说明，`tests/fixtures/` 放可执行输入，`docs/attestations/` 放按需快照。init 只创建最小结构；可选 [spec 模板](resources/skill/assets/spec.template.md) 随 skill 分发，不自动创建目标项目 spec 或空目录。
 
 ## 任务分流与验收
 
@@ -85,7 +85,7 @@ docs/
 
 启用治理后，已有草案、历史设计、归档计划、临时分析文档等默认只作为背景材料，不再作为规范事实源。
 
-- 新发生的目标、范围、公共契约、字段、Schema、状态语义、阶段、验证方式、完成条件、风险和回滚，应写入 `docs/plans/*.md`、ADR、migration 或正式 spec。
+- 新发生的目标、范围、公共契约、字段、Schema、状态语义、阶段、验证方式、完成条件、风险和回滚，应写入 `docs/plans/YYYYMMDD/*.md`、ADR、migration 或正式 spec。
 - 计划状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接，应写入或同步 `docs/PLAN_MAP.md`。
 - 不要为了“保持一致”而修改草案或历史文档；除非用户明确点名该文件，否则草案只在治理文档中作为背景材料引用。
 - 验收时应搜索并修正“草案为准”“以草案为事实源”“详见草案”等表达。
@@ -110,7 +110,7 @@ plan-governance-cli init \
 ```text
 .git/
 docs/PLAN_MAP.md
-docs/plans/api-compat-migration.md
+docs/plans/20260926/api-compat-migration.md
 AGENTS.md
 ```
 
@@ -118,7 +118,7 @@ AGENTS.md
 
 如果目标目录还不是 Git 仓库，初始化流程会先执行 `git init`；已有 `.git/` 时会跳过，不重复初始化。
 
-`--update-agent-rules` 会创建或更新 `AGENTS.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 和 `docs/plans/*.md` 为准。
+`--update-agent-rules` 会创建或更新 `AGENTS.md` 中带标记的计划治理章节，只写稳定执行规则，不写具体计划内容。具体计划仍以 `docs/PLAN_MAP.md` 中的真实链接为准，新计划默认位于 `docs/plans/YYYYMMDD/`。
 
 也可以使用含义更直接的别名：
 
@@ -134,7 +134,7 @@ AGENTS.md
 
 ## 更新已有项目
 
-如果项目已经有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`，不要重新初始化计划文档。只更新代理执行规则时运行：
+如果项目已经有 `docs/PLAN_MAP.md` 和计划文件，不要重新初始化计划文档。只更新代理执行规则时运行：
 
 ```bash
 plan-governance-cli init \
@@ -156,7 +156,7 @@ plan-governance-cli init \
 
 - 按兼容模式覆盖更新项目中的 `scripts/check_plan_governance.py`
 - 创建或更新 `AGENTS.md` 中带标记的计划治理章节，既有其他代理入口保持原样
-- 保留已有 `docs/PLAN_MAP.md` 和 `docs/plans/*.md`
+- 保留已有 `docs/PLAN_MAP.md` 和所有现存计划文件；兼容读取平铺和日期目录计划
 - 提示缺失的治理文档
 
 新项目和日常升级不需要使用该兼容模式；优先使用全局 npm CLI。
@@ -260,7 +260,7 @@ plan-governance-cli setup --target codex --dry-run
 plan-governance-cli setup --target codex --force
 ```
 
-`setup` 只向 Codex 同步 npm 包 manifest 指定的 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧版或重复 target、混合 help、缺失 target 都会在写入前失败；目标之外的用户目录不会被读取、修改或删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录；项目初始化器只维护 `AGENTS.md`，当前实现不自动安装 hook 配置。
+`setup` 只向 Codex 同步 npm 包 manifest 指定的主治理 skill、独立迁移 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧版或重复 target、混合 help、缺失 target 都会在写入前失败；目标之外的用户目录不会被读取、修改或删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。使用 `--destination DIR` 指定主 skill 临时目标时，迁移 skill 会写到同一 skills 目录下的 `plan-governance-migration`。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录；项目初始化器只维护 `AGENTS.md`，当前实现不自动安装 hook 配置。
 
 初始化项目时使用包内初始化器：
 
@@ -299,7 +299,7 @@ plan-governance-cli init --root . --migrate-plan-map-last-updated --last-updated
 当前检查项包括：
 
 - `PLAN_MAP.md` 引用的计划文件是否存在。
-- `docs/plans/*.md` 是否存在未登记到 `PLAN_MAP.md` 的孤立计划；孤立计划以 `WARNING` 提示，不阻断检查。
+- 根目录平铺计划及 `docs/plans/YYYYMMDD/*.md` 是否存在未登记到 `PLAN_MAP.md` 的孤立计划；孤立计划以 `WARNING` 提示，不阻断检查。
 - 计划状态是否合法。
 - 计划依赖是否存在环。
 - 活跃计划正文中的计划引用是否与 `PLAN_MAP.md` 依赖列一致；不一致以 `WARNING` 提示。
@@ -336,7 +336,7 @@ plan-governance-cli check . --check-attestations --strict-readiness
 
 这是可选模式：快照绑定显式文件、目标与必要上游计划的实际内容，以及相关地图行。无关计划日期、地图注释或 HEAD 变化不触发复核；相关内容变化、删除或绑定无效会显示 `needs_review`，默认警告，显式严格检查失败。旧快照继续按原有全文 hash 规则检查，不自动回填；CI/发布不会自动开启证据检查。
 
-文件须为仓库内普通文件，拒绝重复、目录、glob、越界或 symlink。它记录工作树字节，HEAD 只作定位；未列出的新文件不会自动被发现，hash 不代表独立验收。完成新的复核后，用带绑定的新快照和 `--supersedes <旧快照相对路径>` 替代；旧格式后继不能解除绑定快照的复核责任。具体投影、兼容和失败边界见[范围绑定契约](docs/plans/iterative-governance-reliability.md#阶段-4-行为契约)。
+文件须为仓库内普通文件，拒绝重复、目录、glob、越界或 symlink。它记录工作树字节，HEAD 只作定位；未列出的新文件不会自动被发现，hash 不代表独立验收。完成新的复核后，用带绑定的新快照和 `--supersedes <旧快照相对路径>` 替代；旧格式后继不能解除绑定快照的复核责任。具体投影、兼容和失败边界见[范围绑定契约](docs/plans/20260906/iterative-governance-reliability.md#阶段-4-行为契约)。
 
 ## 测试覆盖率
 
@@ -396,7 +396,7 @@ $plan-governance 为这个项目初始化计划治理，计划名是 api-compat-
 或继续推进已有计划：
 
 ```text
-$plan-governance 继续推进 docs/plans/api-compat-migration.md 的当前阶段，完成后记录验证证据。
+$plan-governance 继续推进 docs/plans/20260926/api-compat-migration.md 的当前阶段，完成后记录验证证据。
 ```
 
 skill 只负责让 Codex 按流程工作；真实计划状态仍然保存在项目仓库的 `docs/` 中。

@@ -32,4 +32,4 @@ D1 的缺省旧契约、显式风险分流、失败防降级、共享判定及 J
 | 本地链接/锚点、反向引用、草案事实源、`git diff --check` | 39 个链接通过，无新增冲突 |
 | 源 skill / checker / template 身份 | 与交接基线一致；skill 352 行、24378 字节 |
 
-未运行测试套件、构建、安装或修改文件。后续落档只同步状态和本结论，实施按[阶段 1 材料](../plans/plan-governance-workflow-streamlining.md#阶段-1-自身准入材料)推进。
+未运行测试套件、构建、安装或修改文件。后续落档只同步状态和本结论，实施按[阶段 1 材料](../plans/20260906/plan-governance-workflow-streamlining.md#阶段-1-自身准入材料)推进。

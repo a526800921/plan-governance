@@ -528,9 +528,9 @@ relations:
 ### 阶段 0 Step 0 证据
 
 - 已完成的功能图谱试点基线：ModelPad `functional.yaml` 包含 20 个节点、23 条关系和 9 个 GitNexus 引用。
-- 已完成 ModelPad 只读架构盘点：候选压缩为本地 HTTP API、配置持久化、模型进程管理、App 状态编排和外部模型服务五组边界；候选证据见 [阶段 0 只读盘点](../modelpad-architecture-stage0-inventory-2026-07-24.md)。
+- 已完成 ModelPad 只读架构盘点：候选压缩为本地 HTTP API、配置持久化、模型进程管理、App 状态编排和外部模型服务五组边界；候选证据见 [阶段 0 只读盘点](../../modelpad-architecture-stage0-inventory-2026-07-24.md)。
 - 已完成三次现有 v1 影响查询基线：配置刷新为 5 个直接/1 个间接，模型生命周期为 7 个直接/2 个间接，PDF workflow 复用为 3 个直接/1 个间接；旧结果会混入 API、代码和测试节点，作为新三层拆分的对照证据。
-- 已完成 ModelPad LLM 维护设计回放：API 变更和性能重构具备自动更新证据，缺少鉴权边界和 API 消费者语义的样本必须上升确认；回放证据见 [LLM 设计回放](../modelpad-architecture-stage0-llm-replay-2026-07-24.md)。
+- 已完成 ModelPad LLM 维护设计回放：API 变更和性能重构具备自动更新证据，缺少鉴权边界和 API 消费者语义的样本必须上升确认；回放证据见 [LLM 设计回放](../../modelpad-architecture-stage0-llm-replay-2026-07-24.md)。
 - `plan-governance-cli graph validate /Users/jafish/Documents/work/ModelPad` 已通过。
 - ModelPad 三个真实场景 fixture 已通过：模型生命周期、配置刷新、外部 PDF workflow 复用。
 - 当前功能图谱计划已明确“首期不构建完整架构图谱”；本计划记录该非目标后的后续演进，不把历史试点重新解释为三层架构已完成。
@@ -541,7 +541,7 @@ relations:
 |---|---|---|---|---|---|
 | 功能层现状 | ModelPad `docs/graph/functional.yaml` | `plan-governance-cli graph validate /Users/jafish/Documents/work/ModelPad` | 记录现有节点、关系和代码引用数量 | 图谱无法校验或数量无法复现 | 命令输出、本计划 Step 0 |
 | 三层场景 | 模型生命周期、配置刷新、外部 PDF workflow | `scripts/validate_functional_graph_scenarios.sh /Users/jafish/Documents/work/ModelPad` | 三个场景均可定位功能入口和现有影响路径 | 任一场景失去可定位证据 | ModelPad 场景脚本输出 |
-| 架构最小集合 | ModelPad 五组架构边界候选 | 阶段 0 只读盘点与 `rg` 反向引用检查 | 每个候选节点有唯一层级归属和仓库证据 | 节点重复维护或无法说明职责 | [只读盘点](../modelpad-architecture-stage0-inventory-2026-07-24.md) |
+| 架构最小集合 | ModelPad 五组架构边界候选 | 阶段 0 只读盘点与 `rg` 反向引用检查 | 每个候选节点有唯一层级归属和仓库证据 | 节点重复维护或无法说明职责 | [只读盘点](../../modelpad-architecture-stage0-inventory-2026-07-24.md) |
 | 轻量前置路径 | 一般行为变更的功能 `graph_scope` | 功能层影响查询，不下钻架构层或 GitNexus | 输出功能/流程影响和行动分级，未触发升级 | 无风险信号仍强制遍历全部三层，或遗漏功能层影响 | 阶段 0 场景记录 |
 | 风险升级路径 | API、数据、安全、共享架构、代码定位五类信号 | 按 `change_kind` 依次查询功能层、架构层和按需 GitNexus | 仅命中升级信号的层级被查询，输出升级原因和证据 | 无升级依据仍下钻，或有升级信号却未查询相应层级 | 阶段 0 场景记录 |
 | UID 映射边界 | 当前 9 个 GitNexus 引用和文件 fallback | `gitnexus status`、`gitnexus context --uid <uid>`、图谱校验 | UID 作为可选精确引用，失配可由代码锚点产生候选 | UID 被当作唯一稳定事实或失配被静默忽略 | 命令输出、阶段 0 评审记录 |

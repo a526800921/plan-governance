@@ -1,6 +1,6 @@
 # 持续迭代治理优化：阶段 1 真实 CLI 基线
 
-所属计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md#阶段-1-完成证据)。本文件承载真实文件输入、命令、当前输出和安全边界；目标行为以专项计划技术契约为准。
+所属计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md#阶段-1-完成证据)。本文件承载真实文件输入、命令、当前输出和安全边界；目标行为以专项计划技术契约为准。
 
 ## 范围和安全边界
 

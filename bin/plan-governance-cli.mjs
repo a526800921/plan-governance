@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -80,7 +80,7 @@ function loadManifest() {
 
 function parseSetupArgs(args) {
   if (args.length === 1 && ["-h", "--help"].includes(args[0])) {
-    console.log("用法：plan-governance-cli setup --target codex [--destination DIR] [--dry-run] [--force]");
+    console.log("用法：plan-governance-cli setup --target codex [--destination DIR] [--dry-run] [--force]\n同步主治理 skill 和独立计划迁移 skill；自定义 destination 时，其他 skill 写入同一 skills 目录。");
     return null;
   }
 
@@ -127,9 +127,8 @@ function targetRoot(manifest, options) {
   };
 }
 
-function resourceFiles(manifest) {
-  const skillPrefix = "resources/skill/";
-  return manifest.skill.files.map((source) => {
+function resourceFiles(skill, skillPrefix) {
+  return skill.files.map((source) => {
     if (!source.startsWith(skillPrefix)) {
       throw new Error(`skill 资源不在受支持的目录中：${source}`);
     }
@@ -140,31 +139,69 @@ function resourceFiles(manifest) {
   });
 }
 
+function pathsOverlap(left, right) {
+  const contains = (parent, child) => {
+    const childRelative = relative(parent, child);
+    return childRelative === ""
+      || (childRelative !== ".." && !childRelative.startsWith(`..${sep}`) && !isAbsolute(childRelative));
+  };
+  return contains(left, right) || contains(right, left);
+}
+
 function setup(args) {
   const options = parseSetupArgs(args);
   if (options === null) return 0;
 
   let manifest;
-  let files;
+  let skills;
   try {
     manifest = loadManifest();
-    files = resourceFiles(manifest);
+    skills = [
+      { name: "plan-governance", definition: manifest.skill, prefix: "resources/skill/" },
+      ...(manifest.additionalSkills ?? []).map((definition) => ({
+        name: definition.name,
+        definition,
+        prefix: definition.prefix,
+      })),
+    ];
   } catch (error) {
     return fail(error.message);
   }
 
   const plans = [];
   try {
-    const target = targetRoot(manifest, options);
-    for (const file of files) {
-      accessSync(file.source, constants.R_OK);
-      const destination = resolve(target.root, file.relative);
-      const existing = existsSync(destination) ? readFileSync(destination, "utf8") : null;
-      const sourceContent = readFileSync(file.source, "utf8");
-      if (existing !== null && existing !== sourceContent && !options.force) {
-        throw new Error(`目标文件存在本地差异，未覆盖：${destination}（如确认覆盖请加 --force）`);
+    const primaryTarget = targetRoot(manifest, options);
+    const targets = skills.map((skill) => {
+      const configuredTarget = skill.definition.targets.codex;
+      return skill.name === "plan-governance"
+        ? primaryTarget
+        : {
+            name: skill.name,
+            root: resolve(options.destination
+              ? join(dirname(primaryTarget.root), basename(expandTarget(configuredTarget)))
+              : expandTarget(configuredTarget)),
+          };
+    });
+    for (let index = 0; index < targets.length; index += 1) {
+      for (let other = index + 1; other < targets.length; other += 1) {
+        if (pathsOverlap(targets[index].root, targets[other].root)) {
+          throw new Error(`setup 的 skill 目标目录重叠：${targets[index].root} 与 ${targets[other].root}`);
+        }
       }
-      plans.push({ target: target.name, destination, existing, sourceContent });
+    }
+    for (let index = 0; index < skills.length; index += 1) {
+      const skill = skills[index];
+      const target = targets[index];
+      for (const file of resourceFiles(skill.definition, skill.prefix)) {
+        accessSync(file.source, constants.R_OK);
+        const destination = resolve(target.root, file.relative);
+        const existing = existsSync(destination) ? readFileSync(destination, "utf8") : null;
+        const sourceContent = readFileSync(file.source, "utf8");
+        if (existing !== null && existing !== sourceContent && !options.force) {
+          throw new Error(`目标文件存在本地差异，未覆盖：${destination}（如确认覆盖请加 --force）`);
+        }
+        plans.push({ target: target.name, destination, existing, sourceContent });
+      }
     }
   } catch (error) {
     return fail(error.message);

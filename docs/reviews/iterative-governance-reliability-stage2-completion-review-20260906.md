@@ -2,7 +2,7 @@
 
 结论：**通过，阶段 2 完成验收通过。** 当前阻塞项：无。可关闭阶段 2，阶段 3 仍需自己的准入。
 
-- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md)，阶段 2。
+- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md)，阶段 2。
 - 复核者：`/root/iterative_stage2_acceptance`，新上下文独立只读 subagent，未参与设计、实施或测试编写；主任务按返回结果落档。
 - Revision：`336b728d7dacc335a35f2cf97ab39356e3a82ba0` 加派发时混合工作树。
 - 范围：verify、release、package scripts、CI、57 项新增回归、AGENTS 发布段、分发维护引用与本阶段治理证据。

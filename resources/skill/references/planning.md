@@ -15,10 +15,12 @@
 | 文档 | 职责 |
 |---|---|
 | `docs/PLAN_MAP.md` | 计划状态、阶段、关系、阻塞及证据入口 |
-| `docs/plans/*.md` | 本次目标、范围、决策、差异与验证证据，计划文件平铺 |
+| `docs/plans/YYYYMMDD/*.md` | 新计划的目标、范围、决策、差异与验证证据；旧式 `docs/plans/*.md` 计划继续兼容读取 |
 | Schema/OpenAPI 或 `docs/specs/` | 现行公共契约，优先复用已有来源 |
 | `docs/adr/`、`docs/migrations/` | 确有需要时记录长期架构决策或迁移步骤 |
 | `docs/reviews/`、`docs/fixtures/` | 必要复核及可复验样本，代码 fixture 放 `tests/fixtures/` |
+
+新建计划使用 `docs/plans/YYYYMMDD/<plan>.md`，日期是创建时的本地日期，之后更新不改变目录日期。`PLAN_MAP.md` 链接真实路径。根目录中的旧式 `docs/plans/<plan>.md` 仍受支持；工具升级不会自动迁移它们。已有计划要批量迁移时，只有用户明确要求才调用独立 `plan-governance-migration` skill。
 
 ## 多文档同步规则
 

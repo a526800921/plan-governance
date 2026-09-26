@@ -666,6 +666,16 @@ def test_relative_markdown_plan_reference_matches_declared_dependency(tmp_path, 
     assert "正文未引用" not in output
 
 
+def test_date_directory_plan_reference_matches_declared_dependency():
+    references = check_plan_governance.extract_plan_references(
+        "依赖 [旧计划](../20260906/legacy-plan.md#阶段-1)，另见 `docs/plans/20260705/other-plan.md`。",
+        {"legacy-plan", "other-plan"},
+        "current-plan",
+    )
+
+    assert references == {"legacy-plan", "other-plan"}
+
+
 def test_declared_dependency_without_plan_reference_warns(tmp_path, monkeypatch, capsys):
     write(
         tmp_path / "docs" / "PLAN_MAP.md",
@@ -1028,6 +1038,56 @@ def test_attestation_supersedes_old_snapshot_and_duplicate_current_is_strict_err
     duplicate.write_text(json.dumps(first_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
     assert "多个 current" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("supersede", [True, False])
+def test_attestation_moved_plan_path_is_supersedable_or_needs_review(tmp_path, capsys, supersede):
+    write(
+        tmp_path / "docs" / "PLAN_MAP.md",
+        plan_map("| [demo](plans/demo.md) | 已完成 | 阶段 1 | - | - |"),
+    )
+    old_plan = tmp_path / "docs" / "plans" / "demo.md"
+    write(old_plan, plan_text(with_coverage=True))
+    assert check_plan_governance.main([str(tmp_path), "--attest", "demo"]) == 0
+    capsys.readouterr()
+    old_snapshot = tmp_path / "docs" / "attestations" / "demo.json"
+    old_snapshot_bytes = old_snapshot.read_bytes()
+
+    dated_plan = tmp_path / "docs" / "plans" / "20260926" / "demo.md"
+    dated_plan.parent.mkdir(parents=True)
+    old_plan.rename(dated_plan)
+    plan_map_path = tmp_path / "docs" / "PLAN_MAP.md"
+    plan_map_path.write_text(
+        plan_map_path.read_text(encoding="utf-8").replace("plans/demo.md", "plans/20260926/demo.md"),
+        encoding="utf-8",
+    )
+
+    if supersede:
+        assert check_plan_governance.main(
+            [
+                str(tmp_path),
+                "--attest",
+                "demo",
+                "--attest-purpose",
+                "phase_completion",
+                "--supersedes",
+                "docs/attestations/demo.json",
+            ]
+        ) == 0
+        capsys.readouterr()
+
+    assert check_plan_governance.main(
+        [str(tmp_path), "--check-attestations", "--strict-readiness"]
+    ) == 0
+    output = capsys.readouterr().out
+    assert old_snapshot.read_bytes() == old_snapshot_bytes
+    if supersede:
+        assert "快照引用的计划文件不存在" not in output
+        assert "docs/attestations/demo.json | plan=demo | purpose=phase_completion | status=superseded" in output
+        assert "plan=demo | purpose=phase_completion | status=current" in output
+    else:
+        assert "docs/attestations/demo.json | plan=demo | purpose=phase_completion | status=needs_review" in output
+        assert "快照引用的计划文件不存在" in output
 
 
 def test_attestation_supersedes_cycle_is_warning_by_default_and_error_in_strict_mode(tmp_path, capsys):
@@ -1693,6 +1753,20 @@ def test_stage2_relation_fixture_accepts_soft_context_and_evidence(tmp_path, cap
     assert "evidence" in (valid / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
 
 
+def test_relation_evidence_resolves_from_docs_with_date_directory_plans(tmp_path):
+    evidence_path = tmp_path / "docs" / "plans" / "20260906" / "workflow.md"
+    write(evidence_path, "# Evidence\n")
+    plan_path = tmp_path / "docs" / "plans" / "20260926" / "current.md"
+
+    errors = check_plan_governance.validate_relation_evidence(
+        "[阶段边界](plans/20260906/workflow.md#stage-1)",
+        {"current": {"path": plan_path}},
+        "测试关系",
+    )
+
+    assert errors == []
+
+
 def test_stage2_relation_fixture_invalid_default_warns_and_strict_fails(tmp_path, capsys):
     invalid = relation_fixture("invalid-reference", tmp_path / "invalid")
     assert check_plan_governance.main([str(invalid)]) == 0
@@ -2084,3 +2158,36 @@ def test_next_action_ignores_fenced_prose_examples(tmp_path, capsys, fence, real
         index=plan_map("| [demo](plans/demo.md) | 实施中 | 阶段 1 | - | - |"),
         check_codes=(0, 0), workset_codes=(0, 0), readiness="in_progress",
         action="verify" if real_action else "unknown")
+
+
+@pytest.mark.parametrize(("link", "expected"), [
+    ("plans/demo.md", None),
+    ("plans/20260926/demo.md", None),
+    ("plans/roadmaps/recovery.md", None),
+    ("plans/20260230/demo.md", "有效日期"),
+    ("plans/2026092/demo.md", "YYYYMMDD"),
+    ("plans/20260926/nested/demo.md", "直接包含 Markdown"),
+])
+def test_plan_link_issue_supports_flat_and_date_paths(link, expected):
+    issue = check_plan_governance.plan_link_issue(link)
+    if expected is None:
+        assert issue is None
+    else:
+        assert expected in issue
+
+
+def test_find_orphan_plans_includes_dated_and_malformed_numeric_buckets(tmp_path):
+    docs = tmp_path / "docs"
+    plans = docs / "plans"
+    write(plans / "legacy.md", "# Legacy\n")
+    write(plans / "20260926" / "dated.md", "# Dated\n")
+    write(plans / "20260230" / "invalid.md", "# Invalid date\n")
+    write(plans / "20260926" / "nested" / "too-deep.md", "# Nested\n")
+    write(plans / "roadmaps" / "recovery.md", "# Explicit custom location\n")
+    mapped = {"dated": {"path": plans / "20260926" / "dated.md"}}
+
+    found = check_plan_governance.find_orphan_plans(docs, mapped)
+
+    assert {path.relative_to(plans).as_posix() for path in found} == {
+        "legacy.md", "20260230/invalid.md", "20260926/nested/too-deep.md",
+    }

@@ -1,6 +1,6 @@
 # 持续迭代治理优化：阶段 2 验证入口基线
 
-所属计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md#当前阶段)。日期：2026-09-06。当前只记录设计基线，尚未获得阶段 2 实施准入。
+所属计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md#当前阶段)。日期：2026-09-06。当前只记录设计基线，尚未获得阶段 2 实施准入。
 
 ## 基线类型和限制
 
@@ -127,7 +127,7 @@ JS
 | invalid-flag / invalid-version / two-args | 空 | 2；参数校验先于子进程 |
 | dry-run / dry-get-error | get | 0 / 1；无验证或写动作 |
 
-阶段 2 的新增入口当前不存在，不能声称新三节点失败矩阵已经通过；其可执行命令、预期、失败判定和输出位置冻结于[当前阶段目标矩阵](../plans/iterative-governance-reliability.md#阶段-2-目标验证矩阵)，独立准入后通过新回归兑现。新回归不得直接执行或 import 发布入口，必须替换全部子进程；整个真实 verify 则仍包含既有 npm 打包/临时安装及 pytest 产物，二者的证明边界不同。
+阶段 2 的新增入口当前不存在，不能声称新三节点失败矩阵已经通过；其可执行命令、预期、失败判定和输出位置冻结于[当前阶段目标矩阵](../plans/20260906/iterative-governance-reliability.md#阶段-2-目标验证矩阵)，独立准入后通过新回归兑现。新回归不得直接执行或 import 发布入口，必须替换全部子进程；整个真实 verify 则仍包含既有 npm 打包/临时安装及 pytest 产物，二者的证明边界不同。
 
 
 ## 实施后验证

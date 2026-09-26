@@ -1,6 +1,6 @@
 # 持续迭代治理优化：阶段 4 范围绑定样本
 
-计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md#当前阶段)。阶段 4 使用源码读取及内存替代基线；新增参数尚不存在。用户已确认可选范围绑定，实施仍需本阶段独立准入。
+计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md#当前阶段)。阶段 4 使用源码读取及内存替代基线；新增参数尚不存在。用户已确认可选范围绑定，实施仍需本阶段独立准入。
 
 ## Step 0 基线
 
@@ -54,7 +54,7 @@ PY
 
 ## 目标矩阵
 
-行为契约只定义在[阶段 4 行为契约](../plans/iterative-governance-reliability.md#阶段-4-行为契约)，此处给出输入、命令和失败判定。定向 Python 命令为 `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest tests/test_attestation_binding.py`；Node 实盘入口为 `node --test tests/npm_cli.test.mjs`。执行输出为终端 pytest/TAP，汇总和 hash 追加于本文件；完整迭代回放使用临时项目，不生成真实仓库快照。
+行为契约只定义在[阶段 4 行为契约](../plans/20260906/iterative-governance-reliability.md#阶段-4-行为契约)，此处给出输入、命令和失败判定。定向 Python 命令为 `PYTHONDONTWRITEBYTECODE=1 python3 -m pytest tests/test_attestation_binding.py`；Node 实盘入口为 `node --test tests/npm_cli.test.mjs`。执行输出为终端 pytest/TAP，汇总和 hash 追加于本文件；完整迭代回放使用临时项目，不生成真实仓库快照。
 
 | ID / 输入 | 预期 | 失败判定 |
 |---|---|---|

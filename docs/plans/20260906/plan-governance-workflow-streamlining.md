@@ -5,8 +5,8 @@
 - **要解决的问题**：减少低风险任务的复核、重复读取与重复验证，保留高影响检查，并把 AI 技术验证、用户体验及性能验收连成闭环。
 - **当前授权**：用户于 2026-09-06 明确要求推进本计划，并将复核分流落实到共享 skill，供后续会话遵循。先完成阶段 0 设计及阶段 1 自身准入，再实施；不重复请求已明确的实施授权。
 - **本计划采用的方向**：简单改动当前 AI 自验；高影响保留独立复核；一个 skill 配三份按需参考；项目依赖已安装 skill 或 CLI；用户接受后关闭功能计划。
-- **下一步入口**：阶段 1 原技术成果已[独立验收通过](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过)，1.0.1 发布及本地更新见[分发维护](plan-governance-distribution-setup.md#101-本地更新)。使用反馈 U1—U5 已[源规则独立复核通过](../reviews/plan-governance-usage-adjustments-review-20260907.md)；本机资源及两个项目入口已同步，并已[发布 1.0.2](plan-governance-distribution-setup.md#2026-09-07-102-发布维护)，用户已确认提问减少及先验证可行性可接受，执行抽查已确认自动复核和定向修复；剩余包括[重复读取](#使用验收与执行抽查2026-09-08)与[调试复核粒度](#调试复核粒度优化提案2026-09-08)，后者已完成源规则实施与独立复核，见[本次实施进展](#本次实施进展)，已[发布并同步本地 1.0.3](plan-governance-distribution-setup.md#2026-09-08-103-发布与本地更新)，其他项目策略未自动迁移。小改不逐次签收；详细范围见[本次增量](#实际使用反馈与有界调整2026-09-07)。
-- **这批计划的关系**：前置已提交技术成果与本次推进授权 → 本计划设计收敛 → 实施及用户验收。宿主回放计划已[替代收口](phase-local-review-dispatch.md#收口记录2026-09-09)，旧回放未完成事实保留，不再作为独立支线推进。
+- **下一步入口**：阶段 1 原技术成果已[独立验收通过](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过)，1.0.1 发布及本地更新见[分发维护](../20260713/plan-governance-distribution-setup.md#101-本地更新)。使用反馈 U1—U5 已[源规则独立复核通过](../../reviews/plan-governance-usage-adjustments-review-20260907.md)；本机资源及两个项目入口已同步，并已[发布 1.0.2](../20260713/plan-governance-distribution-setup.md#2026-09-07-102-发布维护)，用户已确认提问减少及先验证可行性可接受，执行抽查已确认自动复核和定向修复；剩余包括[重复读取](#使用验收与执行抽查2026-09-08)与[调试复核粒度](#调试复核粒度优化提案2026-09-08)，后者已完成源规则实施与独立复核，见[本次实施进展](#本次实施进展)，已[发布并同步本地 1.0.3](../20260713/plan-governance-distribution-setup.md#2026-09-08-103-发布与本地更新)，其他项目策略未自动迁移。小改不逐次签收；详细范围见[本次增量](#实际使用反馈与有界调整2026-09-07)。
+- **这批计划的关系**：前置已提交技术成果与本次推进授权 → 本计划设计收敛 → 实施及用户验收。宿主回放计划已[替代收口](../20260905/phase-local-review-dispatch.md#收口记录2026-09-09)，旧回放未完成事实保留，不再作为独立支线推进。
 
 ## 执行顺序
 
@@ -26,9 +26,9 @@
 
 ## 背景
 
-用户要求将尚未合并的[技能审计与使用场景交接](../reviews/plan-governance-skill-usage-audit-20260906.md)转成独立后续计划。先完成 [iterative-governance-reliability](iterative-governance-reliability.md)，再对照其最终成果实施本计划中的剩余改进。原报告保留发现、用户反馈和历史样本；本计划是后续目标、行为差异和验收设计的事实源，状态与先后关系由 [PLAN_MAP](../PLAN_MAP.md) 维护。
+用户要求将尚未合并的[技能审计与使用场景交接](../../reviews/plan-governance-skill-usage-audit-20260906.md)转成独立后续计划。先完成 [iterative-governance-reliability](iterative-governance-reliability.md)，再对照其最终成果实施本计划中的剩余改进。原报告保留发现、用户反馈和历史样本；本计划是后续目标、行为差异和验收设计的事实源，状态与先后关系由 [PLAN_MAP](../../PLAN_MAP.md) 维护。
 
-历史记录（本次推进授权前）：2026-09-06 执行前整理时，前置阶段 0—4 已完成独立技术验收，见[最终报告](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)。本计划继续保持阶段 0 设计中；前置用户接受记录尚待补齐，不能将技术验收、提交请求或“一会开始执行”自动记为产品接受。本轮授权是整理文档，尚未开始实现。
+历史记录（本次推进授权前）：2026-09-06 执行前整理时，前置阶段 0—4 已完成独立技术验收，见[最终报告](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)。本计划继续保持阶段 0 设计中；前置用户接受记录尚待补齐，不能将技术验收、提交请求或“一会开始执行”自动记为产品接受。本轮授权是整理文档，尚未开始实现。
 
 2026-09-06 本次推进：用户明确要求“推进这个计划”，并澄清临时口头自验约定须落实为其他会话可读取的 skill 规范。这是本计划的推进/实施授权，不是追溯性的前置产品接受。B01 的交接要求据此收敛为已提交且独立技术验收的基线，以及当前显式推进授权；本计划自己的最终用户验收仍保留。
 
@@ -100,8 +100,8 @@ grilling 继续复用已有技能；治理入口只负责何时调用、已确�
 | 前置阶段 2：统一 verify 与发布失败恢复 | 保持强制 CI/发布检查，证据复用不用于跳过这些检查 |
 | 前置阶段 3：契约职责、小任务分流、场景表、模板及字节保护 | 对照最终成果去重；补齐验收时机、最终用户接受、复核减负及入口结构，不重新开发已完成能力 |
 | 前置阶段 4：可选 attestation 范围绑定 | 复用最终机制，不另建快照引擎；文件 hash 不能单独证明测试环境、范围完整或独立验收有效 |
-| [phase-local-review-dispatch](phase-local-review-dispatch.md) | 仅协调共同复核契约和共享文件；宿主回放及其阻塞继续由原计划负责，不把宿主阶段完成作为本计划硬依赖 |
-| [requirements-grilling-integration](requirements-grilling-integration.md)、[independent-acceptance-rules](independent-acceptance-rules.md) | 复用已确认探索退出和验收独立性，修复入口遗漏；不复制其历史全文或改写旧完成记录 |
+| [phase-local-review-dispatch](../20260905/phase-local-review-dispatch.md) | 仅协调共同复核契约和共享文件；宿主回放及其阻塞继续由原计划负责，不把宿主阶段完成作为本计划硬依赖 |
+| [requirements-grilling-integration](../20260719/requirements-grilling-integration.md)、[independent-acceptance-rules](../20260704/independent-acceptance-rules.md) | 复用已确认探索退出和验收独立性，修复入口遗漏；不复制其历史全文或改写旧完成记录 |
 
 前置已覆盖三类任务分流、可观察场景表、按需契约、受管块外字节保护和可选范围绑定，直接引用其验证，不重复开发。按本计划扩展目标判断：F01/F03/R01/R02/R03/E01—E04 为部分覆盖，F02/R04/E05 尚未覆盖；部分覆盖不等于整项完成。
 
@@ -151,7 +151,7 @@ grilling 继续复用已有技能；治理入口只负责何时调用、已确�
 
 ### Subagent 复核时长与调度
 
-独立复核可能增加串行等待：实施者自验后，复核者还需要获取上下文、检查风险、执行必要验证并返回结论。它可减少等待用户逐项安排的停顿，但不是天然的加速保证。前置阶段 4 的全量测试通过后，独立实盘仍发现 [D02/D03](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第一轮未通过)；此类检查及必要修复保留，减负重点是重复准备、重跑和交接。
+独立复核可能增加串行等待：实施者自验后，复核者还需要获取上下文、检查风险、执行必要验证并返回结论。它可减少等待用户逐项安排的停顿，但不是天然的加速保证。前置阶段 4 的全量测试通过后，独立实盘仍发现 [D02/D03](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第一轮未通过)；此类检查及必要修复保留，减负重点是重复准备、重跑和交接。
 
 - 先按 R01 判断是否需要独立复核；仅在需要时，拟默认由一位独立复核负责人统筹该复核点。专门子复核仅用于明确、可分的风险，划清范围，合并可共用的机械检查，不为每个内部步骤新增复核。专家的有效阻塞不得被汇总结果或多数通过覆盖；实现者及测试作者不能充当自己的独立验收者。
 - 派发时提供当前范围、契约、变化、关键风险和 E02 证据入口，使复核者能够自行查证；不发送完整聊天历史替代任务说明。需要行为盲测时，预期答案按 R04 隔离，紧凑交接不能破坏独立判断。
@@ -209,7 +209,7 @@ hook 通过共享检查器得到相同判定，不另外实现风险解析；仅
 
 ### 范围
 
-当前阶段 1：实施上列共享资源、风险判定及分发入口，并完成适用验证。阶段 0 设计与阶段 1 自身准入见[独立报告](../reviews/plan-governance-workflow-streamlining-design-review-20260906.md)；以下设计交付保留为本阶段契约。
+当前阶段 1：实施上列共享资源、风险判定及分发入口，并完成适用验证。阶段 0 设计与阶段 1 自身准入见[独立报告](../../reviews/plan-governance-workflow-streamlining-design-review-20260906.md)；以下设计交付保留为本阶段契约。
 
 ### 阶段 0 设计交付
 
@@ -242,7 +242,7 @@ D3 冻结规则读取与分发：
 - 主题是封闭映射，按包根定位，与 cwd 无关。stdout 是所选 Markdown；入口解释 CLI 相对引用通过相应 guide 主题读取，skill 模式按实际发现的安装目录读取同源 references，不硬编码用户目录。不混用不同版本；包版本号相同不是资源相同的证明。
 - 三参考进入 manifest/setup 与 npm 包；项目 AGENTS/CLAUDE 受管块仅保留加载方式、任务/权限底线及当前阶段约束。先提供可读资源，再精简入口。升级保持受管块外字节及旧文档；只删除本仓库本轮明确替代的临时项目自验说明，不通用清理用户内容。
 
-阶段 1 采用与阶段 0 同一份冻结契约和[执行样本](../fixtures/plan-governance-workflow-streamlining-cases.md)，自身 Step 0 是 HEAD `7cd6953` 的行为/资源基线，范围为上列源、资源、测试及同步文档。独立审查分别判断阶段 0 设计完成和阶段 1 是否达到待实施标准；不以阶段 0 通过自动放行阶段 1。
+阶段 1 采用与阶段 0 同一份冻结契约和[执行样本](../../fixtures/plan-governance-workflow-streamlining-cases.md)，自身 Step 0 是 HEAD `7cd6953` 的行为/资源基线，范围为上列源、资源、测试及同步文档。独立审查分别判断阶段 0 设计完成和阶段 1 是否达到待实施标准；不以阶段 0 通过自动放行阶段 1。
 
 ### 阶段 1 自身准入材料
 
@@ -261,7 +261,7 @@ D3 冻结规则读取与分发：
 | 准入状态 | 实施中 |
 | 复核策略 | 单次独立复核 |
 | Step 0 | [当前只读基线与历史快照](#step-0-证据)；执行前仍核对交接后的工作树 |
-| 样本矩阵 | [执行与修复样本](../fixtures/plan-governance-workflow-streamlining-cases.md)；历史 U01—U19 仅作输入来源 |
+| 样本矩阵 | [执行与修复样本](../../fixtures/plan-governance-workflow-streamlining-cases.md)；历史 U01—U19 仅作输入来源 |
 | 验证方式 | [文档及后续设计验证](#验证方式) |
 | 失败/回滚边界 | [风险和回滚](#风险和回滚) |
 | 当前阻塞项 | 无 |
@@ -280,9 +280,9 @@ D3 冻结规则读取与分发：
 
 上述保留为立项历史。2026-09-06 本次整理重新读取：仓库 SKILL 为 352 行、24378 字节，SHA-256 `d99df9cd4173416fcbd92c06ae7050a8c08ef0d79e009e1f0435c4ecfa3fd3ae`；计划模板指纹仍与上表一致。HEAD 当时未变，但工作树已有前置交付和并行文档修改；尚无 `references/`，manifest 未列参考文件，公开 CLI 尚无只读规则入口。前置验收报告可访问，其历史测试结果仅引用、不在本轮重跑。实施接手时仍核对最终工作树、未提交差异及调用的是仓库还是安装版本。
 
-2026-09-06 执行观察补充：读取任务“优化项目治理规范”（`01a071cc-a15f-7f42-8d94-4f668eb6194e`）截至当次读取的记录，发现 3 次上下文压缩及恢复后成批读取、重叠代码区段读取；这不是耗时或 token 因果统计。[阶段 3 报告](../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md#实际命令和证据)明确工具输出 ID 属于复核会话；[阶段 4 报告](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#其余验证与局限)记录前序子复核和全量通过后仍存在的真实缺陷。[前置计划](iterative-governance-reliability.md)的“并行文档兼容”记录说明后续计划四个状态单元格曾干扰严格检查且已修正；这里只保留历史原因，最新状态以原计划和地图为准。
+2026-09-06 执行观察补充：读取任务“优化项目治理规范”（`01a071cc-a15f-7f42-8d94-4f668eb6194e`）截至当次读取的记录，发现 3 次上下文压缩及恢复后成批读取、重叠代码区段读取；这不是耗时或 token 因果统计。[阶段 3 报告](../../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md#实际命令和证据)明确工具输出 ID 属于复核会话；[阶段 4 报告](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#其余验证与局限)记录前序子复核和全量通过后仍存在的真实缺陷。[前置计划](iterative-governance-reliability.md)的“并行文档兼容”记录说明后续计划四个状态单元格曾干扰严格检查且已修正；这里只保留历史原因，最新状态以原计划和地图为准。
 
-2026-09-06 实施交接基线：HEAD `7cd6953`，首次 `git status --short` 输出为空；仓库 skill 与检查器分别为 `d99df9cd4173416fcbd92c06ae7050a8c08ef0d79e009e1f0435c4ecfa3fd3ae`、`669c6c3e7e0690f5e57c98a4a221af7a712a1ff236a6cf550a765384e77c6ebb`。仓库与安装 CLI 均显示 0.3.5，但资源不同，后续验证统一使用仓库入口；安装副本仅作旧版对照。以下历史矩阵保留为来源，具体实施输入、命令和完成条件由[执行样本](../fixtures/plan-governance-workflow-streamlining-cases.md)固定。
+2026-09-06 实施交接基线：HEAD `7cd6953`，首次 `git status --short` 输出为空；仓库 skill 与检查器分别为 `d99df9cd4173416fcbd92c06ae7050a8c08ef0d79e009e1f0435c4ecfa3fd3ae`、`669c6c3e7e0690f5e57c98a4a221af7a712a1ff236a6cf550a765384e77c6ebb`。仓库与安装 CLI 均显示 0.3.5，但资源不同，后续验证统一使用仓库入口；安装副本仅作旧版对照。以下历史矩阵保留为来源，具体实施输入、命令和完成条件由[执行样本](../../fixtures/plan-governance-workflow-streamlining-cases.md)固定。
 
 ### 样本矩阵
 
@@ -292,7 +292,7 @@ D3 冻结规则读取与分发：
 |---|---|---|---|
 | 前置阶段 1—4 最终成果与本计划目标 | `rg -n '行为契约|用户可观察验收|完成条件' docs/plans/iterative-governance-reliability.md`；逐条对照目标差异 | 已覆盖项可追溯，保留真正差距；将前置未完成内容当作已验收即失败 | 命令输出；本计划剩余差距记录 |
 | 源 skill、模板和受管规则 | `rg -n 'grilling|独立复核|用户.*验收|覆盖率|scripts/|references/' resources/skill/SKILL.md resources/skill/assets/plan.template.md AGENTS.md CLAUDE.md` | 定位重复、冲突和条件读取缺口；仅凭行数认定性能改进即失败 | 命令输出；本计划设计记录 |
-| 小修复、普通功能、等待用户接受、高影响变更 | 按[历史 U01—U19 输入](../reviews/plan-governance-skill-usage-audit-20260906.md#拟补充的验收样本)分组，对照本计划拟议差异；阶段 0 仅设计，后续盲测不提供预期答案 | 明确必要动作及停止边界；将所有输入统一全流程、提前泄漏预期或混淆授权即失败 | 本计划精简后的执行矩阵，尚未执行 |
+| 小修复、普通功能、等待用户接受、高影响变更 | 按[历史 U01—U19 输入](../../reviews/plan-governance-skill-usage-audit-20260906.md#拟补充的验收样本)分组，对照本计划拟议差异；阶段 0 仅设计，后续盲测不提供预期答案 | 明确必要动作及停止边界；将所有输入统一全流程、提前泄漏预期或混淆授权即失败 | 本计划精简后的执行矩阵，尚未执行 |
 | 局部低风险修复、一行高影响配置、影响扩大、已有独立失败 | 走读[风险分流候选](#按风险选择自验或独立复核)，阶段 1 再做实际行为样本 | 低风险自验在文档及 check/workset/hook 中一致且不伪称独立通过；高影响/扩大的风险及时升级；以行数分档、仍为每个低风险节点派发或重分类自批旧失败即失败 | 本计划风险矩阵，尚未执行 |
 | 证据复用与失效反例 | 对照前置证据绑定边界，设计源码/环境/依赖/验收契约变化及未变化对照 | 变化能触发适用补验，未变化可复用可信证据；只看版本号或 hash 即失败 | 本计划兼容设计，尚未执行 |
 | skill 可用、仅 CLI 可用、两者均不可用及版本不一致 | 走读[安装前提与项目入口](#安装前提与项目入口)；阶段 1 再验证真实资源读取与分发 | 可用环境按需找到同一来源规则；缺少前提能明确报告；不存在的命令被当成已有能力、自动安装或额外生成完整项目规则即失败 | 本计划分发设计，运行验证尚未执行 |
@@ -310,7 +310,7 @@ D3 冻结规则读取与分发：
 
 ### 测试覆盖率
 
-1.0.0 发布前阶段 1 修复后完整 verify：585 个 Python 测试通过，覆盖率 93.55%（门槛 85%）；101 个 Node 测试通过、0 skipped。详情与受测身份见[最终集成验证](../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证)。后续限量输出的当前验证见[增量结果](#workset-最近证据限量输出)；历史结果保留。
+1.0.0 发布前阶段 1 修复后完整 verify：585 个 Python 测试通过，覆盖率 93.55%（门槛 85%）；101 个 Node 测试通过、0 skipped。详情与受测身份见[最终集成验证](../../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证)。后续限量输出的当前验证见[增量结果](#workset-最近证据限量输出)；历史结果保留。
 
 ### 完成条件
 
@@ -341,27 +341,27 @@ D3 冻结规则读取与分发：
 | 2026-09-06 | 执行前整理 | 核实前置全计划独立技术完成及项目简单改动自验约定；整理阶段内执行顺序、D1—D3 设计交付、已有成果去重和代表性对照任务；地图区分当前主线与宿主支线，更新 B01/B02 | 当前计划执行交接、执行顺序、当前阶段；前置最终报告；只读任务记录 | 文档准备完成，阶段 0 设计中；未开始实现或声称用户接受 | Codex |
 | 2026-09-06 | 前置成果只读对照 | F01/F03/R01/R02/R03/E01—E04 部分覆盖，F02/R04/E05 未覆盖；三类分流、场景表、按需契约、字节保护及范围绑定直接复用 | 当前规则、模板和前置阶段 3—4 契约；本轮子代理对照 | 有界差距分析，非独立准入或实现复核 | /root/skill_instruction_audit |
 | 2026-09-06 | 执行前文档自验 | 46 个本地链接/锚点、固定标题、反向引用和空白检查通过；已安装 CLI 普通检查退出 0（3 条背景引用告警），仓库 CLI strict-readiness 退出 0（8 条告警，保留宿主及本计划设计阻塞） | 验证方式中的命令；本轮命令标准输出 | 文档检查通过；未运行全量测试、构建、安装或发布，不构成准入 | Codex |
-| 2026-09-06 | 阶段 1 实施自验 | 风险分流、共享三参考、guide、模板及受管入口已实现；完整 verify：Python 518 passed/93.42%，Node 101/101；行为演练与资源/字节保护通过 | [实际结果与受测指纹](../fixtures/plan-governance-workflow-streamlining-cases.md#阶段-1-集成结果) | 实施中，待独立完成复核与用户验收 | Codex / runtime 实施子代理 |
-| 2026-09-06 | 阶段 1 独立技术验收 | B03/B04 修复独立确认，合并首轮其余通过范围，技术完成通过 | [独立完成报告](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) | 实施中，等待用户验收；未发布/全局同步 | /root/streamlining_design_gate |
-| 2026-09-06 | 修复后最终集成验证 | B03/B04 已按独立结论解除；完整 verify 退出 0，Python 585 passed/93.55%，Node 101/101、0 skipped；源码保持最终独立受审身份 | [最终集成验证](../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证) | 技术完成，等待用户验收；未提交、发布或全局同步 | Codex |
-| 2026-09-06 | 1.0.0 发布与本地更新授权 | 用户要求先更新版本 1.0.0、发布 npm 并更新本地依赖；已确认版本不存在并完成发布预演 | [发布维护](plan-governance-distribution-setup.md#2026-09-06-100-发布维护) | 发布获授权；本计划仍等待实际使用验收，不补写用户接受 | Codex |
-| 2026-09-06 | 1.0.0 发布与本地更新完成 | 官方版本/latest 和包校验值确认；全局 CLI 及 Codex/Claude skill 同步完成，安装包与资源逐字节核对及安装后验证通过 | [发布结果](plan-governance-distribution-setup.md#2026-09-06-100-发布维护) | 发布与安装完成；实际减负体验仍待用户验收，未提交 Git | Codex |
+| 2026-09-06 | 阶段 1 实施自验 | 风险分流、共享三参考、guide、模板及受管入口已实现；完整 verify：Python 518 passed/93.42%，Node 101/101；行为演练与资源/字节保护通过 | [实际结果与受测指纹](../../fixtures/plan-governance-workflow-streamlining-cases.md#阶段-1-集成结果) | 实施中，待独立完成复核与用户验收 | Codex / runtime 实施子代理 |
+| 2026-09-06 | 阶段 1 独立技术验收 | B03/B04 修复独立确认，合并首轮其余通过范围，技术完成通过 | [独立完成报告](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) | 实施中，等待用户验收；未发布/全局同步 | /root/streamlining_design_gate |
+| 2026-09-06 | 修复后最终集成验证 | B03/B04 已按独立结论解除；完整 verify 退出 0，Python 585 passed/93.55%，Node 101/101、0 skipped；源码保持最终独立受审身份 | [最终集成验证](../../fixtures/plan-governance-workflow-streamlining-cases.md#最终集成验证) | 技术完成，等待用户验收；未提交、发布或全局同步 | Codex |
+| 2026-09-06 | 1.0.0 发布与本地更新授权 | 用户要求先更新版本 1.0.0、发布 npm 并更新本地依赖；已确认版本不存在并完成发布预演 | [发布维护](../20260713/plan-governance-distribution-setup.md#2026-09-06-100-发布维护) | 发布获授权；本计划仍等待实际使用验收，不补写用户接受 | Codex |
+| 2026-09-06 | 1.0.0 发布与本地更新完成 | 官方版本/latest 和包校验值确认；全局 CLI 及 Codex/Claude skill 同步完成，安装包与资源逐字节核对及安装后验证通过 | [发布结果](../20260713/plan-governance-distribution-setup.md#2026-09-06-100-发布维护) | 发布与安装完成；实际减负体验仍待用户验收，未提交 Git | Codex |
 | 2026-09-06 | 最近证据限量输出自验 | 显式 JSON 窗口及原文定位已实现；默认输出与门禁兼容，完整 verify 通过 | [实现与验证结果](#workset-最近证据限量输出) | 增量技术完成，未发布；整体实际使用验收保留 | Codex |
-| 2026-09-06 | 1.0.1 发布 | 用户授权后通过统一脚本发布；官方版本/latest 与包完整性已确认 | [发布维护](plan-governance-distribution-setup.md#2026-09-06-101-发布维护) | 1.0.1 已发布，本机安装保持 1.0.0；整体实际使用验收保留 | Codex |
-| 2026-09-06 | 1.0.1 本地更新 | 用户授权后升级全局 CLI 并同步两套 skill；安装包、资源、限量命令及非受管文件保持验证通过 | [本地更新结果](plan-governance-distribution-setup.md#101-本地更新) | 本地更新完成；整体实际使用验收保留 | Codex |
-| 2026-09-07 | 使用反馈规则增量 | 用户确认 U1—U5 实施；三份参考修改、三个行为走读及有界源规则独立完成复核通过，保留旧门禁 | [增量结果](#实际使用反馈与有界调整2026-09-07)；[独立报告](../reviews/plan-governance-usage-adjustments-review-20260907.md) | 源规则通过，安装资源及项目入口待空闲交接同步；整体体验验收保留 | Codex / /root/usage_adjustment_review |
-| 2026-09-07 | 本机与项目入口同步 | 用户明确立即同步；两套 skill 资源一致，摩托车受管入口及 ScreenshotStitcher 最小入口已更新，非受管内容与旧计划保持 | [同步完成证据](../fixtures/plan-governance-workflow-streamlining-cases.md#本机及项目入口同步完成) | 同步完成，整体实际使用验收保留；未发布或提交 | Codex / /root/skill_instruction_audit |
-| 2026-09-07 | 1.0.2 发布完成 | 用户授权发布下一补丁；统一发布验证通过，官方 version/latest 与包校验值一致，原 registry 已恢复 | [发布维护](plan-governance-distribution-setup.md#2026-09-07-102-发布维护) | 已发布，整体使用验收保留；全局 CLI 仍为 1.0.1，未提交/推送 Git | Codex |
-| 2026-09-07 | 1.0.2 本地更新 | 用户授权后升级全局 CLI；18 项包文件与发布内容一致，四个 guide 及 skill 一致性检查通过，既有 skill 文件和 registry 保持 | [本地更新](plan-governance-distribution-setup.md#102-本地更新) | 本地 CLI/skill 一致，整体实际使用验收保留 | Codex |
+| 2026-09-06 | 1.0.1 发布 | 用户授权后通过统一脚本发布；官方版本/latest 与包完整性已确认 | [发布维护](../20260713/plan-governance-distribution-setup.md#2026-09-06-101-发布维护) | 1.0.1 已发布，本机安装保持 1.0.0；整体实际使用验收保留 | Codex |
+| 2026-09-06 | 1.0.1 本地更新 | 用户授权后升级全局 CLI 并同步两套 skill；安装包、资源、限量命令及非受管文件保持验证通过 | [本地更新结果](../20260713/plan-governance-distribution-setup.md#101-本地更新) | 本地更新完成；整体实际使用验收保留 | Codex |
+| 2026-09-07 | 使用反馈规则增量 | 用户确认 U1—U5 实施；三份参考修改、三个行为走读及有界源规则独立完成复核通过，保留旧门禁 | [增量结果](#实际使用反馈与有界调整2026-09-07)；[独立报告](../../reviews/plan-governance-usage-adjustments-review-20260907.md) | 源规则通过，安装资源及项目入口待空闲交接同步；整体体验验收保留 | Codex / /root/usage_adjustment_review |
+| 2026-09-07 | 本机与项目入口同步 | 用户明确立即同步；两套 skill 资源一致，摩托车受管入口及 ScreenshotStitcher 最小入口已更新，非受管内容与旧计划保持 | [同步完成证据](../../fixtures/plan-governance-workflow-streamlining-cases.md#本机及项目入口同步完成) | 同步完成，整体实际使用验收保留；未发布或提交 | Codex / /root/skill_instruction_audit |
+| 2026-09-07 | 1.0.2 发布完成 | 用户授权发布下一补丁；统一发布验证通过，官方 version/latest 与包校验值一致，原 registry 已恢复 | [发布维护](../20260713/plan-governance-distribution-setup.md#2026-09-07-102-发布维护) | 已发布，整体使用验收保留；全局 CLI 仍为 1.0.1，未提交/推送 Git | Codex |
+| 2026-09-07 | 1.0.2 本地更新 | 用户授权后升级全局 CLI；18 项包文件与发布内容一致，四个 guide 及 skill 一致性检查通过，既有 skill 文件和 registry 保持 | [本地更新](../20260713/plan-governance-distribution-setup.md#102-本地更新) | 本地 CLI/skill 一致，整体实际使用验收保留 | Codex |
 | 2026-09-08 | 使用反馈与执行抽查 | 用户确认提问减少、先验证可行性可接受；已完成设计样本自动复核和定向修复符合，仍发现重复全文读取 | [本次抽查](#使用验收与执行抽查2026-09-08) | 实施中；剩余读取优化由 AI 定向复查，非笼统等待用户体验 | Codex |
 | 2026-09-08 | 调试复核粒度反馈 | 用户指出身份探针任务持续复核；快照中五组变化各有准入和完成复核，包含两组接受条件未变的诊断增量，形成按风险边界合并的提案 | [案例与方案](#调试复核粒度优化提案2026-09-08) | 方案落档；未修改共享规则、旧计划门禁或正在运行的身份任务，非实施验收 | Codex |
 | 2026-09-08 | 调试复核粒度源规则实施 | 用户授权后有界设计准入通过，两份参考修改、机械验证及六组独立行为判断通过 | [受审指纹与结论](#本次实施进展) | 源规则通过；未安装/发布或迁移其他项目，真实减负效果仍待观察 | Codex；granularity_gate（独立） |
-| 2026-09-08 | 1.0.3 发布与本地更新 | 用户授权后统一发布及全量验证通过；官方 version/latest、校验值、全局 CLI、两套 skill 及非受管文件保持均已核对 | [分发维护](plan-governance-distribution-setup.md#2026-09-08-103-发布与本地更新) | 发布/本地更新完成；项目策略未自动迁移，实际使用验收保留 | Codex |
+| 2026-09-08 | 1.0.3 发布与本地更新 | 用户授权后统一发布及全量验证通过；官方 version/latest、校验值、全局 CLI、两套 skill 及非受管文件保持均已核对 | [分发维护](../20260713/plan-governance-distribution-setup.md#2026-09-08-103-发布与本地更新) | 发布/本地更新完成；项目策略未自动迁移，实际使用验收保留 | Codex |
 | 2026-09-08 | 两项目策略接入 | 用户授权后，摩托两项迁移、一项既有策略补齐、八项保留原门待接入；Screenshot 既有策略确认；独立完成核对通过，原状态/全部阻塞/动作类型保持 | [接入结果](#本次实施进展) | 可迁移部分完成，其他计划条件未满足且授权已记录；非业务验收 | Codex；project_strategy_migration_review（独立） |
 | 2026-09-19 | Codex 单目标同步源码调整 | setup 移除 Claude/all 命名目标；唯一独立检查发现重复 target 与混合 help 绕过，实施者修复后源码/临时安装包反例及完整 verify 通过 | [实施、独立发现与修复](#codex-单目标同步调整2026-09-19) | 源码通过；该增量未发布或安装，整体使用验收保留 | Codex；Plato（独立） |
 | 2026-09-19 | 独立复核推理强度分层 | 每次派发显式传参：高风险 `high`、其他独立复核 `medium`；本次共享规则检查按 `medium` 一次通过 | [实施与独立检查](#独立复核推理强度分层2026-09-19) | 源与 Codex 安装副本已同步；全局配置和 Claude skill 未改，整体使用验收保留 | Codex；Zeno（独立） |
 | 2026-09-19 | Claude 支持完全移除 | setup、初始化器、升级、现行文档与根入口收敛为 Codex/AGENTS；旧参数无写入失败，既有外部数据保持，完整验证及 `medium` 独立检查通过 | [实现、验证与发布边界](#claude-支持完全移除2026-09-19) | 下一版本源码完成；尚未发布或更新全局 CLI，整体使用验收保留 | Codex；Wegener（独立） |
-| 2026-09-19 | 1.1.2 发布与 Codex 更新 | 用户授权后由统一脚本发布；官方 version/latest 与校验值、全局 CLI、Codex 受管资源及旧入口无写入反例均通过 | [分发维护](plan-governance-distribution-setup.md#2026-09-19-112-发布与-codex-更新) | 发布和安装完成；Claude skill 未写入，整体使用验收保留；未提交/推送 Git | Codex |
+| 2026-09-19 | 1.1.2 发布与 Codex 更新 | 用户授权后由统一脚本发布；官方 version/latest 与校验值、全局 CLI、Codex 受管资源及旧入口无写入反例均通过 | [分发维护](../20260713/plan-governance-distribution-setup.md#2026-09-19-112-发布与-codex-更新) | 发布和安装完成；Claude skill 未写入，整体使用验收保留；未提交/推送 Git | Codex |
 
 以上记录按当次工作树和工具版本解释，失败历史保留。前置 D02—D04 现已由原计划独立确认修复，本计划不归功或重审。已有共享目标和背景引用告警须说明归属，不为消除提示添加虚假硬依赖。已安装 CLI 检查不等于仓库新实现验收；文档检查不等于行为通过或阶段准入。
 
@@ -410,18 +410,18 @@ D3 冻结规则读取与分发：
 | 日期 | 2026-09-06 |
 | 阶段 | 阶段 1 |
 | 结论 | 通过：阶段 1 技术完成验收通过，等待用户验收 |
-| 证据 | [第三轮报告](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) |
+| 证据 | [第三轮报告](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) |
 | 复核者 | /root/streamlining_design_gate |
 
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
-| 2026-09-06 | 阶段准入及设计完成复核 | 阶段 0 | 通过 | [独立报告](../reviews/plan-governance-workflow-streamlining-design-review-20260906.md) | /root/streamlining_design_gate |
-| 2026-09-06 | 阶段准入复核 | 阶段 1 | 通过 | [独立报告](../reviews/plan-governance-workflow-streamlining-design-review-20260906.md) | /root/streamlining_design_gate |
-| 2026-09-06 | 阶段完成复核 | 阶段 1 | 未通过：B03 通过句号兼容缺口 | [第一轮报告](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第一轮未通过) | /root/streamlining_design_gate |
-| 2026-09-06 | 阶段完成增量复核 | 阶段 1 | 未通过：B03 已解除，B04 问号候选仍误放行 | [第二轮报告](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第二轮b03-通过b04-未通过) | /root/streamlining_design_gate |
-| 2026-09-06 | 阶段完成复核 | 阶段 1 | 通过 | [第三轮报告](../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) | /root/streamlining_design_gate |
+| 2026-09-06 | 阶段准入及设计完成复核 | 阶段 0 | 通过 | [独立报告](../../reviews/plan-governance-workflow-streamlining-design-review-20260906.md) | /root/streamlining_design_gate |
+| 2026-09-06 | 阶段准入复核 | 阶段 1 | 通过 | [独立报告](../../reviews/plan-governance-workflow-streamlining-design-review-20260906.md) | /root/streamlining_design_gate |
+| 2026-09-06 | 阶段完成复核 | 阶段 1 | 未通过：B03 通过句号兼容缺口 | [第一轮报告](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第一轮未通过) | /root/streamlining_design_gate |
+| 2026-09-06 | 阶段完成增量复核 | 阶段 1 | 未通过：B03 已解除，B04 问号候选仍误放行 | [第二轮报告](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第二轮b03-通过b04-未通过) | /root/streamlining_design_gate |
+| 2026-09-06 | 阶段完成复核 | 阶段 1 | 通过 | [第三轮报告](../../reviews/plan-governance-workflow-streamlining-completion-review-20260906.md#第三轮通过) | /root/streamlining_design_gate |
 
 ## 实际使用反馈与有界调整（2026-09-07）
 
@@ -460,13 +460,13 @@ D3 冻结规则读取与分发：
 
 ### 本次实施结果
 
-三份共享参考已落实 U1—U5；SKILL 入口、代码、checker/JSON、模板、版本号保持。2026-09-07 [独立复核](../reviews/plan-governance-usage-adjustments-review-20260907.md)结论为“通过，本次三份共享参考的 U1—U5 源规则增量完成复核通过，无源规则阻塞”。三个行为输入组的判断与机械结果分别见[增量验证](../fixtures/plan-governance-workflow-streamlining-cases.md#2026-09-07-使用反馈增量验证)。
+三份共享参考已落实 U1—U5；SKILL 入口、代码、checker/JSON、模板、版本号保持。2026-09-07 [独立复核](../../reviews/plan-governance-usage-adjustments-review-20260907.md)结论为“通过，本次三份共享参考的 U1—U5 源规则增量完成复核通过，无源规则阻塞”。三个行为输入组的判断与机械结果分别见[增量验证](../../fixtures/plan-governance-workflow-streamlining-cases.md#2026-09-07-使用反馈增量验证)。
 
 本机资源与两个项目入口已同步。用户在获知任务仍活跃后明确“没事，同步吧”，本次按该授权立即执行；原等待安排不再阻塞这次同步，通用同步规则没有改写。
 
-Codex/Claude 各 10 项 manifest 资源与受审仓库一致，未受管内容保持；摩托车 AGENTS/CLAUDE 只更新受管块，52 份计划相关文件无变化；ScreenshotStitcher 仅新增最小 AGENTS 入口，不创建全套治理目录。实际命令、检查、指纹及旧文件回滚副本见[同步完成证据](../fixtures/plan-governance-workflow-streamlining-cases.md#本机及项目入口同步完成)。
+Codex/Claude 各 10 项 manifest 资源与受审仓库一致，未受管内容保持；摩托车 AGENTS/CLAUDE 只更新受管块，52 份计划相关文件无变化；ScreenshotStitcher 仅新增最小 AGENTS 入口，不创建全套治理目录。实际命令、检查、指纹及旧文件回滚副本见[同步完成证据](../../fixtures/plan-governance-workflow-streamlining-cases.md#本机及项目入口同步完成)。
 
-已[发布 1.0.2](plan-governance-distribution-setup.md#2026-09-07-102-发布维护)，官方版本、latest 与包校验值已确认。本地 npm CLI 随后也已[更新至 1.0.2](plan-governance-distribution-setup.md#102-本地更新)，guide 与已同步 skill 的规则一致。本轮没有新增源规则缺陷，不因逐字同步再次独立复核；实际减负效果和整体用户验收继续保留，不能由同步完成代替。
+已[发布 1.0.2](../20260713/plan-governance-distribution-setup.md#2026-09-07-102-发布维护)，官方版本、latest 与包校验值已确认。本地 npm CLI 随后也已[更新至 1.0.2](../20260713/plan-governance-distribution-setup.md#102-本地更新)，guide 与已同步 skill 的规则一致。本轮没有新增源规则缺陷，不因逐字同步再次独立复核；实际减负效果和整体用户验收继续保留，不能由同步完成代替。
 
 ### 推进顺序与完成判断
 
@@ -568,7 +568,7 @@ Step 0 为检查器现有“独立失败只能独立恢复”的分支及旧策�
 
 唯一独立只读复核任务 `01a0b96a-200d-7f93-9790-da73458f18ec` 首轮结论未通过，指出三项实质问题：第二次独立通过仍可清除首次发现、未来阶段可误作前置基线、残缺六列记录可漏过。实施者修正状态机、阶段顺序/来源引用及六列结构门禁，并新增对应反例；按单次规则未再次送审。复核另指出任务派发类规则只能由执行轨迹评估，现有单元测试只证明派生动作，已将测试名改为不再声称验证真实派发次数。
 
-最终 `npm run verify` 退出 0：671 项 Python 测试通过，覆盖率 93.11%（门槛 85%）；103 项 Node 测试通过、0 skipped。skill `quick_validate`、`git diff --check` 和仓库严格治理检查通过，保留四条其他计划引用未声明为依赖的既有 WARNING。统一行为实现和一次独立复核后的修复自验完成；整体计划继续实施中，原技术成果与待用户使用验收状态保留。随后按独立发布授权[发布 1.1.1 并更新全局 CLI 与 Codex skill](plan-governance-distribution-setup.md#2026-09-19-111-发布与-codex-更新)；Claude skill 及其他项目未同步。
+最终 `npm run verify` 退出 0：671 项 Python 测试通过，覆盖率 93.11%（门槛 85%）；103 项 Node 测试通过、0 skipped。skill `quick_validate`、`git diff --check` 和仓库严格治理检查通过，保留四条其他计划引用未声明为依赖的既有 WARNING。统一行为实现和一次独立复核后的修复自验完成；整体计划继续实施中，原技术成果与待用户使用验收状态保留。随后按独立发布授权[发布 1.1.1 并更新全局 CLI 与 Codex skill](../20260713/plan-governance-distribution-setup.md#2026-09-19-111-发布与-codex-更新)；Claude skill 及其他项目未同步。
 
 ## Codex 单目标同步调整（2026-09-19）
 
@@ -604,11 +604,11 @@ Step 0 为当前初始化器仍包含 Claude 常量、函数、四个参数及�
 
 发布边界保持：当前仓库是下一版本源码，本轮未发布、未全局安装。官方及本机全局 CLI 仍为 1.1.1，实际帮助仍包含旧 Claude 入口；Codex 安装 skill 的 `cli.md` 已同步当前源码，使用时不得把该参考误当成旧全局可执行文件已经升级。需要全局生效时须另行授权发布和安装；现有 `~/.claude` 目录继续保持，不作为受支持目标。
 
-后续用户已另行授权发布与安装，现已[发布 1.1.2 并更新全局 CLI 与 Codex skill](plan-governance-distribution-setup.md#2026-09-19-112-发布与-codex-更新)。上段未发布/安装表述保留为源码实施轮结束时的状态；1.1.2 的实际帮助和执行行为已只保留 Codex/AGENTS，Claude skill 摘要保持不变，整体实际使用验收继续保留。
+后续用户已另行授权发布与安装，现已[发布 1.1.2 并更新全局 CLI 与 Codex skill](../20260713/plan-governance-distribution-setup.md#2026-09-19-112-发布与-codex-更新)。上段未发布/安装表述保留为源码实施轮结束时的状态；1.1.2 的实际帮助和执行行为已只保留 Codex/AGENTS，Claude skill 摘要保持不变，整体实际使用验收继续保留。
 
 ## GPT-6 官方实践提示审查（2026-09-09）
 
-用户在提交 `c9da6e1` 后要求按 OpenAI GPT-6 官方最佳实践审查 skill，目标是减少规则冲突、提高自主性和交付效果。已实际打开 GPT-6 Astra 模型指南与官方 Build skills 文档，并对照当前入口、三份参考、模板及项目入口，形成[六项发现、提示候选和后续验证场景](../reviews/plan-governance-gpt6-skill-audit-20260909.md)。优先处理强制访谈收口、宽泛暂停条件及策略/来源分流，再合并重复内容与覆盖率模板矛盾。
+用户在提交 `c9da6e1` 后要求按 OpenAI GPT-6 官方最佳实践审查 skill，目标是减少规则冲突、提高自主性和交付效果。已实际打开 GPT-6 Astra 模型指南与官方 Build skills 文档，并对照当前入口、三份参考、模板及项目入口，形成[六项发现、提示候选和后续验证场景](../../reviews/plan-governance-gpt6-skill-audit-20260909.md)。优先处理强制访谈收口、宽泛暂停条件及策略/来源分流，再合并重复内容与覆盖率模板矛盾。
 
 本次是用户请求的提示审查及建议落档，未修改现行 skill、检查器或安装版，不增加独立复核轮次，不将建议伪称已实现或已证明提速。先前单次复核实现与修复自验事实保留；这些建议不是对上一轮技术门禁的重新裁决。整体计划仍实施中，使用效果未接受，后续行为调整按新的明确实施授权推进。
 
@@ -627,7 +627,7 @@ Step 0 为上述审查定位的强制访谈、宽泛暂停、策略/来源混用
 
 文本比较：入口 1,692→946 字符，planning 4,693→1,792，verification 3,818→2,727；日常入口与两参考合计 10,203→5,465，减少约 46%。CLI 技术手册仍按需读取。只记录字符变化和上述行为证据，不宣称 token、耗时或项目交付成功率已有实测改善。当前仓库技术完成，整体保持实施中等待用户体验验收；未安装、发布或提交本轮差异。
 
-后续用户明确要求发布 1.1.0 并同步本地，现已完成[官方发布、全局 CLI 与两套 skill 更新](plan-governance-distribution-setup.md#2026-09-09-110-发布与本地更新)；上述未发布/安装表述保留为实施轮结束时的状态，整体实际使用验收继续保留。
+后续用户明确要求发布 1.1.0 并同步本地，现已完成[官方发布、全局 CLI 与两套 skill 更新](../20260713/plan-governance-distribution-setup.md#2026-09-09-110-发布与本地更新)；上述未发布/安装表述保留为实施轮结束时的状态，整体实际使用验收继续保留。
 
 ## 调试复核粒度优化提案（2026-09-08）
 
@@ -692,7 +692,7 @@ Step 0 为上述审查定位的强制访谈、宽泛暂停、策略/来源混用
 
 本次是已有设计上下文的规则走读与源差异检查，不声称盲测、真实项目回放或耗时/token 改善。独立通过后只转写本段及同步地图，不因落档再次送审。源规则交付完成；已安装 skill/CLI 仍为上轮资源，其他项目计划没有迁移，也没有给活跃任务发送指令。安装同步、发布和实际效果观察保持各自边界，整体计划继续实施中。
 
-后续用户授权“发布npm，然后更新本地”，已完成 [1.0.3 发布与两套本地资源更新](plan-governance-distribution-setup.md#2026-09-08-103-发布与本地更新)；上述未安装/未发布说明保留为源实施轮结束时的状态，其他项目策略仍未迁移。
+后续用户授权“发布npm，然后更新本地”，已完成 [1.0.3 发布与两套本地资源更新](../20260713/plan-governance-distribution-setup.md#2026-09-08-103-发布与本地更新)；上述未安装/未发布说明保留为源实施轮结束时的状态，其他项目策略仍未迁移。
 
 用户随后授权 motorcycle 与 ScreenshotStitcher 项目迁移：摩托支付/上传订单两项显式迁移，证书一项补齐已选择策略的结构，其他八项因原阶段门禁/独立失败保持待接入，授权已记录；Screenshot 已采用风险分流，仅确认。project_strategy_migration_review 独立完成核对通过，两项目状态/阻塞/动作类型与迁移前一致。详见[摩托接入记录](/Users/jafish/Documents/work/motorcycle-manual-app/docs/data-quality/plan-risk-strategy-migration-20260908.md)和[Screenshot 接入确认](/Users/jafish/Documents/work/ScreenshotStitcher/docs/plans/first-release-roadmap.md#2026-09-08-风险策略接入确认)。未修改业务代码或执行实际业务门禁。
 
@@ -730,7 +730,7 @@ Step 0 为上述审查定位的强制访谈、宽泛暂停、策略/来源混用
 
 本项完成条件已由当前实施者确认，无新增阻塞。整体计划继续保留实际使用验收；本小改不增加用户逐次签收，旧独立报告不扩充为本次自验结论。仓库源码可用，已安装 1.0.0 仍不支持新参数；本次未发布、同步安装副本或提交。
 
-后续发布授权及结果：用户要求“推送 1.0.1”，现已公开发布并确认 latest/包完整性，发布与 Git 推送由[1.0.1 发布维护](plan-governance-distribution-setup.md#2026-09-06-101-发布维护)记录；上述未发布说明保留为功能实施轮结束时的状态。
+后续发布授权及结果：用户要求“推送 1.0.1”，现已公开发布并确认 latest/包完整性，发布与 Git 推送由[1.0.1 发布维护](../20260713/plan-governance-distribution-setup.md#2026-09-06-101-发布维护)记录；上述未发布说明保留为功能实施轮结束时的状态。
 
 | 问题 | 推荐方案 | 是否阻塞当前阶段 | 状态 |
 |---|---|---|---|

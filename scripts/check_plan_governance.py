@@ -793,6 +793,27 @@ def extract_plan_link(cell):
     return None
 
 
+def plan_link_issue(link):
+    """Validate the canonical YYYYMMDD bucket while preserving legacy/custom paths."""
+    parts = Path(link).parts
+    if len(parts) < 2 or parts[0] != "plans":
+        return f"计划路径必须位于 docs/plans 下：{link}"
+    bucket = parts[1]
+    if len(parts) == 2 and bucket.endswith(".md"):
+        return None
+    if not bucket[:1].isdigit():
+        return None
+    if not re.fullmatch(r"\d{8}", bucket):
+        return f"计划日期目录必须为 YYYYMMDD：{link}"
+    try:
+        datetime.strptime(bucket, "%Y%m%d")
+    except ValueError:
+        return f"计划日期目录不是有效日期：{link}"
+    if len(parts) != 3 or not parts[2].endswith(".md"):
+        return f"计划日期目录必须直接包含 Markdown 文件：{link}"
+    return None
+
+
 def extract_declared_dependencies(depends_cell):
     return [d.strip("` ") for d in re.split(r",|<br>|、", depends_cell) if d.strip("` -")]
 
@@ -846,13 +867,19 @@ def extract_plan_references(plan_text, known_plans, current_name):
         if name in known_plans and name != current_name:
             references.add(name)
 
-    for match in re.finditer(r"(?:docs/)?plans/([A-Za-z0-9\u4e00-\u9fff._-]+)\.md", plan_text):
+    for match in re.finditer(
+        r"(?:docs/)?plans/(?:\d{8}/)?([A-Za-z0-9\u4e00-\u9fff._-]+)\.md",
+        plan_text,
+    ):
         name = Path(match.group(1).strip()).stem
         if name in known_plans and name != current_name:
             references.add(name)
 
-    for match in re.finditer(r"\]\(([A-Za-z0-9\u4e00-\u9fff._-]+)\.md(?:#[^)]+)?\)", plan_text):
-        name = Path(match.group(1).strip()).stem
+    for match in re.finditer(r"\]\(([^)#]+\.md)(?:#[^)]+)?\)", plan_text):
+        target = match.group(1).strip()
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", target):
+            continue
+        name = Path(target).stem
         if name in known_plans and name != current_name:
             references.add(name)
 
@@ -918,9 +945,16 @@ def find_orphan_plans(docs, plans):
     if not plans_dir.exists():
         return []
     indexed_paths = {data["path"].resolve() for data in plans.values()}
+    candidates = set(plans_dir.glob("*.md"))
+    for bucket in plans_dir.iterdir():
+        if not bucket.is_dir() or not bucket.name[:1].isdigit():
+            continue
+        # Numeric buckets are reserved for dated plans. Include malformed buckets
+        # and deeper files so they cannot disappear from orphan diagnostics.
+        candidates.update(bucket.rglob("*.md"))
     return sorted(
         plan_file
-        for plan_file in plans_dir.glob("*.md")
+        for plan_file in candidates
         if plan_file.resolve() not in indexed_paths
     )
 
@@ -1630,32 +1664,33 @@ def warn_attestation_drift(warnings, root, plans, errors=None, strict=False, rep
         plan_map_path = root / plan_map_path_rel
         if scoped_checks:
             try:
-                binding_file(root, plan_path_rel)
+                binding_file(root, plan_path_rel, require_file=plan_path.exists())
                 binding_file(root, plan_map_path_rel)
             except (ValueError, OSError) as exc:
                 attestation_issue(warnings, errors, strict, f"{path}: 混合快照路径读取预检失败：{exc}")
                 continue
-        if not plan_path.exists():
-            warn(warnings, f"{path}: 快照引用的计划文件不存在：{plan_path}")
-            continue
         if not plan_map_path.exists():
             warn(warnings, f"{path}: 快照引用的 PLAN_MAP.md 不存在：{plan_map_path}")
             continue
 
-        drifted = False
+        # A moved plan leaves the historical snapshot's recorded path behind.
+        # Keep that legacy record in the supersedes graph; an explicit valid
+        # successor can retire it, while an unretired record remains needs_review.
+        missing_plan = not plan_path.exists()
+        drift_reasons = []
+        if missing_plan:
+            drift_reasons.append(f"快照引用的计划文件不存在：{plan_path}")
         try:
-            if sha256_file(plan_path) != attestation.get("plan_sha256"):
-                warn(warnings, f"{path}: {plan_name} 计划文件 hash 已变化，需要人工复核")
-                drifted = True
+            if not missing_plan and sha256_file(plan_path) != attestation.get("plan_sha256"):
+                drift_reasons.append(f"{plan_name} 计划文件 hash 已变化，需要人工复核")
             if sha256_file(plan_map_path) != attestation.get("plan_map_sha256"):
-                warn(warnings, f"{path}: PLAN_MAP.md hash 已变化，需要人工复核")
-                drifted = True
+                drift_reasons.append("PLAN_MAP.md hash 已变化，需要人工复核")
         except OSError as exc:
             if not scoped_checks:
                 raise
             # 内容不可读不使已存在的替代目标消失，也不阻止后续绑定报告。
             attestation_issue(warnings, errors, strict, f"{path}: 混合快照内容读取失败：{exc}")
-            drifted = True
+            drift_reasons.append(f"快照内容读取失败：{exc}")
         records.append(
             {
                 "path": path,
@@ -1664,10 +1699,12 @@ def warn_attestation_drift(warnings, root, plans, errors=None, strict=False, rep
                 "purpose": purpose,
                 "review_status": review_status,
                 "supersedes": normalized_supersedes,
-                "drifted": drifted,
+                "drifted": bool(drift_reasons),
                 "legacy": legacy,
                 "invalid_structure": invalid_structure,
                 "bound": False,
+                "plan_path": plan_path,
+                "drift_reasons": drift_reasons,
             }
         )
 
@@ -1739,6 +1776,9 @@ def warn_attestation_drift(warnings, root, plans, errors=None, strict=False, rep
             key = (record["plan"], record["purpose"])
             current_by_key.setdefault(key, []).append(record["relative_path"])
         record["effective_status"] = effective
+        if effective != "superseded":
+            for reason in record.get("drift_reasons", []):
+                warn(warnings, f"{record['path']}: {reason}")
 
     for key, paths in current_by_key.items():
         if len(paths) > 1:
@@ -1835,6 +1875,9 @@ def plan_index_issues(plan_map_text):
         if not link:
             issues.append(f"计划索引第 {row_index} 行缺少计划链接，无法安全派生工作集")
             continue
+        path_issue = plan_link_issue(link)
+        if path_issue:
+            issues.append(f"计划索引第 {row_index} 行路径无效：{path_issue}")
         name = Path(link).stem
         if name in seen:
             issues.append(f"计划索引存在重复计划 ID：{name}")
@@ -2128,7 +2171,9 @@ def validate_relation_evidence(evidence, plans, row_label):
     """仅校验 Markdown 链接形式的相对证据路径；纯文本运行记录保持兼容。"""
     if not evidence or not plans:
         return []
-    docs_root = next(iter(plans.values()))["path"].parent.parent
+    first_path = next(iter(plans.values()))["path"]
+    plans_dir = next((parent for parent in first_path.parents if parent.name == "plans"), None)
+    docs_root = plans_dir.parent if plans_dir else first_path.parent.parent
     errors = []
     for match in re.finditer(r"\]\(([^)#]+)(?:#[^)]+)?\)", evidence):
         target = match.group(1).strip()

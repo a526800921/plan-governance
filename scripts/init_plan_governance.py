@@ -4,7 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -60,7 +60,7 @@ def agent_rules_body():
 
 - 普通一次性任务直接处理；已有计划按共享 verification 验证。新旧计划均为普通改动自验，高风险或高影响同范围独立复核一次，修复后自验。
 - 只实施已授权、已准入的当前阶段。每个阶段有自身 Step 0、验证/完成和失败边界；未解决问题不能记为完成，不可用或超时不能冒充已检查。已有授权不重复索取，新增高影响外部动作按实际授权处理。
-- 首次读取 `docs/PLAN_MAP.md`、当前相关 `docs/plans/*.md` 及适用契约/ADR/migration；恢复先核对当前工作集、最近证据和实际 diff，缺失或冲突再展开。
+- 首次读取 `docs/PLAN_MAP.md`、索引登记的相关 `docs/plans/` 计划及适用契约/ADR/migration；恢复先核对当前工作集、最近证据和实际 diff，缺失或冲突再展开。
 - 地图维护状态、阶段、关系、阻塞与证据入口；计划记录本次差异及验证，现行契约优先复用 Schema/OpenAPI。新事实不写回历史草案，变化同步地图及相关引用。
 - 完成时按共享规范记录实际验证与适用用户验收，运行 `plan-governance-cli check .`；准入/CI/发布显式使用 `--strict-readiness`，机械通过不等于业务验收。
 """
@@ -113,9 +113,11 @@ def update_agent_rules(root):
     return [update_agents_md(root)]
 
 
-def plan_map_content(plan_slug, title, status, phase):
-    today = date.today().isoformat()
-    row = f"| [{title}](plans/{plan_slug}.md) | {status} | {phase} | {today} | - | - |"
+def plan_map_content(plan_slug, title, status, phase, created_on=None):
+    created_on = created_on or date.today()
+    today = created_on.isoformat()
+    plan_relative = f"plans/{created_on:%Y%m%d}/{plan_slug}.md"
+    row = f"| [{title}]({plan_relative}) | {status} | {phase} | {today} | - | - |"
     unfinished_row = row if status in {"候选", "设计中", "待实施", "实施中"} else ""
     completed_row = row if status == "已完成" else ""
     deprecated_row = row if status in {"已废弃", "已替代", "已合并"} else ""
@@ -128,13 +130,13 @@ def plan_map_content(plan_slug, title, status, phase):
 ## 文档权责
 
 - `docs/PLAN_MAP.md` 是状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接的事实源。
-- `docs/plans/*.md` 记录本次行为差异、阶段、Step 0 和验收；现行契约优先引用已有 Schema/OpenAPI，无合适来源且需长期维护时才按需建立 `docs/specs/*.md`。同一事实不重复维护。
+- `docs/plans/YYYYMMDD/*.md` 默认记录新计划的行为差异、阶段、Step 0 和验收；旧式 `docs/plans/*.md` 计划继续兼容读取。现行契约优先引用已有 Schema/OpenAPI，无合适来源且需长期维护时才按需建立 `docs/specs/*.md`。同一事实不重复维护。
 - 总路线图、优先级计划和索引只记录顺序、状态摘要和专项计划链接，不复制字段级方案、枚举、Step 0 细节或完成定义。
 - 当专项计划变化时，必须同步所有引用该计划的路线图、优先级计划或索引。
 - 如果同一事实在多个文档中重复，保留一个事实源，其他文档改为链接引用。
 - `PLAN_MAP.md` 的 `状态` 是计划级生命周期，`当前阶段` 是阶段身份指针；阶段 N 完成后，阶段 N+1 默认保持 `设计中`。
 - 阶段准入摘要、样本矩阵和独立复核记录只写入专项计划，不复制到本索引。
-- 启用治理后，已有草案、历史设计、归档计划和临时分析文档默认只作为背景材料，不再作为规范事实源；后续新规范默认进入 `docs/plans/*.md`、ADR、migration、正式 spec 或 `docs/PLAN_MAP.md`。
+- 启用治理后，已有草案、历史设计、归档计划和临时分析文档默认只作为背景材料，不再作为规范事实源；后续新规范默认进入 `docs/plans/YYYYMMDD/*.md`、ADR、migration、正式 spec 或 `docs/PLAN_MAP.md`。
 - 计划索引固定分为 `未完成`、`已完成`、`已废弃` 三张表；`已替代`、`已合并`等不再推进的终态归入 `已废弃` 表，但保留真实状态值。
 
 ## 计划索引
@@ -223,8 +225,20 @@ def docs_warnings(root):
     if not (root / "docs" / "PLAN_MAP.md").exists():
         warnings.append("缺少 docs/PLAN_MAP.md")
     plans_dir = root / "docs" / "plans"
-    if not plans_dir.exists() or not any(plans_dir.glob("*.md")):
-        warnings.append("缺少 docs/plans/*.md")
+    dated_plans = False
+    if plans_dir.exists():
+        for child in plans_dir.iterdir():
+            if not (child.is_dir() and re.fullmatch(r"\d{8}", child.name)):
+                continue
+            try:
+                datetime.strptime(child.name, "%Y%m%d")
+            except ValueError:
+                continue
+            if any(child.glob("*.md")):
+                dated_plans = True
+                break
+    if not plans_dir.exists() or (not any(plans_dir.glob("*.md")) and not dated_plans):
+        warnings.append("缺少 docs/plans 下的平铺或 YYYYMMDD 日期目录计划")
     return warnings
 
 
@@ -349,14 +363,15 @@ def main(argv=None):
 
     docs = root / "docs"
     plan_map = docs / "PLAN_MAP.md"
-    plan_file = docs / "plans" / f"{plan_slug}.md"
+    created_on = date.today()
+    plan_file = docs / "plans" / created_on.strftime("%Y%m%d") / f"{plan_slug}.md"
 
     created = []
     git_dir = init_git(root)
     if git_dir is not None:
         created.append(git_dir)
 
-    write_file(plan_map, plan_map_content(plan_slug, title, args.status, args.phase), args.force)
+    write_file(plan_map, plan_map_content(plan_slug, title, args.status, args.phase, created_on), args.force)
     created.append(plan_map)
     write_file(plan_file, plan_content(plan_slug, title, args.status, args.phase, args.goal), args.force)
     created.append(plan_file)

@@ -2,7 +2,7 @@
 
 结论：**通过，达到阶段 4 待实施标准。** 当前准入阻塞项：无。本结论仅为准入，不是完成验收。
 
-- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md)，阶段 4。
+- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md)，阶段 4。
 - 复核者：`/root/iterative_stage4_gate`，新上下文独立只读 subagent，未参与实现或写文件；主任务根据返回结果落档。
 - Revision：`336b728d7dacc335a35f2cf97ab39356e3a82ba0` 加混合工作树。
 - 范围：可选文件绑定、完整行投影/必要依赖闭包、兼容与替代关系、A01—A16、验证与回滚、阶段和宿主边界。

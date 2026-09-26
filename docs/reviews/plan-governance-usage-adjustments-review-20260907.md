@@ -5,7 +5,7 @@
 ## 范围与身份
 
 - 复核者：`/root/usage_adjustment_review`，本轮唯一独立规则复核者，未参与源规则实现或测试编写，未另派协作者。先完成有界设计准入，再复用其上下文完成本次走读与差异复核；不声称盲测。
-- 计划：[实际使用反馈与有界调整](../plans/plan-governance-workflow-streamlining.md#实际使用反馈与有界调整2026-09-07)。本轮设计准入结论为“通过：U1—U5 的有界设计增量可实施，未发现设计阻塞”。
+- 计划：[实际使用反馈与有界调整](../plans/20260906/plan-governance-workflow-streamlining.md#实际使用反馈与有界调整2026-09-07)。本轮设计准入结论为“通过：U1—U5 的有界设计增量可实施，未发现设计阻塞”。
 - 受审身份：HEAD `f8c6e3728df4b4dae33b951fe003e487062f7dd9` 加 `resources/skill/references/{planning,verification,cli}.md` 的实际差异；源指纹已由独立者重算并与[本次验证记录](../fixtures/plan-governance-workflow-streamlining-cases.md#2026-09-07-使用反馈增量验证)逐一一致。SKILL、checker、JSON、模板、manifest、初始化器、Node CLI 和 package/lock 没有本次实现差异。
 - 规范读取采用本轮开始时实际发现的已安装 skill 及其同源规则；仓库三份参考是受审对象。未把同版本但不同内容的开发规则与 npm CLI 规则混为一份事实源。
 

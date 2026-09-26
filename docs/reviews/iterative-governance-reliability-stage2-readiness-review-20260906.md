@@ -2,7 +2,7 @@
 
 结论：**通过，达到阶段 2 待实施标准。** 当前准入阻塞：无。仅准入本阶段实现，不代表实现或发布验收通过。
 
-- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md)，阶段 2。
+- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md)，阶段 2。
 - 复核者：`/root/iterative_stage2_gate`，新上下文独立只读 subagent，未实施、未修改工作区；主任务按返回结果落档。
 - Revision：`336b728d7dacc335a35f2cf97ab39356e3a82ba0` 加派发时混合工作树。
 - 范围：统一三节点验证集合、解释器发现、退出分层、发布/恢复控制流、完整目标矩阵、隔离和回滚边界、完成条件及引用。

@@ -3,7 +3,7 @@
 结论：**通过，达到阶段 1 待实施标准。** 当前无阶段 1 准入阻塞；不代表缺陷已修复，不放行其他阶段。
 
 - 日期：2026-09-06。
-- 计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md)，阶段 1。
+- 计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md)，阶段 1。
 - 复核者：`/root/iterative_stage1_gate`，新上下文独立只读 subagent，未参与实施、未修改工作区；主执行者按返回报告落档。
 - Revision：`336b728d7dacc335a35f2cf97ab39356e3a82ba0` 加派发时混合未提交工作树。
 - 范围：Step 0、22 类预期矩阵、默认/严格退出码、JSON 兼容、阻塞与复核派生、当前记录、hook 一致性、验证及回滚边界。
@@ -47,4 +47,4 @@
 2. 保持动态复用的测试 helper 输入，尤其 `design_unreviewed`；若需变更输入，记录新身份并追加结果，不沿用旧基线。
 3. 修改生产文件前同步影响范围、最新复核和地图。完整 pytest/npm、安装 smoke 及修复后的 hook 回归尚未执行。
 
-既有 [phase-local-review-dispatch](../plans/phase-local-review-dispatch.md#最新独立准入复核) 阶段 2 仍设计中，六类宿主输出缺失的失败复核有效。本次未执行实现、全套测试、安装、发布、attest 或外部操作。
+既有 [phase-local-review-dispatch](../plans/20260905/phase-local-review-dispatch.md#最新独立准入复核) 阶段 2 仍设计中，六类宿主输出缺失的失败复核有效。本次未执行实现、全套测试、安装、发布、attest 或外部操作。

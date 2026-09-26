@@ -10,7 +10,7 @@
 2. 完成快照和 hash 认证：检测已完成计划的后续漂移。
 3. 作用域匹配增强：让 hooks 和 drift 检查只关注与当前变更相关的活跃计划。
 
-本计划依赖已完成的 [stale-plan-detection](stale-plan-detection.md)、[plan-drift-check-enhancements](plan-drift-check-enhancements.md) 和 [independent-acceptance-rules](independent-acceptance-rules.md)。
+本计划依赖已完成的 [stale-plan-detection](../20260705/stale-plan-detection.md)、[plan-drift-check-enhancements](../20260705/plan-drift-check-enhancements.md) 和 [independent-acceptance-rules](../20260704/independent-acceptance-rules.md)。
 
 ## 目标
 
@@ -359,6 +359,6 @@ rg -n "草案为准|以草案为事实源|详见草案|draft is source|source of
 ## 关联 ADR、迁移、spec 或 issue
 
 - 外部参考：`planning-with-files` hooks 和 attestation 设计。
-- 依赖计划：[stale-plan-detection](stale-plan-detection.md)
-- 依赖计划：[plan-drift-check-enhancements](plan-drift-check-enhancements.md)
-- 依赖计划：[independent-acceptance-rules](independent-acceptance-rules.md)
+- 依赖计划：[stale-plan-detection](../20260705/stale-plan-detection.md)
+- 依赖计划：[plan-drift-check-enhancements](../20260705/plan-drift-check-enhancements.md)
+- 依赖计划：[independent-acceptance-rules](../20260704/independent-acceptance-rules.md)

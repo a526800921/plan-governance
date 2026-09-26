@@ -6,7 +6,7 @@
 
 本计划将该分析文档收敛为正式实施计划。原分析文档仅作为背景材料，不作为规范事实源；本计划记录阶段范围、完成条件和验证方式。
 
-本计划依赖已完成的独立验收规则：[independent-acceptance-rules](independent-acceptance-rules.md)。该计划明确实施者记录的状态和证据不是验收结论，阶段 2 的 warning 级检查也必须保留人工复核边界。
+本计划依赖已完成的独立验收规则：[independent-acceptance-rules](../20260704/independent-acceptance-rules.md)。该计划明确实施者记录的状态和证据不是验收结论，阶段 2 的 warning 级检查也必须保留人工复核边界。
 
 ## 目标
 
@@ -176,4 +176,4 @@
 
 ## 关联 ADR、迁移、spec 或 issue
 
-- 背景分析：[docs/plan-governance-optimization-analysis.md](../plan-governance-optimization-analysis.md)
+- 背景分析：[docs/plan-governance-optimization-analysis.md](../../plan-governance-optimization-analysis.md)

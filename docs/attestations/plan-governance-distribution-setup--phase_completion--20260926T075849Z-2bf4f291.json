@@ -1,0 +1,16 @@
+{
+  "plan": "plan-governance-distribution-setup",
+  "phase": "阶段 3",
+  "status": "已完成",
+  "plan_path": "docs/plans/20260713/plan-governance-distribution-setup.md",
+  "plan_map_path": "docs/PLAN_MAP.md",
+  "plan_sha256": "85cf6435640027eb6581edada36272a34f3ec02b4cd51bf5152673ea732b2f1c",
+  "plan_map_sha256": "5eeeed389401838b4fe20405ee407d2b515727b0ad4ae595051f134f5b8e7873",
+  "created_at": "2026-09-26T07:58:49Z",
+  "created_by": "plan-governance",
+  "reason": "阶段完成快照",
+  "purpose": "phase_completion",
+  "snapshot_id": "20260926T075849Z-2bf4f291",
+  "supersedes": "docs/attestations/plan-governance-distribution-setup--phase_completion--20260926T073725Z-13605c5c.json",
+  "review_status": "current"
+}

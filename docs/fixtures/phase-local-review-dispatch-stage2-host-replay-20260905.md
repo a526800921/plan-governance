@@ -5,7 +5,7 @@
 - 日期：2026-09-05
 - 目标宿主：当前 Codex 会话
 - 被审查 revision：`HEAD 336b728` 加当前未提交工作树
-- 规则源：[phase-local-review-dispatch](../plans/phase-local-review-dispatch.md)
+- 规则源：[phase-local-review-dispatch](../plans/20260905/phase-local-review-dispatch.md)
 - 资源源：[plan-governance skill](../../resources/skill/SKILL.md)
 
 当前宿主已观察到的能力入口：

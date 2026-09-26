@@ -1,6 +1,6 @@
 # 持续迭代治理优化：阶段 0 命令入口基线
 
-所属计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md#阶段-0-技术收敛)。本文只承载输入、命令、当前观察和复现边界；目标行为由专项计划定义，不在本文件复制新的规范。
+所属计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md#阶段-0-技术收敛)。本文只承载输入、命令、当前观察和复现边界；目标行为由专项计划定义，不在本文件复制新的规范。
 
 ## 基线身份与限制
 

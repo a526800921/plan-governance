@@ -20,7 +20,7 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
-| [example-plan](plans/example-plan.md) | 候选 | 阶段 0 | <YYYY-MM-DD> | - | - |
+| [example-plan](plans/YYYYMMDD/example-plan.md) | 候选 | 阶段 0 | <YYYY-MM-DD> | - | - |
 
 ### 已完成
 

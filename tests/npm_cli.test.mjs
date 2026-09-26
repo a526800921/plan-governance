@@ -361,6 +361,11 @@ test("package manifest contains the distributable skill resources", () => {
   for (const resource of manifest.skill.files) {
     accessSync(resolve(root, resource), constants.R_OK);
   }
+  assert.equal(manifest.additionalSkills.length, 1);
+  assert.equal(manifest.additionalSkills[0].name, "plan-governance-migration");
+  for (const resource of manifest.additionalSkills[0].files) {
+    accessSync(resolve(root, resource), constants.R_OK);
+  }
   const skill = readFileSync(resolve(root, "resources", "skill", "SKILL.md"), "utf8");
   const agent = readFileSync(resolve(root, "resources", "skill", "agents", "openai.yaml"), "utf8");
   const planTemplate = readFileSync(resolve(root, "resources", "skill", "assets", "plan.template.md"), "utf8");
@@ -406,7 +411,8 @@ test("packed package runs from a temporary installation", () => {
     const manifest = JSON.parse(manifestBytes.toString("utf8"));
     assert.ok(manifest.skill.files.includes("resources/skill/assets/spec.template.md"));
     const sourceResources = new Map(
-      [...manifest.skill.files, ...manifest.runtime].map((resource) => [resource, readFileSync(resolve(root, resource))]),
+      [...manifest.skill.files, ...manifest.additionalSkills.flatMap((skill) => skill.files), ...manifest.runtime]
+        .map((resource) => [resource, readFileSync(resolve(root, resource))]),
     );
     const packed = spawnSync("npm", ["pack", "--json", "--pack-destination", tempRoot], npmOptions);
     assert.equal(packed.status, 0, packed.error?.message || packed.stderr);
@@ -453,7 +459,8 @@ test("packed package runs from a temporary installation", () => {
       encoding: "utf8",
     });
     assert.equal(initialized.status, 0, initialized.stderr);
-    const plan = readFileSync(join(projectRoot, "docs", "plans", "installed-demo.md"), "utf8");
+    const planDate = readdirSync(join(projectRoot, "docs", "plans")).find((entry) => /^\d{8}$/.test(entry));
+    const plan = readFileSync(join(projectRoot, "docs", "plans", planDate, "installed-demo.md"), "utf8");
     assert.match(plan, /^## 需求探索$/m);
     assert.match(plan, /^### 阶段证据$/m);
     assert.match(plan, /^### 最近实施\/验证记录$/m);
@@ -544,16 +551,24 @@ test("packed package runs from a temporary installation", () => {
     assert.match(installedNext.stderr, /goal/);
 
     const destination = join(tempRoot, "codex", "skills", "plan-governance");
+    const migrationDestination = join(dirname(destination), "plan-governance-migration");
     const setupArgs = [installedCli, "setup", "--target", "codex", "--destination", destination];
     const dryRun = spawnSync(process.execPath, [...setupArgs, "--dry-run"], { cwd: root, encoding: "utf8" });
     assert.equal(dryRun.status, 0, dryRun.stderr);
     assert.equal(existsSync(destination), false);
+    assert.equal(existsSync(migrationDestination), false);
 
     const synced = spawnSync(process.execPath, setupArgs, { cwd: root, encoding: "utf8" });
     assert.equal(synced.status, 0, synced.stderr);
     for (const resource of manifest.skill.files) {
       const relative = resource.slice("resources/skill/".length);
       assert.deepEqual(readFileSync(join(destination, relative)), sourceResources.get(resource), resource);
+    }
+    for (const skill of manifest.additionalSkills) {
+      for (const resource of skill.files) {
+        const relative = resource.slice(skill.prefix.length);
+        assert.deepEqual(readFileSync(join(migrationDestination, relative)), sourceResources.get(resource), resource);
+      }
     }
     assert.equal(existsSync(join(destination, "scripts")), false);
 
@@ -576,10 +591,12 @@ test("packed package runs from a temporary installation", () => {
 test("setup supports dry-run, sync, and conflict protection", () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "plan-governance-setup-"));
   const destination = join(tempRoot, "codex", "skills", "plan-governance");
+  const migrationDestination = join(dirname(destination), "plan-governance-migration");
   try {
     const help = spawnSync(process.execPath, [cli, "setup", "--help"], { cwd: root, encoding: "utf8" });
     assert.equal(help.status, 0, help.stderr);
     assert.match(help.stdout, /setup --target codex/);
+    assert.match(help.stdout, /迁移 skill/);
     assert.doesNotMatch(help.stdout, /claude|\|all/);
 
     const missingTarget = spawnSync(process.execPath, [cli, "setup", "--destination", destination], {
@@ -600,6 +617,28 @@ test("setup supports dry-run, sync, and conflict protection", () => {
       assert.equal(existsSync(destination), false);
     }
 
+    const collidingDestination = join(tempRoot, "collision", "skills", "plan-governance-migration");
+    const colliding = spawnSync(process.execPath, [cli, "setup", "--target", "codex", "--destination", collidingDestination], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(colliding.status, 1);
+    assert.match(colliding.stderr, /skill 目标目录重叠/);
+    assert.equal(existsSync(collidingDestination), false);
+
+    const migrationSkill = join(migrationDestination, "SKILL.md");
+    mkdirSync(migrationDestination, { recursive: true });
+    writeFileSync(migrationSkill, "保留的迁移 skill 本地内容\n", "utf8");
+    const preflightConflict = spawnSync(process.execPath, [cli, "setup", "--target", "codex", "--destination", destination], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.notEqual(preflightConflict.status, 0);
+    assert.match(preflightConflict.stderr, /目标文件存在本地差异/);
+    assert.equal(existsSync(destination), false);
+    assert.equal(readFileSync(migrationSkill, "utf8"), "保留的迁移 skill 本地内容\n");
+    rmSync(migrationDestination, { recursive: true, force: true });
+
     const dryRun = spawnSync(process.execPath, [cli, "setup", "--target", "codex", "--destination", destination, "--dry-run"], {
       cwd: root,
       encoding: "utf8",
@@ -615,6 +654,7 @@ test("setup supports dry-run, sync, and conflict protection", () => {
     assert.equal(synced.status, 0, synced.stderr);
     assert.match(synced.stdout, /已同步/);
     assert.equal(readFileSync(join(destination, "SKILL.md"), "utf8"), readFileSync(join(root, "resources/skill/SKILL.md"), "utf8"));
+    assert.equal(readFileSync(join(migrationDestination, "SKILL.md"), "utf8"), readFileSync(join(root, "resources/migration-skill/SKILL.md"), "utf8"));
     assert.equal(existsSync(join(destination, "scripts")), false);
 
     const skillPath = join(destination, "SKILL.md");
@@ -650,7 +690,8 @@ test("init uses the package initializer without copying a local checker by defau
     ], { cwd: root, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(existsSync(join(projectRoot, "docs", "PLAN_MAP.md")), true);
-    assert.equal(existsSync(join(projectRoot, "docs", "plans", "demo-plan.md")), true);
+    const planDate = readdirSync(join(projectRoot, "docs", "plans")).find((entry) => /^\d{8}$/.test(entry));
+    assert.equal(existsSync(join(projectRoot, "docs", "plans", planDate, "demo-plan.md")), true);
     assert.equal(existsSync(join(projectRoot, "scripts", "check_plan_governance.py")), false);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });

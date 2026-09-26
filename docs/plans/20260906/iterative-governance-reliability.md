@@ -4,7 +4,7 @@
 
 2026-09-05，用户希望评估本项目作为类似 SDD 的 vibe coding 持续迭代规范，在流程、门禁、文档职责和目录结构方面的改进空间。只读评审确认现有阶段准入、Step 0、独立复核和事实源分层值得保留，同时发现严格检查漏检、恢复摘要失真、验证入口分离及长期契约入口不清等问题。用户随后要求创建优化计划，2026-09-06 继续完成立项。
 
-本计划承接这次评审，不重开已完成的优化计划。计划级状态、当前阶段、依赖和阻塞索引以 [PLAN_MAP](../PLAN_MAP.md) 为准；本文件承载优化范围、候选方案、阶段验证和验收条件。
+本计划承接这次评审，不重开已完成的优化计划。计划级状态、当前阶段、依赖和阻塞索引以 [PLAN_MAP](../../PLAN_MAP.md) 为准；本文件承载优化范围、候选方案、阶段验证和验收条件。
 
 ## 目标
 
@@ -76,10 +76,10 @@
 
 | 既有计划 | 本计划的关系 |
 |---|---|
-| [phase-entry-gate-hardening](phase-entry-gate-hardening.md) | 沿用阶段准入和默认/严格模式边界，新增可复现漏检修复，不改写历史验收 |
-| [plan-governance-operability-optimization](plan-governance-operability-optimization.md) | 沿用工作集、阶段关系及证据生命周期，后续变更其公共输出必须先明确兼容契约 |
-| [plan-governance-distribution-setup](plan-governance-distribution-setup.md) | 本计划负责验证入口一致性；实际 npm 发布和安装同步仍遵循既有分发流程及授权 |
-| [phase-local-review-dispatch](phase-local-review-dispatch.md) | 其阶段 2 继续负责宿主创建/等待/结果消费及六类回放；本计划读取其失败样本，不接管或解除其阻塞。涉及复核修复循环的规范变更，先协调该计划，再审查共同规则 |
+| [phase-entry-gate-hardening](../20260713/phase-entry-gate-hardening.md) | 沿用阶段准入和默认/严格模式边界，新增可复现漏检修复，不改写历史验收 |
+| [plan-governance-operability-optimization](../20260810/plan-governance-operability-optimization.md) | 沿用工作集、阶段关系及证据生命周期，后续变更其公共输出必须先明确兼容契约 |
+| [plan-governance-distribution-setup](../20260713/plan-governance-distribution-setup.md) | 本计划负责验证入口一致性；实际 npm 发布和安装同步仍遵循既有分发流程及授权 |
+| [phase-local-review-dispatch](../20260905/phase-local-review-dispatch.md) | 其阶段 2 继续负责宿主创建/等待/结果消费及六类回放；本计划读取其失败样本，不接管或解除其阻塞。涉及复核修复循环的规范变更，先协调该计划，再审查共同规则 |
 
 阶段 0 的只读分析可以与宿主回放并行。未来修改共同的检查器、skill、模板、生成器、代理入口、测试或地图前，先在地图明确写入次序；不因共享文件就把整个计划变成宿主回放的硬依赖。
 
@@ -166,7 +166,7 @@
 
 ### B03 阶段 0 替代集成基线
 
-完整复现从单函数扩展到 Python CLI 的参数解析、`main`、默认/严格退出码及工作集 JSON，使用虚拟文件系统，不替换业务校验函数。十一类样本和执行命令见 [阶段 0 样本](../fixtures/iterative-governance-reliability-stage0-cases.md)。当前仓库另用真实 Node 入口执行治理和工作集查询。
+完整复现从单函数扩展到 Python CLI 的参数解析、`main`、默认/严格退出码及工作集 JSON，使用虚拟文件系统，不替换业务校验函数。十一类样本和执行命令见 [阶段 0 样本](../../fixtures/iterative-governance-reliability-stage0-cases.md)。当前仓库另用真实 Node 入口执行治理和工作集查询。
 
 这是阶段 0 的替代集成基线：避免在契约收敛前创建或安装测试产物。它覆盖 Python 命令入口，不等价于真实临时目录中的 Node→Python 全链路、完整 pytest 或 npm 套件。阶段 1 实施前须用实际文件样本再确认 CLI 参数透传、返回码及无写入边界；不得把本次十一项回放称为完整端到端通过。
 
@@ -215,7 +215,7 @@ tests/fixtures/            # 可执行测试输入，避免与文档样本重复
 
 ## 阶段 0 完成证据
 
-2026-09-06 独立复核确认：达到阶段 0 `待实施` 标准，阶段 0 设计交付完成；[报告与被审查内容指纹](../reviews/iterative-governance-reliability-stage0-readiness-review-20260906.md)。下列记录保留为阶段 0 过程，阶段 1 的当前准入见 [当前阶段](#当前阶段)。
+2026-09-06 独立复核确认：达到阶段 0 `待实施` 标准，阶段 0 设计交付完成；[报告与被审查内容指纹](../../reviews/iterative-governance-reliability-stage0-readiness-review-20260906.md)。下列记录保留为阶段 0 过程，阶段 1 的当前准入见 [当前阶段](#当前阶段)。
 
 ### 范围
 
@@ -247,11 +247,11 @@ tests/fixtures/            # 可执行测试输入，避免与文档样本重复
 
 | 编号 | 当前观察 | 证据入口 |
 |---|---|---|
-| E01 | 合法准入样本与必填值全部清空的样本均未得到严格校验错误；仅摘要声明阻塞时 `has_current_blocker` 为 false | [最小只读复现](#最小只读复现)、[检查器](../../scripts/check_plan_governance.py) |
-| E02 | `phase-local-review-dispatch` 阶段 2 正文已有回放缺口与失败复核，工作集仍输出空阻塞、空最近证据及 `independent_review` | [真实计划](phase-local-review-dispatch.md#阶段准入摘要)、[最新复核](phase-local-review-dispatch.md#最新独立准入复核)、[验证方式](#验证方式) |
-| E03 | CI 运行 Python 测试和普通治理检查；发布前运行 npm 测试，集合不同 | [CI](../../.github/workflows/ci.yml)、[发布脚本](../../scripts/release_npm.mjs)、[package.json](../../package.json) |
-| E04 | 文档权责允许 spec/Schema，但目录和模板的默认入口主要围绕计划；长期契约与变更记录的迁移规则待设计 | [skill](../../resources/skill/SKILL.md)、[计划模板](../../resources/skill/assets/plan.template.md) |
-| E05 | attestation 记录整份计划和地图 hash，未直接绑定实现范围；2026-09-05 评审观察到四份旧快照为 needs_review | [快照实现](../../scripts/check_plan_governance.py)、`docs/attestations/`；后续验收须重查 |
+| E01 | 合法准入样本与必填值全部清空的样本均未得到严格校验错误；仅摘要声明阻塞时 `has_current_blocker` 为 false | [最小只读复现](#最小只读复现)、[检查器](../../../scripts/check_plan_governance.py) |
+| E02 | `phase-local-review-dispatch` 阶段 2 正文已有回放缺口与失败复核，工作集仍输出空阻塞、空最近证据及 `independent_review` | [真实计划](../20260905/phase-local-review-dispatch.md#阶段准入摘要)、[最新复核](../20260905/phase-local-review-dispatch.md#最新独立准入复核)、[验证方式](#验证方式) |
+| E03 | CI 运行 Python 测试和普通治理检查；发布前运行 npm 测试，集合不同 | [CI](../../../.github/workflows/ci.yml)、[发布脚本](../../../scripts/release_npm.mjs)、[package.json](../../../package.json) |
+| E04 | 文档权责允许 spec/Schema，但目录和模板的默认入口主要围绕计划；长期契约与变更记录的迁移规则待设计 | [skill](../../../resources/skill/SKILL.md)、[计划模板](../../../resources/skill/assets/plan.template.md) |
+| E05 | attestation 记录整份计划和地图 hash，未直接绑定实现范围；2026-09-05 评审观察到四份旧快照为 needs_review | [快照实现](../../../scripts/check_plan_governance.py)、`docs/attestations/`；后续验收须重查 |
 
 #### 最小只读复现
 
@@ -287,7 +287,7 @@ PY
 | S04 文档结构 | 当前模板、README 与规则源 | `rg -n 'spec|Schema|阶段准入摘要|完成条件|测试覆盖率' README.md resources/skill/SKILL.md resources/skill/assets/plan.template.md` | 找到既有职责与固定结构，列出待设计差异 | 以新候选规范评价旧文档违规，或重复建事实源 | 标准输出；E04 |
 | S05 证据生命周期 | 当前四份旧快照 | `PYTHONDONTWRITEBYTECODE=1 node bin/plan-governance-cli.mjs check . --check-attestations` | 记录实际漂移与有效状态，普通历史漂移不构成实现失败 | 覆盖旧快照、把 warning 清空当验收，或未经复核宣称 current | 标准输出；E05 |
 
-扩充的十一类 Python 命令入口样本已经固定于 [阶段 0 样本](../fixtures/iterative-governance-reliability-stage0-cases.md)，包含合法对照、空值、两种单一来源阻塞、开放/未知状态、重复 ID、失败复核、两种当前记录标题和旧设计计划。阶段 1 准入前还须补齐真实文件系统 CLI、跨来源冲突、已解决状态、复核历史/当前阶段冲突和重复字段反例。
+扩充的十一类 Python 命令入口样本已经固定于 [阶段 0 样本](../../fixtures/iterative-governance-reliability-stage0-cases.md)，包含合法对照、空值、两种单一来源阻塞、开放/未知状态、重复 ID、失败复核、两种当前记录标题和旧设计计划。阶段 1 准入前还须补齐真实文件系统 CLI、跨来源冲突、已解决状态、复核历史/当前阶段冲突和重复字段反例。
 
 ### 阶段证据
 
@@ -300,7 +300,7 @@ PY
 |---|---|---|---|---|---|
 | 2026-09-06 | 只读基线 | 严格治理检查返回 0；工作集仍重现 E02；纯内存回放重现 E01 | [Step 0](#step-0-证据)、[最小复现](#最小只读复现) | 观察完成，缺陷未修复 | Codex |
 | 2026-09-06 | 立项文档验证 | 普通/严格/停滞检查及 git diff --check 通过；本计划本地链接和锚点有效；workset 正确列出本计划 B01—B03。drift 返回 0，保留一条跨计划地图行无法唯一归属的 WARNING | [验证方式](#验证方式)；命令标准输出 | 立项验证通过，阶段准入未完成 | Codex |
-| 2026-09-06 | 需求探索与基线扩充 | 用户确认兼容优先及 CI/发布显式严格检查；十一类 Python CLI 入口样本重现漏检与合法对照，记录内容 hash 和替代基线限制 | [技术收敛](#阶段-0-技术收敛)、[样本](../fixtures/iterative-governance-reliability-stage0-cases.md) | 待独立准入复核 | Codex |
+| 2026-09-06 | 需求探索与基线扩充 | 用户确认兼容优先及 CI/发布显式严格检查；十一类 Python CLI 入口样本重现漏检与合法对照，记录内容 hash 和替代基线限制 | [技术收敛](#阶段-0-技术收敛)、[样本](../../fixtures/iterative-governance-reliability-stage0-cases.md) | 待独立准入复核 | Codex |
 
 ### 验证方式
 
@@ -333,7 +333,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ## 阶段 1 完成证据
 
-2026-09-06 [独立完成重审通过](../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过)，D01 解除，阶段 1 关闭。以下保留阶段 1 实施与验证过程；阶段 2 不自动准入。
+2026-09-06 [独立完成重审通过](../../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过)，D01 解除，阶段 1 关闭。以下保留阶段 1 实施与验证过程；阶段 2 不自动准入。
 
 ### 范围
 
@@ -344,12 +344,12 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 已完成 |
-| Step 0 | [真实 CLI 基线](../fixtures/iterative-governance-reliability-stage1-cli-cases.md#实际结果)：22 样本、88 调用，修复前输入 hash 不变且临时目录清理 |
+| Step 0 | [真实 CLI 基线](../../fixtures/iterative-governance-reliability-stage1-cli-cases.md#实际结果)：22 样本、88 调用，修复前输入 hash 不变且临时目录清理 |
 | 样本矩阵 | [阶段 1 行为契约](#阶段-1-行为契约)及真实文件样本 |
 | 验证方式 | [阶段 1 验证方式](#阶段-1-验证方式) |
 | 失败/回滚边界 | [风险和回滚](#风险和回滚)，基线只使用本次创建的临时目录 |
 | 当前阻塞项 | 无；D01 经独立重审解除 |
-| 最新独立准入复核 | [阶段 1 独立准入：通过](../reviews/iterative-governance-reliability-stage1-readiness-review-20260906.md) |
+| 最新独立准入复核 | [阶段 1 独立准入：通过](../../reviews/iterative-governance-reliability-stage1-readiness-review-20260906.md) |
 
 下一动作：验证
 
@@ -390,7 +390,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 阶段 1 验证方式
 
-- 实盘基线：执行 [真实 CLI 样本](../fixtures/iterative-governance-reliability-stage1-cli-cases.md#可执行命令) 中命令块，对照上述修复后矩阵；输入无写入且临时目录清理。
+- 实盘基线：执行 [真实 CLI 样本](../../fixtures/iterative-governance-reliability-stage1-cli-cases.md#可执行命令) 中命令块，对照上述修复后矩阵；输入无写入且临时目录清理。
 - 针对性回归：`PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -p no:cacheprovider tests/test_check_plan_governance.py tests/test_plan_governance_hooks.py --no-cov`，覆盖空值、重复、跨来源、已解决/未知状态、失败/错位复核、当前/历史记录，以及 hook 一致性。
 - 全量验证：`PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -p no:cacheprovider`（保留仓库 85% 分支覆盖门禁）和 `npm test`（含临时包安装 smoke，允许只在本次测试临时目录安装并清理，不同步全局）。测试产生的本地覆盖率文件按原测试配置管理，不提交。
 - 治理及差异：本地 Node 入口普通/严格/stale/drift/workset、`git diff --check`、反向引用和草案事实源扫描；区分原有混合工作树告警与本次新增缺陷。不运行写入型 attest、发布或安装同步。
@@ -407,11 +407,11 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 | 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
 |---|---|---|---|---|---|
-| 2026-09-06 | 阶段转换 | 阶段 0 独立准入和设计交付通过，当前进入阶段 1 设计；实现尚未开始 | [阶段 0 复核](../reviews/iterative-governance-reliability-stage0-readiness-review-20260906.md) | 待本阶段 Step 0 | Codex |
-| 2026-09-06 | Step 0 实盘基线 | 22 类输入、88 次真实 Node→Python 调用完成，输入 hash 不变且临时目录清理；固定预期矩阵及状态语义 | [真实结果](../fixtures/iterative-governance-reliability-stage1-cli-cases.md#实际结果)、[行为契约](#阶段-1-行为契约) | 待独立准入 | Codex |
-| 2026-09-06 | 独立准入与实施 | 阶段 1 准入通过后新增失败回归，修复必填/重复结构、阻塞与复核派生；hook 复用检查器，CLI 启动器保持原样 | [准入报告](../reviews/iterative-governance-reliability-stage1-readiness-review-20260906.md)、本阶段源码及测试差异 | 实施声明，待独立完成复核 | Codex |
-| 2026-09-06 | 完整回归 | Python 199 passed，覆盖率 93.13%；npm 40/40，含临时安装 smoke；相同 22 类实盘输入符合修复后矩阵，输入不变且临时目录清理 | [修复后结果](../fixtures/iterative-governance-reliability-stage1-cli-cases.md#修复后回归结果)、[阶段 1 验证方式](#阶段-1-验证方式) | 验证通过，待独立完成复核 | Codex |
-| 2026-09-06 | D01 失败修复 | 第一轮独立完成复核发现示例动作误读；四类回归先全部失败，修复后 Python 203 passed/93.22%，npm 41/41 含新增 20 次真实 CLI/hook 回放；成功透传测试使用合法临时样本，真实仓库严格检查仍因待复核 D01 返回 1 | [第一轮报告](../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第一轮未通过)、新增 D01 回归 | 修复验证通过，阻塞保留至独立重审 | Codex |
+| 2026-09-06 | 阶段转换 | 阶段 0 独立准入和设计交付通过，当前进入阶段 1 设计；实现尚未开始 | [阶段 0 复核](../../reviews/iterative-governance-reliability-stage0-readiness-review-20260906.md) | 待本阶段 Step 0 | Codex |
+| 2026-09-06 | Step 0 实盘基线 | 22 类输入、88 次真实 Node→Python 调用完成，输入 hash 不变且临时目录清理；固定预期矩阵及状态语义 | [真实结果](../../fixtures/iterative-governance-reliability-stage1-cli-cases.md#实际结果)、[行为契约](#阶段-1-行为契约) | 待独立准入 | Codex |
+| 2026-09-06 | 独立准入与实施 | 阶段 1 准入通过后新增失败回归，修复必填/重复结构、阻塞与复核派生；hook 复用检查器，CLI 启动器保持原样 | [准入报告](../../reviews/iterative-governance-reliability-stage1-readiness-review-20260906.md)、本阶段源码及测试差异 | 实施声明，待独立完成复核 | Codex |
+| 2026-09-06 | 完整回归 | Python 199 passed，覆盖率 93.13%；npm 40/40，含临时安装 smoke；相同 22 类实盘输入符合修复后矩阵，输入不变且临时目录清理 | [修复后结果](../../fixtures/iterative-governance-reliability-stage1-cli-cases.md#修复后回归结果)、[阶段 1 验证方式](#阶段-1-验证方式) | 验证通过，待独立完成复核 | Codex |
+| 2026-09-06 | D01 失败修复 | 第一轮独立完成复核发现示例动作误读；四类回归先全部失败，修复后 Python 203 passed/93.22%，npm 41/41 含新增 20 次真实 CLI/hook 回放；成功透传测试使用合法临时样本，真实仓库严格检查仍因待复核 D01 返回 1 | [第一轮报告](../../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第一轮未通过)、新增 D01 回归 | 修复验证通过，阻塞保留至独立重审 | Codex |
 
 ### 阶段 1 覆盖与剩余边界
 
@@ -429,7 +429,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ## 阶段 2 完成证据
 
-2026-09-06，[独立完成验收通过](../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md)。以下保存本阶段行为契约与证据；当前推进位置见 [当前阶段](#当前阶段)。
+2026-09-06，[独立完成验收通过](../../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md)。以下保存本阶段行为契约与证据；当前推进位置见 [当前阶段](#当前阶段)。
 
 ### 范围
 
@@ -440,12 +440,12 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 已完成 |
-| Step 0 | [源码与内存替代基线](../fixtures/iterative-governance-reliability-stage2-verification-baseline.md)：已确认集合不一致、验证前切源以及部分切源失败漏恢复；新增入口不存在，采用当前控制流反例作为替代基线 |
+| Step 0 | [源码与内存替代基线](../../fixtures/iterative-governance-reliability-stage2-verification-baseline.md)：已确认集合不一致、验证前切源以及部分切源失败漏恢复；新增入口不存在，采用当前控制流反例作为替代基线 |
 | 样本矩阵 | [阶段 2 目标验证矩阵](#阶段-2-目标验证矩阵)，包含三个验证节点、解释器发现、参数、发布失败和恢复边界 |
 | 验证方式 | 实施后执行 `node --test tests/verification_release.test.mjs`、`npm run verify`、普通/严格治理及反向引用检查；实际发布路径仅用全部子进程替身回放 |
 | 失败/回滚边界 | 任一验证失败停止后续节点，切源尝试起保证 finally 恢复；恢复失败退出非零。失败不重试发布、不自动回滚版本文件。测试隔离与局限见行为契约；撤销仅限本阶段差异 |
 | 当前阻塞项 | 无 |
-| 最新独立准入复核 | [通过，达到阶段 2 待实施标准](../reviews/iterative-governance-reliability-stage2-readiness-review-20260906.md) |
+| 最新独立准入复核 | [通过，达到阶段 2 待实施标准](../../reviews/iterative-governance-reliability-stage2-readiness-review-20260906.md) |
 
 ### 实施步骤
 
@@ -491,12 +491,12 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 | 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
 |---|---|---|---|---|---|
-| 2026-09-06 | 阶段转换 | 阶段 1 独立完成重审通过，D01 解除；阶段 2 保持设计中 | [第二轮完成复核](../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过) | 阶段 1 已完成 | Codex |
-| 2026-09-06 | 只读替代基线 | CI 与发布验证集合不同；发布控制流三场景在内存回放，未执行真实子进程或修改 registry | [阶段 2 基线](../fixtures/iterative-governance-reliability-stage2-verification-baseline.md) | 待固定完整矩阵 | Codex |
-| 2026-09-06 | 落档复查 | 关闭阶段 1 后，普通/严格/stale/drift 均退出 0；严格 workset 派生本阶段 design/complete_step0，宿主计划仍 blocked | [完成复核落档检查](../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#落档后复查) | 结构兼容，阶段 2 未准入 | Codex |
-| 2026-09-06 | 独立准入 | 本阶段 Step 0、失败矩阵和边界通过；纳入候选文件后开始实现 | [阶段 2 准入](../reviews/iterative-governance-reliability-stage2-readiness-review-20260906.md) | 实施中 | /root/iterative_stage2_gate |
-| 2026-09-06 | 实施及完整验证 | verify/CI/release 采用同一三节点；切源尝试后保证恢复；57 项隔离回归通过，真实统一入口 Python 203/93.22%、Node 98/98 | [实施后证据](../fixtures/iterative-governance-reliability-stage2-verification-baseline.md#实施后验证) | 实施声明，待独立完成复核 | Codex、/root/stage2_failure_baseline |
-| 2026-09-06 | 独立完成验收 | 实际复跑完整 verify、核对矩阵/差异/引用，阶段 2 完成验收通过 | [阶段 2 完成报告](../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md) | 已完成 | /root/iterative_stage2_acceptance |
+| 2026-09-06 | 阶段转换 | 阶段 1 独立完成重审通过，D01 解除；阶段 2 保持设计中 | [第二轮完成复核](../../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过) | 阶段 1 已完成 | Codex |
+| 2026-09-06 | 只读替代基线 | CI 与发布验证集合不同；发布控制流三场景在内存回放，未执行真实子进程或修改 registry | [阶段 2 基线](../../fixtures/iterative-governance-reliability-stage2-verification-baseline.md) | 待固定完整矩阵 | Codex |
+| 2026-09-06 | 落档复查 | 关闭阶段 1 后，普通/严格/stale/drift 均退出 0；严格 workset 派生本阶段 design/complete_step0，宿主计划仍 blocked | [完成复核落档检查](../../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#落档后复查) | 结构兼容，阶段 2 未准入 | Codex |
+| 2026-09-06 | 独立准入 | 本阶段 Step 0、失败矩阵和边界通过；纳入候选文件后开始实现 | [阶段 2 准入](../../reviews/iterative-governance-reliability-stage2-readiness-review-20260906.md) | 实施中 | /root/iterative_stage2_gate |
+| 2026-09-06 | 实施及完整验证 | verify/CI/release 采用同一三节点；切源尝试后保证恢复；57 项隔离回归通过，真实统一入口 Python 203/93.22%、Node 98/98 | [实施后证据](../../fixtures/iterative-governance-reliability-stage2-verification-baseline.md#实施后验证) | 实施声明，待独立完成复核 | Codex、/root/stage2_failure_baseline |
+| 2026-09-06 | 独立完成验收 | 实际复跑完整 verify、核对矩阵/差异/引用，阶段 2 完成验收通过 | [阶段 2 完成报告](../../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md) | 已完成 | /root/iterative_stage2_acceptance |
 
 ### 完成条件
 
@@ -507,7 +507,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ## 阶段 3 完成证据
 
-2026-09-06 [独立完成验收通过](../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md)，阶段 3 关闭，不自动放行阶段 4。
+2026-09-06 [独立完成验收通过](../../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md)，阶段 3 关闭，不自动放行阶段 4。
 
 ### 范围
 
@@ -518,12 +518,12 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 已完成 |
-| Step 0 | [源码、三类旧技能独立走读和内存生成器基线](../fixtures/iterative-governance-reliability-stage3-document-cases.md)，补充受管区外尾部空白/CRLF 被改写的内存反例；不等价于生成/分发端到端 |
+| Step 0 | [源码、三类旧技能独立走读和内存生成器基线](../../fixtures/iterative-governance-reliability-stage3-document-cases.md)，补充受管区外尾部空白/CRLF 被改写的内存反例；不等价于生成/分发端到端 |
 | 样本矩阵 | [阶段 3 目标矩阵](#阶段-3-目标矩阵)，含三个主场景、失败复核变体与文档保持边界 |
 | 验证方式 | 当前样本文件的 pytest/npm/verify/skill 校验命令，独立新上下文行为后测和本地链接复查 |
 | 失败/回滚边界 | 仅变更本阶段规则/模板与分发回归；临时 init/upgrade/setup/pack/install 明确授权验证，不迁移旧 docs、不改 CLI/Schema/宿主调度、不全局安装或发布；失败保留阻塞，只撤销本阶段精确差异 |
 | 当前阻塞项 | 无 |
-| 最新独立准入复核 | [通过，达到阶段 3 待实施标准](../reviews/iterative-governance-reliability-stage3-readiness-review-20260906.md) |
+| 最新独立准入复核 | [通过，达到阶段 3 待实施标准](../../reviews/iterative-governance-reliability-stage3-readiness-review-20260906.md) |
 
 ### 阶段 3 行为契约
 
@@ -537,7 +537,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ### 阶段 3 目标矩阵
 
-所有命令和输出位置见[本阶段样本入口](../fixtures/iterative-governance-reliability-stage3-document-cases.md#实施后验证入口)。行为样本通过新上下文走读，机械一致性通过临时 init/upgrade/setup 和分发测试；二者分别记录。
+所有命令和输出位置见[本阶段样本入口](../../fixtures/iterative-governance-reliability-stage3-document-cases.md#实施后验证入口)。行为样本通过新上下文走读，机械一致性通过临时 init/upgrade/setup 和分发测试；二者分别记录。
 
 | 输入/基线 | 预期 | 失败判定 |
 |---|---|---|
@@ -568,12 +568,12 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 | 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
 |---|---|---|---|---|---|
-| 2026-09-06 | 阶段转换 | 阶段 2 独立完成通过；阶段 3 保持设计中，收敛自身材料 | [阶段 2 完成复核](../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md) | 待自身 Step 0 | Codex |
+| 2026-09-06 | 阶段转换 | 阶段 2 独立完成通过；阶段 3 保持设计中，收敛自身材料 | [阶段 2 完成复核](../../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md) | 待自身 Step 0 | Codex |
 | 2026-09-06 | 用户确认 | 用户选择按需独立契约，保留现有来源、小修改豁免和不迁移旧文档 | [需求探索](#需求探索) | 已确认职责取舍 | 用户 |
-| 2026-09-06 | 独立准入 | 文档职责/分流/分发矩阵通过；审查中补齐非受管区字节保护范围与基线 | [阶段 3 准入](../reviews/iterative-governance-reliability-stage3-readiness-review-20260906.md) | 实施中 | /root/iterative_stage3_gate |
-| 2026-09-06 | 实施与机械验证 | 规则/模板/manifest/受管规则同步；4 项旧失败修复；初始化 32、Node 单文件 11、完整 Python 208/93.15% 与 Node 98 通过 | [机械验证](../fixtures/iterative-governance-reliability-stage3-document-cases.md#实施后机械验证) | 实施声明，待独立完成验收 | Codex、/root/stage3_document_baseline |
-| 2026-09-06 | 独立行为后测 | 新上下文仅使用 skill/模板处理三个原始请求、失败复核变体与长期契约新样本，文档选择/停止判断符合目标 | [后测记录](../fixtures/iterative-governance-reliability-stage3-document-cases.md#独立新上下文行为后测) | 行为走读通过，非业务验收 | /root/stage3_forward_validation |
-| 2026-09-06 | 独立完成验收 | 复跑 verify、资源/受管字节/旧反例和引用检查，阶段 3 完成验收通过 | [阶段 3 完成报告](../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md) | 已完成 | /root/iterative_stage3_acceptance |
+| 2026-09-06 | 独立准入 | 文档职责/分流/分发矩阵通过；审查中补齐非受管区字节保护范围与基线 | [阶段 3 准入](../../reviews/iterative-governance-reliability-stage3-readiness-review-20260906.md) | 实施中 | /root/iterative_stage3_gate |
+| 2026-09-06 | 实施与机械验证 | 规则/模板/manifest/受管规则同步；4 项旧失败修复；初始化 32、Node 单文件 11、完整 Python 208/93.15% 与 Node 98 通过 | [机械验证](../../fixtures/iterative-governance-reliability-stage3-document-cases.md#实施后机械验证) | 实施声明，待独立完成验收 | Codex、/root/stage3_document_baseline |
+| 2026-09-06 | 独立行为后测 | 新上下文仅使用 skill/模板处理三个原始请求、失败复核变体与长期契约新样本，文档选择/停止判断符合目标 | [后测记录](../../fixtures/iterative-governance-reliability-stage3-document-cases.md#独立新上下文行为后测) | 行为走读通过，非业务验收 | /root/stage3_forward_validation |
+| 2026-09-06 | 独立完成验收 | 复跑 verify、资源/受管字节/旧反例和引用检查，阶段 3 完成验收通过 | [阶段 3 完成报告](../../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md) | 已完成 | /root/iterative_stage3_acceptance |
 
 ### 完成条件
 
@@ -584,7 +584,7 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 ## 当前阶段
 
-阶段 4 已于 2026-09-06 经[独立完成验收](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)关闭；阶段 0—4 均完成，当前阶段指针保留为阶段 4。以下契约和过程证据保留。
+阶段 4 已于 2026-09-06 经[独立完成验收](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)关闭；阶段 0—4 均完成，当前阶段指针保留为阶段 4。以下契约和过程证据保留。
 
 ### 范围
 
@@ -595,12 +595,12 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 字段 | 内容 |
 |---|---|
 | 准入状态 | 已完成 |
-| Step 0 | [阶段 4 源码与内存替代基线](../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#step-0-基线)：相关源码漏检和无关地图失效均复现；新 CLI 尚不存在 |
-| 样本矩阵 | [A01—A16](../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#目标矩阵)，含实际内容/依赖闭包/非法范围/生命周期/兼容与完整迭代 |
+| Step 0 | [阶段 4 源码与内存替代基线](../../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#step-0-基线)：相关源码漏检和无关地图失效均复现；新 CLI 尚不存在 |
+| 样本矩阵 | [A01—A16](../../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#目标矩阵)，含实际内容/依赖闭包/非法范围/生命周期/兼容与完整迭代 |
 | 验证方式 | 定向 Python/Node 回归、真实临时 CLI 回放、npm run verify、skill/链接/反向引用及既有快照 hash 保持；输出与指纹追加到样本和复核报告 |
 | 失败/回滚边界 | 新模式创建前失败不写快照；只读检查不修复快照；严格检查新模式失效时阻断。仅临时项目/Git/安装和现有覆盖产物；不发布、全局同步或改旧快照；撤销限本阶段精确差异 |
 | 当前阻塞项 | 无 |
-| 最新独立准入复核 | [通过，达到阶段 4 待实施标准](../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) |
+| 最新独立准入复核 | [通过，达到阶段 4 待实施标准](../../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) |
 
 ### 阶段 4 行为契约
 
@@ -641,21 +641,21 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 
 | 日期 | 类型 | 动作/结果 | 证据 | 状态 | 记录者 |
 |---|---|---|---|---|---|
-| 2026-09-06 | 阶段转换 | 阶段 3 独立完成验收通过，关闭；阶段 4 用户确认可选范围绑定 | [阶段 3 完成报告](../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md)、需求探索 | 设计中 | Codex、用户 |
-| 2026-09-06 | Step 0 | 真实函数四场景内存回放，源码变化 current、他计划日期变化 needs_review，strict 均无 error；实际写入 0 | [阶段 4 基线](../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#step-0-基线)，工具输出 81c0b9 | 替代基线，非新 CLI 验收 | Codex |
-| 2026-09-06 | 独立准入 | 本阶段完整契约/矩阵通过，明确存储结构与漂移、跨模式替代及失败清理边界 | [阶段 4 准入](../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) | 实施中 | /root/iterative_stage4_gate |
+| 2026-09-06 | 阶段转换 | 阶段 3 独立完成验收通过，关闭；阶段 4 用户确认可选范围绑定 | [阶段 3 完成报告](../../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md)、需求探索 | 设计中 | Codex、用户 |
+| 2026-09-06 | Step 0 | 真实函数四场景内存回放，源码变化 current、他计划日期变化 needs_review，strict 均无 error；实际写入 0 | [阶段 4 基线](../../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#step-0-基线)，工具输出 81c0b9 | 替代基线，非新 CLI 验收 | Codex |
+| 2026-09-06 | 独立准入 | 本阶段完整契约/矩阵通过，明确存储结构与漂移、跨模式替代及失败清理边界 | [阶段 4 准入](../../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) | 实施中 | /root/iterative_stage4_gate |
 | 2026-09-06 | 真实失败回归 | 两项临时CLI目标回归在旧checker因不支持新参数失败；旧实际2、目标0，未写快照 | 新测试原始输出 4393b9；A02/A03/A04 | 基线已固定 | /root/iterative_stage2_acceptance |
 | 2026-09-06 | 并行文档兼容 | 新出现后续减负计划，原状态词导致严格全仓检查失败；仅四个状态单元格改为规范“未解决” | check 输出 b3703f；后续计划/地图 B01、B02 | 阻塞事实保留，未放行后续计划 | Codex |
-| 2026-09-06 | 实施与完整验证 | 可选绑定/完整投影/生命周期及I/O边界落实；126项新增Python，源/安装包完整迭代；全量334/93.16%、Node99/99 | [阶段 4 实施后验证](../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#实施后验证) | 实施声明，待独立完成验收 | Codex、/root/iterative_stage2_acceptance |
-| 2026-09-06 | 独立完成验收 | 未通过：独立实盘发现 D02 目录不可读误放行及 D03 混合旧快照路径读取 | [第一轮未通过](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第一轮未通过) | D02/D03 阻塞，未关闭阶段 | /root/iterative_stage4_acceptance |
-| 2026-09-06 | 阻塞修复验证 | 显式枚举传播目录错误，混合旧分支先验路径；10 项新回归与全量 Python 344/93.19% 通过 | [D02/D03 重审材料](../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#d02d03-修复与重审材料) | 修复声明，D02/D03 仍待独立确认解除 | Codex、/root/iterative_stage2_acceptance |
-| 2026-09-06 | 独立修复重审 | D02/D03 可解除；新增 D04：普通计划文件不可读令混合旧分支异常退出 | [第二轮修复复核](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | D04 阻塞，尚非全计划完成 | /root/iterative_stage4_recheck |
-| 2026-09-06 | D04 修复验证 | 混合旧分支 hash 读取错误转诊断并保留替代记录；4 项真实权限正反回归，全绑定测试 140/140 | [D04 重审材料](../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#d04-修复与重审材料) | 修复声明，仍待独立解除 D04 | Codex |
+| 2026-09-06 | 实施与完整验证 | 可选绑定/完整投影/生命周期及I/O边界落实；126项新增Python，源/安装包完整迭代；全量334/93.16%、Node99/99 | [阶段 4 实施后验证](../../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#实施后验证) | 实施声明，待独立完成验收 | Codex、/root/iterative_stage2_acceptance |
+| 2026-09-06 | 独立完成验收 | 未通过：独立实盘发现 D02 目录不可读误放行及 D03 混合旧快照路径读取 | [第一轮未通过](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第一轮未通过) | D02/D03 阻塞，未关闭阶段 | /root/iterative_stage4_acceptance |
+| 2026-09-06 | 阻塞修复验证 | 显式枚举传播目录错误，混合旧分支先验路径；10 项新回归与全量 Python 344/93.19% 通过 | [D02/D03 重审材料](../../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#d02d03-修复与重审材料) | 修复声明，D02/D03 仍待独立确认解除 | Codex、/root/iterative_stage2_acceptance |
+| 2026-09-06 | 独立修复重审 | D02/D03 可解除；新增 D04：普通计划文件不可读令混合旧分支异常退出 | [第二轮修复复核](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | D04 阻塞，尚非全计划完成 | /root/iterative_stage4_recheck |
+| 2026-09-06 | D04 修复验证 | 混合旧分支 hash 读取错误转诊断并保留替代记录；4 项真实权限正反回归，全绑定测试 140/140 | [D04 重审材料](../../fixtures/iterative-governance-reliability-stage4-attestation-cases.md#d04-修复与重审材料) | 修复声明，仍待独立解除 D04 | Codex |
 
 
 ## 全计划完成证据
 
-2026-09-06，独立复核者 `/root/iterative_stage4_recheck` 基于当前工作树和可复现命令确认阶段 4 及全计划完成验收通过，[最终报告](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)。阶段 1 的门禁/恢复摘要、阶段 2 的统一 CI/发布验证、阶段 3 的按需契约与任务分流、阶段 4 的可选范围绑定均已完成；D01—D04 的失败历史及修复独立结论保留。
+2026-09-06，独立复核者 `/root/iterative_stage4_recheck` 基于当前工作树和可复现命令确认阶段 4 及全计划完成验收通过，[最终报告](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过)。阶段 1 的门禁/恢复摘要、阶段 2 的统一 CI/发布验证、阶段 3 的按需契约与任务分流、阶段 4 的可选范围绑定均已完成；D01—D04 的失败历史及修复独立结论保留。
 
 最终 `npm run verify`：Python 348 passed，分支统计总覆盖率 92.97%；Node 99/99、0 skipped。绑定回归 140 项、源/安装完整迭代、前序保持和新增/修改文档链接通过。旧快照、宿主和后续计划阻塞保持；提交、发布、全局同步及业务生产验收不包含在本次完成结论内。
 
@@ -670,26 +670,26 @@ rg -n '草案为准|以草案为事实源|详见草案|draft is source|source of
 | 日期 | 2026-09-06 |
 | 阶段 | 阶段 4 |
 | 结论 | 通过，达到阶段 4 待实施标准 |
-| 证据 | [阶段 4 独立准入](../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) |
+| 证据 | [阶段 4 独立准入](../../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) |
 | 复核者 | /root/iterative_stage4_gate |
 
 ## 独立复核记录
 
 | 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |
 |---|---|---|---|---|---|
-| 2026-09-06 | 独立设计准入与交付复核 | 阶段 0 | 通过，达到阶段 0 待实施标准，阶段 0 设计交付完成；阶段 1 尚未准入 | [独立复核报告](../reviews/iterative-governance-reliability-stage0-readiness-review-20260906.md) | /root/iterative_stage0_gate |
-| 2026-09-06 | 独立准入复核 | 阶段 1 | 通过，达到阶段 1 待实施标准 | [准入报告](../reviews/iterative-governance-reliability-stage1-readiness-review-20260906.md) | /root/iterative_stage1_gate |
-| 2026-09-06 | 独立完成验收 | 阶段 1 | 未通过：D01 代码块中的下一动作被当成真实指令 | [第一轮完成复核](../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第一轮未通过) | /root/iterative_stage1_acceptance |
-| 2026-09-06 | 独立完成验收 | 阶段 1 | 通过：D01 可解除，阶段 1 完成验收通过；阶段 2 仍需自身 Step 0 与独立准入 | [第二轮完成复核](../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过) | /root/iterative_stage1_recheck |
-| 2026-09-06 | 独立准入复核 | 阶段 2 | 通过，达到阶段 2 待实施标准 | [阶段 2 准入](../reviews/iterative-governance-reliability-stage2-readiness-review-20260906.md) | /root/iterative_stage2_gate |
-| 2026-09-06 | 独立完成验收 | 阶段 2 | 通过，阶段 2 完成验收通过 | [阶段 2 完成报告](../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md) | /root/iterative_stage2_acceptance |
-| 2026-09-06 | 独立准入复核 | 阶段 3 | 通过，达到阶段 3 待实施标准 | [阶段 3 准入报告](../reviews/iterative-governance-reliability-stage3-readiness-review-20260906.md) | /root/iterative_stage3_gate |
-| 2026-09-06 | 独立完成验收 | 阶段 3 | 通过，阶段 3 完成验收通过 | [阶段 3 完成报告](../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md) | /root/iterative_stage3_acceptance |
-| 2026-09-06 | 独立准入复核 | 阶段 4 | 通过，达到阶段 4 待实施标准 | [阶段 4 准入报告](../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) | /root/iterative_stage4_gate |
-| 2026-09-06 | 独立完成验收 | 阶段 4 | 未通过：D02/D03 实际阻塞 | [第一轮未通过](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第一轮未通过) | /root/iterative_stage4_acceptance |
-| 2026-09-06 | 独立修复重审 | 阶段 4 | D02/D03 已解决，D04 阻塞最终验收 | [第二轮修复复核](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | /root/iterative_stage4_recheck |
-| 2026-09-06 | 独立修复确认 | 阶段 4 | D04 已解决，仍待最终完成验收 | [D04 独立确认](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#d04-独立修复确认) | /root/iterative_stage4_recheck |
-| 2026-09-06 | 独立完成验收 | 阶段 4 及全计划 | 通过，可关闭；348 项 Python/92.97%、99 项 Node，D02—D04 独立修复确认 | [第二轮通过](../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过) | /root/iterative_stage4_recheck |
+| 2026-09-06 | 独立设计准入与交付复核 | 阶段 0 | 通过，达到阶段 0 待实施标准，阶段 0 设计交付完成；阶段 1 尚未准入 | [独立复核报告](../../reviews/iterative-governance-reliability-stage0-readiness-review-20260906.md) | /root/iterative_stage0_gate |
+| 2026-09-06 | 独立准入复核 | 阶段 1 | 通过，达到阶段 1 待实施标准 | [准入报告](../../reviews/iterative-governance-reliability-stage1-readiness-review-20260906.md) | /root/iterative_stage1_gate |
+| 2026-09-06 | 独立完成验收 | 阶段 1 | 未通过：D01 代码块中的下一动作被当成真实指令 | [第一轮完成复核](../../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第一轮未通过) | /root/iterative_stage1_acceptance |
+| 2026-09-06 | 独立完成验收 | 阶段 1 | 通过：D01 可解除，阶段 1 完成验收通过；阶段 2 仍需自身 Step 0 与独立准入 | [第二轮完成复核](../../reviews/iterative-governance-reliability-stage1-completion-review-20260906.md#第二轮通过) | /root/iterative_stage1_recheck |
+| 2026-09-06 | 独立准入复核 | 阶段 2 | 通过，达到阶段 2 待实施标准 | [阶段 2 准入](../../reviews/iterative-governance-reliability-stage2-readiness-review-20260906.md) | /root/iterative_stage2_gate |
+| 2026-09-06 | 独立完成验收 | 阶段 2 | 通过，阶段 2 完成验收通过 | [阶段 2 完成报告](../../reviews/iterative-governance-reliability-stage2-completion-review-20260906.md) | /root/iterative_stage2_acceptance |
+| 2026-09-06 | 独立准入复核 | 阶段 3 | 通过，达到阶段 3 待实施标准 | [阶段 3 准入报告](../../reviews/iterative-governance-reliability-stage3-readiness-review-20260906.md) | /root/iterative_stage3_gate |
+| 2026-09-06 | 独立完成验收 | 阶段 3 | 通过，阶段 3 完成验收通过 | [阶段 3 完成报告](../../reviews/iterative-governance-reliability-stage3-completion-review-20260906.md) | /root/iterative_stage3_acceptance |
+| 2026-09-06 | 独立准入复核 | 阶段 4 | 通过，达到阶段 4 待实施标准 | [阶段 4 准入报告](../../reviews/iterative-governance-reliability-stage4-readiness-review-20260906.md) | /root/iterative_stage4_gate |
+| 2026-09-06 | 独立完成验收 | 阶段 4 | 未通过：D02/D03 实际阻塞 | [第一轮未通过](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第一轮未通过) | /root/iterative_stage4_acceptance |
+| 2026-09-06 | 独立修复重审 | 阶段 4 | D02/D03 已解决，D04 阻塞最终验收 | [第二轮修复复核](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮修复复核) | /root/iterative_stage4_recheck |
+| 2026-09-06 | 独立修复确认 | 阶段 4 | D04 已解决，仍待最终完成验收 | [D04 独立确认](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#d04-独立修复确认) | /root/iterative_stage4_recheck |
+| 2026-09-06 | 独立完成验收 | 阶段 4 及全计划 | 通过，可关闭；348 项 Python/92.97%、99 项 Node，D02—D04 独立修复确认 | [第二轮通过](../../reviews/iterative-governance-reliability-stage4-completion-review-20260906.md#第二轮通过) | /root/iterative_stage4_recheck |
 
 ## 未决问题
 

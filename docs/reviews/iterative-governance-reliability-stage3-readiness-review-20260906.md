@@ -2,7 +2,7 @@
 
 结论：**通过，达到阶段 3 待实施标准。** 当前准入阻塞：无。
 
-- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/iterative-governance-reliability.md)，阶段 3。
+- 日期：2026-09-06；计划：[iterative-governance-reliability](../plans/20260906/iterative-governance-reliability.md)，阶段 3。
 - 复核者：`/root/iterative_stage3_gate`，新上下文独立只读 subagent，未实施/修改工作区；主任务按返回报告落档。
 - Revision：`336b728d7dacc335a35f2cf97ab39356e3a82ba0` 加最终受审混合工作树。
 - 范围：文档职责、分流与用户验收、旧技能走读、模板/生成器/分发验证、用户文档保护与回滚。

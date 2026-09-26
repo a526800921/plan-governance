@@ -507,5 +507,5 @@ cmp scripts/check_plan_governance.py /Users/jafish/.codex/skills/plan-governance
 ## 关联 ADR、迁移、spec 或 issue
 
 - 背景评估报告：`/Users/jafish/Documents/work/mineru-pdf-workflow/docs/reports/plan-governance-skill-review.md`
-- 既有独立验收规则：[independent-acceptance-rules](independent-acceptance-rules.md)
-- 既有运行时集成：[agent-runtime-integration](agent-runtime-integration.md)
+- 既有独立验收规则：[independent-acceptance-rules](../20260704/independent-acceptance-rules.md)
+- 既有运行时集成：[agent-runtime-integration](../20260706/agent-runtime-integration.md)

@@ -299,9 +299,9 @@ plan-governance-cli graph impact --from feature.model-lifecycle --depth 2 --form
 
 ## 关联 ADR、迁移、spec 或 issue
 
-- 依赖计划：[requirements-grilling-integration](requirements-grilling-integration.md)。
-- 依赖计划：[phase-entry-gate-hardening](phase-entry-gate-hardening.md)。
-- 依赖计划：[agent-runtime-integration](agent-runtime-integration.md)。
+- 依赖计划：[requirements-grilling-integration](../20260719/requirements-grilling-integration.md)。
+- 依赖计划：[phase-entry-gate-hardening](../20260713/phase-entry-gate-hardening.md)。
+- 依赖计划：[agent-runtime-integration](../20260706/agent-runtime-integration.md)。
 - 外部试点计划：ModelPad 仓库的 `functional-graph-pilot`。
 
 ## 后续演进
