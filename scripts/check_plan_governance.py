@@ -1940,8 +1940,11 @@ def map_blockers(plan_map_text):
         label = row[0] or "未命名阻塞项"
         if not blocker_is_open(row[3], row[4], f"PLAN_MAP {label}", issues):
             continue
-        scope = re.sub(r"\[[^\]]+\]\((?:\./)?plans/([^/)]+)\.md(?:#[^)]*)?\)",
-                       r"\1", row[2]).replace("`", "")
+        scope = re.sub(
+            r"\[[^\]]+\]\(((?:\./)?plans/[^)#]+\.md)(?:#[^)]*)?\)",
+            lambda match: Path(match.group(1)).stem,
+            row[2],
+        ).replace("`", "")
         targets = set(filter(None, re.split(r"[,，、/;；\s]+", scope.strip())))
         if not targets or targets - names:
             issues.append(f"PLAN_MAP 当前阻塞项 {label} 的影响范围无法归属：{row[2]}")

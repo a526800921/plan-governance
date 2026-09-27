@@ -18,9 +18,23 @@
 | `docs/plans/YYYYMMDD/*.md` | 新计划的目标、范围、决策、差异与验证证据；旧式 `docs/plans/*.md` 计划继续兼容读取 |
 | Schema/OpenAPI 或 `docs/specs/` | 现行公共契约，优先复用已有来源 |
 | `docs/adr/`、`docs/migrations/` | 确有需要时记录长期架构决策或迁移步骤 |
-| `docs/reviews/`、`docs/fixtures/` | 必要复核及可复验样本，代码 fixture 放 `tests/fixtures/` |
+| `docs/reviews/` | 独立复核记录；建议文件名以记录日期开头 |
+| `docs/data-quality/` | 数据质量审查、结果或回放记录；建议文件名以记录日期开头 |
+| `docs/fixtures/`、`tests/fixtures/` | 前者放可复用说明或样本，后者放可执行测试输入 |
+| `docs/attestations/` | CLI 管理的按需完成快照 |
 
-新建计划使用 `docs/plans/YYYYMMDD/<plan>.md`，日期是创建时的本地日期，之后更新不改变目录日期。`PLAN_MAP.md` 链接真实路径。根目录中的旧式 `docs/plans/<plan>.md` 仍受支持；工具升级不会自动迁移它们。已有计划要批量迁移时，只有用户明确要求才调用独立 `plan-governance-migration` skill。
+新建计划使用 `docs/plans/YYYYMMDD/<plan>.md`，日期是创建时的本地日期，之后更新不改变目录日期。`PLAN_MAP.md` 链接真实路径。根目录中的旧式 `docs/plans/<plan>.md` 仍受支持；工具升级不会自动迁移它们。只有用户明确要求批量迁移时，才按[迁移参考](migration.md)执行；它是主 skill 内的按需规则，不是另一个注册的 skill。
+
+## 历史记录命名建议
+
+复核和数据质量文件主要是带日期的历史记录，建议将记录形成日期放在文件名最前面，方便按时间排序与长期追踪：
+
+- `docs/reviews/YYYYMMDD-<subject>[-stageN]-<review-type>[-rN].md`，例如 `20260926-plan-governance-stage1-completion-review.md`。
+- `docs/data-quality/YYYYMMDD-<subject>-<record-type>[-rN].<ext>`，例如 `20260926-product-catalog-audit.md`。
+
+阶段号和修订序号按需要添加；同一事项同一天产生多份同类型记录时，可用 `-r2`、`-r3` 区分。日期表示这份记录的形成日期，不用最后修改日替代。该格式是新文件的建议，既有文件不会因工具升级而自动重命名。当前 checker 主要检查计划索引、计划结构和相关证据；它不会强制校验 `reviews` 或 `data-quality` 的命名格式。
+
+可复用的 `docs/fixtures/` 样本建议按场景和版本命名，例如 `missing-source-date-v1.json`，不加日期前缀；它们用于重复复验，不是单次历史记录。`docs/attestations/` 由 CLI 按既定名称和格式管理，不手工改名或重命名。
 
 ## 多文档同步规则
 

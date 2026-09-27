@@ -39,7 +39,7 @@ docs/
       <plan-name>.md
 ```
 
-`docs/plans/*.md` 是兼容读取的旧式平铺位置；新计划一律放在日期目录中。需要整理其他项目的存量计划时，用户明确提出迁移后再单独使用 `plan-governance-migration` skill。
+`docs/plans/*.md` 是兼容读取的旧式平铺位置；新计划一律放在日期目录中。存量计划只有在用户明确要求时才迁移；迁移规则由 `plan-governance` 按需读取，不单独注册 migration skill。
 
 按需增加：
 
@@ -59,11 +59,14 @@ docs/
 |---|---|
 | `docs/PLAN_MAP.md` | 计划索引、状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项、证据链接 |
 | `docs/plans/YYYYMMDD/*.md` | 新计划的目标、范围、行为差异、阶段、Step 0、验证与完成条件；旧式 `docs/plans/*.md` 继续兼容 |
+| `docs/reviews/`、`docs/data-quality/` | 复核及数据质量历史记录；建议使用日期前置文件名 |
+| `docs/fixtures/`、`tests/fixtures/` | 可复用样本说明或可执行测试输入 |
+| `docs/attestations/` | CLI 管理的完成快照 |
 | 已有 Schema/OpenAPI 或按需的 `docs/specs/*.md` | 跨迭代的现行契约；优先复用已有来源，文字 spec 补充行为/失败语义，不重复字段定义 |
 | `docs/adr/*.md` | 关键架构决策、备选方案和后果 |
 | `docs/migrations/*.md` | 兼容策略、迁移步骤、回滚方式和旧行为保留窗口 |
 
-新计划按创建时的本地日期存放在 `docs/plans/YYYYMMDD/<plan>.md`；修改时不改变日期目录。根目录旧计划继续可读，工具升级不会自动迁移。用户明确要求迁移存量计划时，单独调用 `plan-governance-migration` skill。其他目录按真实内容增加：`docs/reviews/` 放独立复核，`docs/fixtures/` 放人工样本/回放说明，`tests/fixtures/` 放可执行输入，`docs/attestations/` 放按需快照。init 只创建最小结构；可选 [spec 模板](resources/skill/assets/spec.template.md) 随 skill 分发，不自动创建目标项目 spec 或空目录。
+新计划按创建时的本地日期存放在 `docs/plans/YYYYMMDD/<plan>.md`；修改时不改变日期目录。根目录旧计划继续可读，工具升级不会自动迁移。用户明确要求迁移存量计划时，由 `plan-governance` 按需读取迁移参考。复核记录建议命名为 `YYYYMMDD-<subject>[-stageN]-<review-type>[-rN].md`，数据质量记录建议命名为 `YYYYMMDD-<subject>-<record-type>[-rN].<ext>`；日期放在最前，checker 不强制这些文件名。可复用 fixture 按场景/版本命名，attestation 由 CLI 管理。init 只创建最小结构；可选 [spec 模板](resources/skill/assets/spec.template.md) 随 skill 分发，不自动创建目标项目 spec 或空目录。
 
 ## 任务分流与验收
 
@@ -263,7 +266,7 @@ plan-governance-cli setup --target codex --dry-run
 plan-governance-cli setup --target codex --force
 ```
 
-`setup` 只向 Codex 同步 npm 包 manifest 指定的主治理 skill、独立迁移 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧版或重复 target、混合 help、缺失 target 都会在写入前失败；目标之外的用户目录不会被读取、修改或删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。使用 `--destination DIR` 指定主 skill 临时目标时，迁移 skill 会写到同一 skills 目录下的 `plan-governance-migration`。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录；项目初始化器只维护 `AGENTS.md`，当前实现不自动安装 hook 配置。
+`setup` 只向 Codex 同步 npm 包 manifest 指定的主治理 skill、代理元数据和模板文件，必须恰好指定一次 `--target codex`。旧版或重复 target、混合 help、缺失 target 都会在写入前失败；目标之外的用户目录不会被读取、修改或删除。默认先用 `--dry-run` 查看差异，目标文件有本地修改时不会静默覆盖。迁移规则作为主 skill 的按需参考分发，`plan-governance-cli guide migration` 可单独读取。检查器、初始化器和 hook runtime 由 npm 包内部调用，不复制到项目或 skill 目录；项目初始化器只维护 `AGENTS.md`，当前实现不自动安装 hook 配置。
 
 初始化项目时使用包内初始化器：
 

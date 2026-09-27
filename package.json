@@ -1,6 +1,6 @@
 {
   "name": "plan-governance-cli",
-  "version": "1.2.0",
+  "version": "2.0.1",
   "description": "统一入口的计划治理检查 CLI",
   "repository": {
     "type": "git",
@@ -15,7 +15,6 @@
     "bin/plan-governance-cli.mjs",
     "resources/manifest.json",
     "resources/skill",
-    "resources/migration-skill",
     "scripts/check_plan_governance.py",
     "scripts/init_plan_governance.py",
     "scripts/plan_governance_hook.py",

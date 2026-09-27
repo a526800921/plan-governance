@@ -80,7 +80,7 @@ function loadManifest() {
 
 function parseSetupArgs(args) {
   if (args.length === 1 && ["-h", "--help"].includes(args[0])) {
-    console.log("用法：plan-governance-cli setup --target codex [--destination DIR] [--dry-run] [--force]\n同步主治理 skill 和独立计划迁移 skill；自定义 destination 时，其他 skill 写入同一 skills 目录。");
+    console.log("用法：plan-governance-cli setup --target codex [--destination DIR] [--dry-run] [--force]\n同步主治理 skill 及其按需参考和模板。");
     return null;
   }
 
@@ -228,16 +228,17 @@ function guide(args) {
   const topics = new Map([
     ["overview", "SKILL.md"],
     ["planning", "references/planning.md"],
+    ["migration", "references/migration.md"],
     ["verification", "references/verification.md"],
     ["cli", "references/cli.md"],
   ]);
   if (args.length === 1 && args[0] === "--help") {
-    console.log("用法：plan-governance-cli guide [overview|planning|verification|cli]\n缺省 overview；只读当前包内规则，不依赖 cwd 或 Python。");
+    console.log("用法：plan-governance-cli guide [overview|planning|migration|verification|cli]\n缺省 overview；只读当前包内规则，不依赖 cwd 或 Python。");
     return 0;
   }
   const topic = args[0] ?? "overview";
   if (args.length > 1 || !topics.has(topic)) {
-    return fail("guide 仅接受一个主题：overview、planning、verification、cli；用 guide --help 查看用法。");
+    return fail("guide 仅接受一个主题：overview、planning、migration、verification、cli；用 guide --help 查看用法。");
   }
   const path = resolve(packageRoot, "resources", "skill", topics.get(topic));
   try {

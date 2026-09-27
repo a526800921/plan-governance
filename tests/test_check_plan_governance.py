@@ -2141,6 +2141,16 @@ def test_blocker_text_with_dashes_is_not_a_table_separator(tmp_path, capsys):
     assert "失败---待修复" in payload["plans"][0]["blockers"]
 
 
+def test_map_blocker_link_to_dated_plan_path_is_attributed():
+    link = "plans/20260926/demo.md"
+    index = blocker_map(scope=f"[demo]({link})").replace("plans/demo.md", link, 1)
+
+    blockers, issues = check_plan_governance.map_blockers(index)
+
+    assert blockers == {"demo": ["外部授权待确认"]}
+    assert not issues
+
+
 def test_legacy_open_state_with_description_keeps_default_hard_error(tmp_path, capsys):
     plan = readiness_plan_text(unresolved_blocker=True).replace("| 是 | 未解决 |", "| 是 | 待处理：补证据 |")
     assert_gate_result(tmp_path, capsys, plan, check_codes=(1, 1),

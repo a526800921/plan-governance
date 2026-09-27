@@ -158,6 +158,7 @@
 | 2026-09-26 | 阶段 2 迁移 | 19 个计划迁入 13 个日期目录；38 份 Markdown 的 374 个本地链接已重算；4 个旧 attestation 未改写 | [迁移日期基线](#迁移日期基线)、本节迁移结果及最终验证记录 | 迁移后检查发现并修复两项日期路径解析问题 | Codex |
 | 2026-09-26 | 最终验收 | 严格治理检查、全量 Python/Node 验证、skill 校验、链接核对及快照 supersedes 状态检查 | [完成证据](#阶段证据)、CLI 输出及旧/新 attestation | 通过；4 个旧快照 `superseded`，4 个新快照 `current` | Codex |
 | 2026-09-26 | 审查后修复 | 补齐混合快照迁移兼容、数字开头的平铺路径兼容，并修正地图状态分组 | [阶段证据](#阶段证据)；严格治理与快照检查、4 条 CLI 后继快照 | 治理检查通过；本轮未运行测试套件 | Codex |
+| 2026-09-26 | 日期目录阻塞链接归属补修 | `PLAN_MAP` 阻塞影响范围解析原只接受平铺计划链接；现从链接路径提取计划名，兼容 `plans/YYYYMMDD/<name>.md` 和旧式平铺路径 | `tests/test_check_plan_governance.py` 定向回归：5 passed；Motorcycle 项目 `plan-governance-cli check .` | 5 条日期目录归属警告清零；全局 npm CLI 2.0.0 检查脚本已同步本机，npm 包未发布，计划阶段状态保持 | Codex |
 
 ### 验证方式
 

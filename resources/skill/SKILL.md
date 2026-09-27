@@ -22,5 +22,6 @@ description: 维护已有项目计划，或为需要跨阶段、跨会话协调�
 | 明确需求、维护计划、同步决策 | [planning](references/planning.md) |
 | 阶段准入、风险判断、验证或完成 | [verification](references/verification.md) |
 | 查询工作集、运行检查、初始化或分发 | [cli](references/cli.md) |
+| 用户明确要求迁移存量计划 | [migration](references/migration.md)；CLI 可用时也可运行 `plan-governance-cli guide migration` |
 
-开发或审查本 skill 时使用仓库源及对应 CLI；其他项目使用实际发现的安装版，参考按所选 skill 目录解析。仅 CLI 可用时用 `guide` 和对应主题读取。来源一次选定后复用，只有内容变化或能力不符时重新核对；不要混读副本。缺少所需能力时说明具体缺口，继续不依赖它的工作，安装与升级按已有授权处理。已有计划批量迁移由独立 `plan-governance-migration` skill 在用户明确要求时执行，日常治理不会自动搬迁计划。
+开发或审查本 skill 时使用仓库源及对应 CLI；其他项目使用实际发现的安装版，参考按所选 skill 目录解析。仅 CLI 可用时用 `guide` 和对应主题读取。来源一次选定后复用，只有内容变化或能力不符时重新核对；不要混读副本。缺少所需能力时说明具体缺口，继续不依赖它的工作，安装与升级按已有授权处理。存量计划迁移规则是主 skill 的按需参考：只有用户明确要求迁移时才读取并执行，日常治理不会自动搬迁计划。

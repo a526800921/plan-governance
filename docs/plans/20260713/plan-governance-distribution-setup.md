@@ -629,3 +629,26 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - npm 在发布时将 repository URL 规范化为 `git+https://github.com/a526800921/plan-governance.git`；工作区 `package.json` 已同步为该规范值。官方 registry 短暂处理后确认 `version: 1.2.0`、`latest: 1.2.0`、repository URL 及 dist 元数据；shasum `9f9998df3dbe57b87258f3f64689ac343795374b`，integrity `sha512-4unaFVLlHJgDMVPKDmDfWGch2eRXAc5tC3Bl2Gl8E8fUR0Gdezo7UcQjJyKFPlLtewbLPQtwakKpr/uIX1bzGA==`。registry 已恢复为 `https://registry.npmjs.org/`。
 - 全局安装 `plan-governance-cli@1.2.0` 已核实。Codex 主 skill 与独立迁移 skill 的 12 项受管资源在更新前已全部与 npm 包一致；`setup --target codex --force --dry-run` 与正式同步均退出 0，实际没有覆盖文件。更新前快照保存在 `/Users/jafish/.codex/backups/plan-governance-1.2.0-20260926-172049`（含 SHA-256 清单）。
 - npm 上的 `1.2.0` README 正文已回查，包含日期目录和独立 migration skill 说明；发布后 `plan-governance-cli check .` 与 `git diff --check` 均通过（治理检查保留相同四条依赖 WARNING）。README、npm repository 元数据、官方发布和本机 CLI/skill 状态均已核实；本轮未提交或推送 Git。
+
+## 2026-09-26 2.0.0 主版本发布与旧版撤回
+
+按破坏性改动发布当前仓库内容为 `2.0.0`，并按用户要求尝试撤回精确版本 `1.1.3`、`1.2.0`。原发布/撤回操作仅处理 npm 官方 registry；用户后续另行要求更新本机 CLI，见本节末尾记录。不提交或推送 Git。
+
+- 发布前 `npm run release:npm -- --dry-run patch` 与 `npm run release:npm -- --dry-run 2.0.0` 均退出 0。`npm run release:npm -- 2.0.0` 退出 0；严格治理检查通过（保留四条既有依赖 WARNING），682 项 Python 测试通过（总覆盖率 93.06%），103 项 Node 测试通过（0 skipped）。发布输出为 19 个文件，shasum `ab64ac7decf53fefd57ad4b96e5e466720f65936`，integrity `sha512-tSN6hStiGOavOpHwqVPdur8EAO2SJzD3gBjgrjvnVBJxRoO36lXf6d79Y+PjBDZRdVgm/Fles7QGJmME8h9bBA==`。
+- 官方 registry 后续核实 `version: 2.0.0`、`latest: 2.0.0`、repository `git+https://github.com/a526800921/plan-governance.git`，文件数、shasum 和 integrity 与发布输出一致。发布脚本后 `npm config get registry` 为 `https://registry.npmjs.org/`。
+- 撤回前检查 npm 页面 Dependents 为 0；`1.1.3`、`1.2.0` 发布时间均在 72 小时内；用户确认近 72 小时未使用 recovery code 登录。`npm unpublish plan-governance-cli@1.1.3 --registry=https://registry.npmjs.org/` 首次被 bypass-2FA granular token 限制拒绝（E403，registry 未改变）。用户完成 web login 后，身份查询返回 `jafish`；重试仍返回 E403。`npm profile get --json` 显示账号 `tfa: false`：web login 并未启用账号级 2FA。随后官方版本列表仍有 `1.1.3`、`1.2.0`、`2.0.0`，`latest` 仍为 `2.0.0`。
+- 当前没有旧版成功撤回；遵循逐版本失败边界，因 `1.1.3` 被拒绝，尚未尝试 `1.2.0`，也没有执行 deprecate。待用户在 npm 账号设置启用可交互 2FA 后，再继续精确撤回与 registry 核验；不记录或传递 token、OTP、恢复码。
+- 2026-09-26 10:34 UTC，用户决定不再处理 `1.1.3`、`1.2.0`。官方 registry 查询确认 `version: 2.0.0`、`latest: 2.0.0` 和 GitHub repository 元数据；旧版本保持原状，后续不再尝试 unpublish 或 deprecate。按修订范围关闭本次发布计划。
+
+### 2026-09-26 2.0.0 本机安装更新
+
+- 更新前 `npm ls -g plan-governance-cli --depth=0` 显示全局版本为 `1.1.2`。用户要求更新本机后，运行 `npm install --global plan-governance-cli@2.0.0 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；更新后全局版本确认为 `2.0.0`。
+- `plan-governance-cli setup --target codex --force --dry-run` 显示 Codex 主 skill 的 11 项受管资源全部最新，未修改目标目录；`plan-governance-cli guide` 可读取 2.0.0 指南，迁移规则作为主 skill 的按需参考呈现。
+
+### 2026-09-26 2.0.1 发布与本机更新
+
+- 首次发布前官方 registry 版本列表不含 `2.0.1`，`latest` 为 `2.0.0`；`npm run release:npm -- --dry-run patch` 退出 0。首次执行 `npm run release:npm -- 2.0.1` 时，发布脚本完整验证通过：严格治理检查通过（保留四条既有依赖 WARNING）、683 项 Python 测试通过（总覆盖率 93.06%）、103 项 Node 测试通过；但旧认证凭据在 npm publish 阶段收到 E403，要求双重验证或允许绕过 2FA 的 granular access token。该次发布未成功，脚本已恢复 registry。
+- 用户提供新的 npm Access Token 后，将其写入用户级 `/Users/jafish/.npmrc`；未写入仓库或计划记录。`npm whoami --registry=https://registry.npmjs.org/` 确认身份为 `jafish`。随后重新执行 `npm run release:npm -- --dry-run patch`，退出 0。由于首次失败已把工作区版本升至 `2.0.1`，相同版本的 `npm version` 会报 `Version not changed`；将工作区版本临时还原到已发布的 `2.0.0` 后，按项目流程重跑 `npm run release:npm -- 2.0.1`，完整验证通过并成功发布。
+- 发布产物共 19 个文件；shasum `81dc9b8de798c9ff59ece5ae83f76b8e80f3a872`，integrity `sha512-fDjbGEwrKTe6GypJMZ9PKy6/5RfZFizh6UrMrd5Ezv0xVX5qfQ+knopfTa+aOSGH+LUA4TbG8N/j24/Nm7BRbw==`。官方 registry 最终核实版本列表包含 `2.0.1`、`latest: 2.0.1`、GitHub repository 元数据及上述 dist 校验值；发布脚本恢复后的 `npm config get registry` 为 `https://registry.npmjs.org/`。
+- 用户要求更新本机后，运行 `npm install --global plan-governance-cli@2.0.1 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局包版本确认为 `2.0.1`，已从官方 npm registry 安装。源与已安装包中的检查器 SHA-256 一致；`plan-governance-cli setup --target codex --dry-run` 显示 11 项受管 skill 资源均已最新，未修改目标目录。
+- 安装后 `plan-governance-cli check .` 与 Motorcycle 手册项目检查均退出 0；本项目保留四条既有计划依赖 WARNING，Motorcycle 项目保留其既有阶段/依赖 WARNING，未出现“影响范围无法归属”警告。`git diff --check` 通过。

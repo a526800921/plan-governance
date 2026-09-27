@@ -13,23 +13,11 @@
       "resources/skill/assets/plan.template.md",
       "resources/skill/assets/spec.template.md",
       "resources/skill/references/planning.md",
+      "resources/skill/references/migration.md",
       "resources/skill/references/verification.md",
       "resources/skill/references/cli.md"
     ]
   },
-  "additionalSkills": [
-    {
-      "name": "plan-governance-migration",
-      "targets": {
-        "codex": "~/.agents/skills/plan-governance-migration"
-      },
-      "prefix": "resources/migration-skill/",
-      "files": [
-        "resources/migration-skill/SKILL.md",
-        "resources/migration-skill/agents/openai.yaml"
-      ]
-    }
-  ],
   "runtime": [
     "scripts/check_plan_governance.py",
     "scripts/init_plan_governance.py",

@@ -1,6 +1,6 @@
 # CLI 操作
 
-只读规则入口：`plan-governance-cli guide [overview|planning|verification|cli]`。缺省 overview；`guide --help` 列用法。四主题从同一包根读取本入口及三参考，任意 cwd 可用且无需 Python。正文中的相对文档链接在 CLI 环境通过对应 guide 主题读取，不相对当前项目查找。
+只读规则入口：`plan-governance-cli guide [overview|planning|migration|verification|cli]`。缺省 overview；`guide --help` 列用法。五主题从同一包根读取本入口及参考，任意 cwd 可用且无需 Python。正文中的相对文档链接在 CLI 环境通过对应 guide 主题读取，不相对当前项目查找。
 
 成功退出 0；未知主题、多余参数、缺失/不可读/空资源退出 1 并报错。不下载、安装、修改项目或回退别的版本。skill/CLI 来源按入口一次选定：开发本 skill 用仓库源与对应 CLI，其他项目用安装资源。出现内容变化或能力缺口时再核对，版本号相同不证明资源一致。
 
@@ -18,7 +18,7 @@
 
 ## 分发与资源
 
-主治理 skill 和独立 migration skill 由同一 npm 包的 manifest 分别分发。`plan-governance-cli setup --target codex --dry-run` 查看两个 skill 的同步差异；`--destination DIR` 将主 skill 放入指定目录，并将迁移 skill 放在其同级目录。实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理目标之外的用户目录。setup 只支持 Codex 单目标同步；项目初始化器只维护 `AGENTS.md`。项目升级不迁移旧计划，受管块外内容必须保持。
+`plan-governance-cli setup --target codex --dry-run` 预览主治理 skill 的同步差异，manifest 包含入口、按需参考、代理元数据和模板。迁移规则位于主 skill 的 `references/migration.md`，可通过 `plan-governance-cli guide migration` 按需读取；不会注册第二个 migration skill。`--destination DIR` 指定主 skill 目标目录。实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理目标之外的用户目录。setup 只支持 Codex 单目标同步；项目初始化器只维护 `AGENTS.md`。项目升级不迁移旧计划，受管块外内容必须保持。
 
 仅更新计划格式不等于更新项目入口。已有项目在任务交接、没有进行中的实施或复核时更新受管入口；升级不批量回写历史，旧策略名和六列格式按 verification 解释为统一单次行为。安装副本与仓库开发规则有差异时说明本次选用来源，不能因版本号相同就混读正文。
 
