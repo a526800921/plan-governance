@@ -652,3 +652,13 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 发布产物共 19 个文件；shasum `81dc9b8de798c9ff59ece5ae83f76b8e80f3a872`，integrity `sha512-fDjbGEwrKTe6GypJMZ9PKy6/5RfZFizh6UrMrd5Ezv0xVX5qfQ+knopfTa+aOSGH+LUA4TbG8N/j24/Nm7BRbw==`。官方 registry 最终核实版本列表包含 `2.0.1`、`latest: 2.0.1`、GitHub repository 元数据及上述 dist 校验值；发布脚本恢复后的 `npm config get registry` 为 `https://registry.npmjs.org/`。
 - 用户要求更新本机后，运行 `npm install --global plan-governance-cli@2.0.1 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局包版本确认为 `2.0.1`，已从官方 npm registry 安装。源与已安装包中的检查器 SHA-256 一致；`plan-governance-cli setup --target codex --dry-run` 显示 11 项受管 skill 资源均已最新，未修改目标目录。
 - 安装后 `plan-governance-cli check .` 与 Motorcycle 手册项目检查均退出 0；本项目保留四条既有计划依赖 WARNING，Motorcycle 项目保留其既有阶段/依赖 WARNING，未出现“影响范围无法归属”警告。`git diff --check` 通过。
+
+### 2026-09-29 2.0.2 发布与本机更新
+
+用户明确要求更新版本、发布 npm 并更新本地依赖。本轮发布[默认自验、仅明确请求才独立复核](../20260906/plan-governance-workflow-streamlining.md#源码实施与验证2026-09-29)的仓库成果；工作区从 `2.0.1` 用 `patch` 升至 `2.0.2`，`package.json` 和 `package-lock.json` 同步更新。
+
+- 发布前 `npm run release:npm -- --dry-run patch` 退出 0，官方 registry 的版本列表不含 `2.0.2`、`latest` 为 `2.0.1`，`npm whoami` 为 `jafish`。`npm run release:npm -- patch` 退出 0，脚本先完成严格治理检查、695 项 Python 测试及 103 项 Node 测试，保留四条既有依赖 WARNING；随后切官方源、升版本、发布，并恢复原 registry `https://registry.npmjs.org/`。发布后短暂处理窗口返回 404，未重复发布；稍后官方 registry 确认版本 `2.0.2`、`latest: 2.0.2`。
+- 发布包共 19 个文件；本地 `npm pack --dry-run --json` 与官方 registry 返回相同 shasum `cbce9635bb2d5c188ebee04b6741d1d6d15a70a4` 和 integrity `sha512-U31XOxXpqH03ReRrGrzkCdbnP2fXWJdZr9l7u7jtYCQ4vcHTe66c0oLfGEFwdCre5f9w8/2HEsX/9Gc5wIl3fQ==`。
+- 更新前全局 CLI 为 `2.0.1`。本机 skill 的 11 项受管资源中，`planning.md` 与旧包有一处本地增量，已核对它与当前仓库源原有增量相同。同步前将 skill 全目录 14 个文件备份至 `/Users/jafish/.codex/backups/plan-governance-pre-2.0.2-20260929-212200.tar.gz`，归档 SHA-256 为 `2b9cf508fca0c2ac271b1f5f3d2c1c26af3c853aa4cd692c26ec230ee02295ad`。
+- `npm install --global plan-governance-cli@2.0.2 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0。全局 CLI 版本为 `2.0.2`，已安装包的 19 项生产文件与发布工作区逐字节一致。新 CLI 的 `setup --target codex --force --dry-run` 预览五项写入；正式 `setup --target codex --force` 同步这五项。随后无 `--force` 的 dry-run 显示 11 项受管资源全部最新，11/11 与仓库源逐字节一致；备份中的 3 个非受管文件保持原字节，受管文件权限保持 `0644`。本地项目依赖仍为 `yaml@2.9.0`。
+- 本次未迁移其他项目计划，也未提交或推送 Git；减负计划整体实际使用验收继续保留。

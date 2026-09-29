@@ -35,9 +35,14 @@ def test_implementation_self_check_reuses_design_review(tmp_path, capsys, risk):
     assert_risk(tmp_path, capsys, single_plan(history=history, risk=risk), readiness="ready", action="implement")
 
 
-@pytest.mark.parametrize("finding", ["超时", "复核入口不可用", "证据失效", "复核工具超时"])
-def test_unfinished_independent_check_cannot_be_repaired_as_completed(tmp_path, capsys, finding):
+@pytest.mark.parametrize("finding", ["超时", "复核入口不可用", "复核工具超时"])
+def test_unavailable_independent_check_allows_later_self_check(tmp_path, capsys, finding):
     history = record(finding, method="独立", risk="高影响") + "\n" + record(risk="高影响", kind="修复自验")
+    assert_risk(tmp_path, capsys, single_plan(history=history), readiness="ready", action="implement")
+
+
+def test_invalid_evidence_still_blocks_later_self_check(tmp_path, capsys):
+    history = record("证据失效", method="独立", risk="高影响") + "\n" + record(risk="高影响", kind="修复自验")
     assert_risk(tmp_path, capsys, single_plan(history=history), readiness="blocked", action="resolve_blocker")
 
 
@@ -66,19 +71,19 @@ def test_incomplete_repair_does_not_clear_finding(tmp_path, capsys, field, value
 
 
 @pytest.mark.parametrize("kind", ["修复自验", "阶段完成复核"])
-def test_high_impact_self_check_needs_independent_baseline(tmp_path, capsys, kind):
+def test_high_impact_self_check_needs_no_independent_baseline(tmp_path, capsys, kind):
     text = single_plan(history=record(risk="高影响", kind=kind))
-    assert_risk(tmp_path, capsys, text)
+    assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
 
 
-def test_low_risk_baseline_does_not_authorize_high_impact_self_check(tmp_path, capsys):
+def test_high_impact_self_check_does_not_rely_on_low_risk_baseline(tmp_path, capsys):
     history = record(method="独立", risk="低风险") + "\n" + record(risk="高影响", kind="修复自验")
-    assert_risk(tmp_path, capsys, single_plan(history=history))
+    assert_risk(tmp_path, capsys, single_plan(history=history), readiness="ready", action="implement")
 
 
-def test_previous_phase_review_is_not_current_baseline(tmp_path, capsys):
+def test_previous_phase_review_is_not_required_for_current_self_check(tmp_path, capsys):
     history = record(method="独立", risk="高影响", phase="阶段 0") + "\n" + record(risk="高影响", kind="修复自验")
-    assert_risk(tmp_path, capsys, single_plan(history=history))
+    assert_risk(tmp_path, capsys, single_plan(history=history), readiness="ready", action="implement")
 
 
 def test_explicit_cross_phase_baseline_reuse_avoids_second_review(tmp_path, capsys):
@@ -164,6 +169,6 @@ def test_newer_legacy_failure_is_not_cleared_by_older_repair(tmp_path, capsys):
     assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
 
 
-def test_pending_single_review_derives_one_independent_action(tmp_path, capsys):
+def test_pending_old_review_label_defaults_to_self_check(tmp_path, capsys):
     text = single_plan(history="", status="设计中", method="独立", conclusion="尚未进行")
-    assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="independent_review")
+    assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="verify")

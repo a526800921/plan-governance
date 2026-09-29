@@ -272,7 +272,7 @@ test("workset derives active plans without writing history", () => {
     assert.equal(result.status, 0, result.stderr);
     const payload = JSON.parse(result.stdout);
     assert.deepEqual(payload.plans.map((item) => item.plan), ["alpha", "beta"]);
-    assert.equal(payload.plans[0].next_action.kind, "independent_review");
+    assert.equal(payload.plans[0].next_action.kind, "verify");
     assert.equal(payload.plans[1].next_action.kind, "implement");
     assert.equal(payload.plans[0].parallel.state, "unknown");
     assert.equal(readFileSync(resolve(tempRoot, "docs/PLAN_MAP.md"), "utf8"), mapBefore);

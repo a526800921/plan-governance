@@ -20,7 +20,7 @@
 
 `plan-governance-cli setup --target codex --dry-run` 预览主治理 skill 的同步差异，manifest 包含入口、按需参考、代理元数据和模板。迁移规则位于主 skill 的 `references/migration.md`，可通过 `plan-governance-cli guide migration` 按需读取；不会注册第二个 migration skill。`--destination DIR` 指定主 skill 目标目录。实际覆盖需既有用户授权并按 setup 冲突提示处理，不自动清理目标之外的用户目录。setup 只支持 Codex 单目标同步；项目初始化器只维护 `AGENTS.md`。项目升级不迁移旧计划，受管块外内容必须保持。
 
-仅更新计划格式不等于更新项目入口。已有项目在任务交接、没有进行中的实施或复核时更新受管入口；升级不批量回写历史，旧策略名和六列格式按 verification 解释为统一单次行为。安装副本与仓库开发规则有差异时说明本次选用来源，不能因版本号相同就混读正文。
+仅更新计划格式不等于更新项目入口。已有项目在任务交接、没有进行中的实施或复核时更新受管入口；升级不批量回写历史，旧策略名和六列格式按 verification 解释为默认自验，保留真实历史发现。安装副本与仓库开发规则有差异时说明本次选用来源，不能因版本号相同就混读正文。
 
 ## 初始化、模板和检查脚本
 

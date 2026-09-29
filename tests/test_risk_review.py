@@ -161,9 +161,52 @@ def test_pending_review_can_have_placeholder_result_evidence(tmp_path, capsys):
     assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="verify")
 
 
-def test_high_impact_pending_is_independent_review(tmp_path, capsys):
+def test_high_impact_pending_defaults_to_self_review(tmp_path, capsys):
     text = risk_plan(status="设计中", method="独立", risk="高影响", conclusion="待独立复核")
+    assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="verify")
+
+
+@pytest.mark.parametrize("request_value", ["无", "待补充", "-"])
+def test_missing_user_request_does_not_dispatch_independent_review(tmp_path, capsys, request_value):
+    text = risk_plan(status="设计中", method="独立", risk="高影响", conclusion="待独立复核")
+    text = text.replace("| 准入状态 |", f"| 独立复核请求 | {request_value} |\n| 准入状态 |", 1)
+    assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="verify")
+
+
+@pytest.mark.parametrize("legacy", [True, False])
+def test_explicit_user_request_derives_independent_review(tmp_path, capsys, legacy):
+    text = (readiness_plan_text(status="设计中") if legacy else
+            risk_plan(status="设计中", method="独立", risk="高影响", conclusion="待独立复核"))
+    if legacy:
+        text = text.replace("| 结论 | 通过 |", "| 结论 | 尚未进行 |", 1)
+        text = text.replace("| 阶段 1 | 通过 |", "| 阶段 1 | 尚未进行 |", 1)
+    text = text.replace("| 准入状态 |", "| 独立复核请求 | [用户请求](#用户请求) |\n| 准入状态 |", 1)
     assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="independent_review")
+
+
+@pytest.mark.parametrize("legacy", [True, False])
+def test_explicit_request_cannot_be_closed_by_self_check_alone(tmp_path, capsys, legacy):
+    text = (readiness_plan_text(status="设计中") if legacy else risk_plan(status="设计中", risk="高影响"))
+    if legacy:
+        text = text.replace("阶段准入复核 | 阶段 1 | 通过", "普通自验 | 阶段 1 | 通过")
+        text = text.replace("独立复核者", "当前 AI")
+    text = text.replace("| 准入状态 |", "| 独立复核请求 | [用户请求](#用户请求) |\n| 准入状态 |", 1)
+    assert_risk(tmp_path, capsys, text, status="设计中", readiness="design", action="independent_review")
+
+
+@pytest.mark.parametrize("legacy", [True, False])
+def test_explicit_request_closes_after_independent_result(tmp_path, capsys, legacy):
+    text = (readiness_plan_text(status="设计中") if legacy else
+            risk_plan(status="设计中", method="独立", risk="高影响"))
+    text = text.replace("| 准入状态 |", "| 独立复核请求 | [用户请求](#用户请求) |\n| 准入状态 |", 1)
+    assert_risk(tmp_path, capsys, text, status="设计中", readiness="design",
+                action="unknown" if legacy else "sync")
+
+
+def test_explicit_request_without_review_cannot_enter_ready_state(tmp_path, capsys):
+    text = risk_plan(risk="高风险")
+    text = text.replace("| 准入状态 |", "| 独立复核请求 | [用户请求](#用户请求) |\n| 准入状态 |", 1)
+    assert_risk(tmp_path, capsys, text)
 
 
 def test_passed_design_requires_map_sync(tmp_path, capsys):
@@ -215,12 +258,19 @@ def test_invalid_date_never_passes(tmp_path, capsys, date):
 
 
 @pytest.mark.parametrize("method,risk,conclusion", [
-    ("自验", "高影响", "通过"), ("独立", "待判断", "通过"),
+    ("独立", "待判断", "通过"),
     ("自验", "待判断", "未进行"), ("自验", "中风险", "通过"),
     ("无需复核", "低风险", "通过"), ("自验", "低风险", "可能通过"),
 ])
 def test_unknown_or_high_impact_self_review_cannot_pass(tmp_path, capsys, method, risk, conclusion):
     assert_risk(tmp_path, capsys, risk_plan(method=method, risk=risk, conclusion=conclusion))
+
+
+@pytest.mark.parametrize("risk", ["高影响", "高风险"])
+@pytest.mark.parametrize("policy", ["默认自验", "风险分流", "单次独立复核"])
+def test_high_risk_self_check_passes_under_new_and_legacy_policy(tmp_path, capsys, risk, policy):
+    text = latest_field(risk_plan(risk=risk), "复核策略", policy)
+    assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
 
 
 @pytest.mark.parametrize("title", ["最新阶段复核", "阶段复核记录", "阶段准入摘要", "当前阶段"])
@@ -273,8 +323,11 @@ def test_failures_stay_blocked_across_consumers(tmp_path, capsys, source, failur
         text = risk_plan(history=record(failure, method="独立") + "\n" + record())
     else:
         text = with_legacy(text, failure)
-    payload = assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
-    assert failure in " ".join(payload["plans"][0]["blockers"])
+    if source == "history" and failure in {"复核入口不可用", "超时"}:
+        assert_risk(tmp_path, capsys, text, readiness="ready", action="implement")
+    else:
+        payload = assert_risk(tmp_path, capsys, text, readiness="blocked", action="resolve_blocker")
+        assert failure in " ".join(payload["plans"][0]["blockers"])
 
 
 @pytest.mark.parametrize("kind", ["阶段准入复核", "阶段完成复核", "阶段完成验收", "其他独立复核"])
@@ -305,7 +358,7 @@ def test_self_review_failure_can_be_repaired_by_self_review(tmp_path, capsys):
 
 
 @pytest.mark.parametrize("legacy", [True, False])
-@pytest.mark.parametrize("problem", ["证据冲突", "超时", "复核入口不可用", "证据失效"])
+@pytest.mark.parametrize("problem", ["证据冲突", "证据失效"])
 def test_explicit_second_independent_pass_cannot_describe_away_failure(tmp_path, capsys, legacy, problem):
     conclusion = f"通过：已修复{problem}"
     if legacy:

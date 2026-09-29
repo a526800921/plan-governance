@@ -1615,7 +1615,7 @@ def test_workset_derives_actions_history_and_parallel_state(tmp_path, capsys):
     items = {item["plan"]: item for item in payload["plans"]}
     assert "history" not in items
     assert items["ready"]["next_action"]["kind"] == "implement"
-    assert items["review"]["next_action"]["kind"] == "independent_review"
+    assert items["review"]["next_action"]["kind"] == "verify"
     assert items["step0"]["next_action"]["kind"] == "complete_step0"
     assert items["blocked"]["next_action"]["kind"] == "resolve_blocker"
     assert items["running"]["next_action"]["kind"] == "verify"
@@ -1967,6 +1967,20 @@ def test_legacy_format_repairs_one_independent_finding_by_self_check(tmp_path, c
     assert payload["plans"][0]["blockers"] == []
 
 
+def test_legacy_unavailable_review_allows_later_self_check(tmp_path, capsys):
+    plan = readiness_plan_text()
+    plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
+    plan = plan.replace("| 复核者 | 独立复核者 |", "| 复核者 | 当前 AI |")
+    original = "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 独立复核者 |"
+    replacement = (
+        "| 2026-07-13 | 阶段准入复核 | 阶段 1 | 复核工具超时 | `tests/fixtures/readiness.md` | 独立复核者 |\n"
+        "| 2026-07-14 | 普通自验 | 阶段 1 | 通过 | `tests/fixtures/readiness.md` | 当前 AI |"
+    )
+    plan = plan.replace(original, replacement)
+    assert_gate_result(tmp_path, capsys, plan, check_codes=(0, 0), workset_codes=(0, 0),
+                       readiness="ready", action="implement")
+
+
 def test_legacy_generic_self_check_cannot_erase_independent_finding(tmp_path, capsys):
     plan = readiness_plan_text()
     plan = plan.replace("| 日期 | 2026-07-13 |", "| 日期 | 2026-07-14 |")
@@ -2123,7 +2137,7 @@ def test_duplicate_index_is_strict_error_in_both_commands(tmp_path, capsys, dupl
 
 def test_design_missing_materials_remain_legal(tmp_path, capsys):
     for label, text, action in [("legacy", plan_text(), "complete_step0"),
-                               ("unreviewed", workset_plan_text(), "independent_review")]:
+                               ("unreviewed", workset_plan_text(), "verify")]:
         assert_gate_result(tmp_path / label, capsys, text,
             index=plan_map("| [demo](plans/demo.md) | 设计中 | 阶段 1 | - | - |"),
             check_codes=(0, 0), workset_codes=(0, 0), readiness="design", action=action)
