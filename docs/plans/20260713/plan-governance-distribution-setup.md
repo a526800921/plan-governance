@@ -662,3 +662,13 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 更新前全局 CLI 为 `2.0.1`。本机 skill 的 11 项受管资源中，`planning.md` 与旧包有一处本地增量，已核对它与当前仓库源原有增量相同。同步前将 skill 全目录 14 个文件备份至 `/Users/jafish/.codex/backups/plan-governance-pre-2.0.2-20260929-212200.tar.gz`，归档 SHA-256 为 `2b9cf508fca0c2ac271b1f5f3d2c1c26af3c853aa4cd692c26ec230ee02295ad`。
 - `npm install --global plan-governance-cli@2.0.2 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0。全局 CLI 版本为 `2.0.2`，已安装包的 19 项生产文件与发布工作区逐字节一致。新 CLI 的 `setup --target codex --force --dry-run` 预览五项写入；正式 `setup --target codex --force` 同步这五项。随后无 `--force` 的 dry-run 显示 11 项受管资源全部最新，11/11 与仓库源逐字节一致；备份中的 3 个非受管文件保持原字节，受管文件权限保持 `0644`。本地项目依赖仍为 `yaml@2.9.0`。
 - 本次未迁移其他项目计划，也未提交或推送 Git；减负计划整体实际使用验收继续保留。
+
+### 2026-10-04 3.0.0 发布与本机更新
+
+用户明确要求“提交，然后更新 npm 版本发布，再更新本地依赖”。本轮先将[check 分层与多会话接口契约](../20261004/cli-check-and-interface-contracts.md#实现与验收结果)的源码、测试与规则提交为 `e90924d`；公共退出码、参数和初始化约束改变既有调用方行为，因此按已记录兼容设计使用 `major` 从 2.0.2 升至 3.0.0。
+
+- `npm run release:npm -- --dry-run patch` 和 `npm run release:npm -- --dry-run major` 均退出 0；正式 `npm run release:npm -- major` 退出 0。脚本先运行完整 verify：756 项 Python、总覆盖率 89.32%、136 项 Node 全部通过，严格治理保留四条既有依赖 WARNING；随后确认目标版本不存在，切官方源、升级版本、发布并恢复原 registry `https://registry.npmjs.org/`。`package.json` 和 `package-lock.json` 均更新为 3.0.0。
+- npm 已接受发布，官方元数据在处理窗口内两次返回 E404，期间没有重复发布。随后官方 registry 确认 `version: 3.0.0`、`latest: 3.0.0`；19 项生产文件、shasum `a1d2c004e075d4cc2974b4dfd2a497bcdb7911d2`、integrity `sha512-ao+qmA+aOwpmLqKUZH+EzqPkNaYQwwgLr7WO0s514L930ILXulByWVxmO2tB6aCDuRlwU5QXAAmIR/i3KAtNeA==` 均与本地 `npm pack --dry-run --json` 一致。
+- 更新前全局 CLI 为 2.0.2，Codex skill 的 11 项受管资源均与旧包一致。完整 14 文件快照为 `/Users/jafish/.codex/backups/plan-governance-pre-3.0.0-20261004-133330.tar.gz`，归档 SHA-256 `38c01506952d9d01d1534546a3a8c0959d4a5e8a8f6aaf69e1e3c9516234d821`；同名 JSON 记录原字节摘要、属主与权限。
+- `npm install --global plan-governance-cli@3.0.0 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局 CLI 版本为 3.0.0，已安装的 19/19 生产文件与发布工作区逐字节一致。安装版 `setup --target codex --force --dry-run` 预览三项写入，正式 `setup --target codex --force` 同步 SKILL.md、verification.md、cli.md；随后普通 dry-run 显示全部最新，11/11 受管资源与新包一致。原有 14/14 文件属主和权限保留，3/3 非受管文件字节保留；本地项目依赖仍为 yaml@2.9.0。
+- 安装版聚焦 strict check JSON 返回 passed/0、无诊断；workset 聚焦目标为已完成且无下一实施动作。全仓库 strict check 通过并保留四条既有依赖 WARNING，git diff --check 通过。此次发布和安装采用自验；不迁移其他项目或清除其真实业务阻塞。
