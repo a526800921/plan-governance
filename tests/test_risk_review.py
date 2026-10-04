@@ -66,7 +66,7 @@ def assert_risk(tmp_path, capsys, text, *, status="待实施", readiness="unknow
         index=plan_map(f"| [demo](plans/demo.md) | {status} | 阶段 1 | - | - |"),
         check_codes=codes, workset_codes=codes, readiness=readiness, action=action)
     before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
-    assert hook.main(["--root", str(tmp_path), "--event", "session-start"]) == 0
+    assert hook.main(["--root", str(tmp_path), "--event", "session-start", "--plan", "demo"]) == 0
     output = capsys.readouterr().out
     assert f"demo: {readiness}，下一动作 {action}" in output
     if readiness in {"unknown", "blocked"}:

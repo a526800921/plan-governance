@@ -82,7 +82,7 @@ test("plan impact rejects invalid input and unresolved code anchors", () => {
     code_anchor: { file: "Sources/Missing.swift", symbol: "MissingBoundary", kind: "class" },
   });
   assert.notEqual(unresolved.status, 0);
-  assert.match(unresolved.stderr, /代码定位未唯一确认/);
+  assert.match(unresolved.stderr, /指定代码文件不存在/);
 
   const missingArchitecture = fixture();
   const mappings = join(missingArchitecture, "docs", "graph", "architecture", "mappings.yaml");

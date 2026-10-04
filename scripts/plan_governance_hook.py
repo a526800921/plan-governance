@@ -136,7 +136,10 @@ def matching_plans(root, paths):
     return matches
 
 
-def print_session_start(root):
+def print_session_start(root, names=None):
+    if names:
+        print("[plan-governance] 会话聚焦计划：" + "、".join(names))
+        return print_gate_hints(root, names)
     active, _ = active_plans(root)
     if not active:
         print("[plan-governance] 未发现活跃计划。")
@@ -148,12 +151,16 @@ def print_session_start(root):
             f"- {plan['name']}: {plan['status']}，{plan['phase']}，"
             f"最后更新 {plan['last_updated']}，证据 {plan['evidence']}"
         )
-    print_gate_hints(root, {plan["name"] for plan in active})
+    print("[plan-governance] 尚未设置会话焦点；选择计划后显式传入 --plan ID。")
     return 0
 
 
 def print_gate_hints(root, names):
-    payload, _ = checker.workset_payload(root)
+    payload, _ = checker.workset_payload(root, requested=list(names))
+    for constraint in payload.get("scope", {}).get("shared_writes", []):
+        print(f"  共享写入约束：{constraint}")
+    for dependency in payload.get("scope", {}).get("dependencies", []):
+        print(f"  必要前置：{dependency['plan']}@{dependency['phase']}，通过={dependency['phase_passed']}")
     has_blockers = False
     for plan in payload["plans"]:
         if plan["plan"] not in names:
@@ -168,8 +175,19 @@ def print_gate_hints(root, names):
         print("[plan-governance] 当前阻塞项：无法确认，请核对诊断。" if payload["warnings"]
               else "[plan-governance] 当前阻塞项：无。")
 
+    return 0
 
-def print_pre_write(root, paths):
+
+def print_pre_write(root, paths, names=None):
+    if names:
+        print("[plan-governance] 写入前检查聚焦范围：" + "、".join(names))
+        plans, _ = load_plans(root)
+        targets = [target for plan in plans if plan["name"] in names for target in plan["targets"]]
+        targets += [plan["path"].relative_to(root).as_posix() for plan in plans if plan["name"] in names and plan["path"]]
+        for path in paths:
+            if path != "docs/PLAN_MAP.md" and not any(target_matches_path(target, path) for target in targets):
+                print(f"  WARNING: 写入路径超出聚焦计划声明范围：{path}；请先核对范围与授权。")
+        return print_gate_hints(root, names)
     matches = matching_plans(root, paths)
     if not matches:
         print("[plan-governance] 未匹配到相关活跃计划。")
@@ -179,7 +197,7 @@ def print_pre_write(root, paths):
     for plan in matches:
         print(f"- {plan['name']}: {plan['status']}，{plan['phase']}")
         print("  当前阶段门禁：确认 Step 0 证据、验证方式、完成条件和公共契约约束。")
-    print_gate_hints(root, {plan["name"] for plan in matches})
+    print("[plan-governance] 路径匹配仅为候选；请显式选择 --plan，不能据此授权或接管计划。")
     return 0
 
 
@@ -208,29 +226,25 @@ def print_post_write(paths):
     return 0
 
 
-def print_stop(root):
-    checker = root / "scripts" / "check_plan_governance.py"
-    if not checker.exists():
-        print("[plan-governance] 未找到 scripts/check_plan_governance.py，跳过停止前检查。")
-        return 0
-
+def print_stop(root, names=None):
     result = subprocess.run(
-        [sys.executable, str(checker), "."],
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
+        [sys.executable, str(Path(__file__).with_name("check_plan_governance.py")),
+         str(root), *[token for name in names or [] for token in ("--plan", name)]],
+        check=False, capture_output=True, text=True,
     )
-    output = (result.stdout or result.stderr).strip()
-    if output:
-        print(output)
+    for output in (result.stdout, result.stderr):
+        if output.strip():
+            print(output.strip())
+    if result.returncode not in {0, 1}:
+        print("[plan-governance] 停止前检查未完成：检查器执行失败。", file=sys.stderr)
+        return 1
     print("[plan-governance] Stop 检查为非阻塞提示；请人工复核 WARNING/ERROR。")
     return 0
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description="计划治理 hook runtime。")
-    parser.add_argument("--root", default=".", help="仓库根目录，默认当前目录。")
+    parser = argparse.ArgumentParser(description="计划治理 hook runtime。", allow_abbrev=False)
+    parser.add_argument("--root", default=".", type=checker.nonempty, help="仓库根目录，默认当前目录。")
     parser.add_argument(
         "--event",
         required=True,
@@ -238,23 +252,54 @@ def parse_args(argv):
         help="hook 事件类型。",
     )
     parser.add_argument("--paths", nargs="*", default=[], help="事件相关路径。")
-    return parser.parse_args(argv)
+    parser.add_argument("--plan", action="append", type=checker.nonempty, default=[], help="会话聚焦计划 ID，可重复。")
+    checker.validate_options(parser, argv, {"plan"})
+    args = parser.parse_args(argv)
+    if len(set(args.plan)) != len(args.plan):
+        parser.error("--plan 不接受重复 ID")
+    if "--paths" in argv and args.event not in {"pre-write", "post-write"}:
+        parser.error("--paths 仅用于 pre-write/post-write")
+    return args
 
 
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    root = Path(args.root)
+    root = Path(args.root).expanduser().resolve()
+    if not root.is_dir():
+        print(f"ERROR: root 不存在或不是目录：{root}", file=sys.stderr)
+        return 1
+    if args.plan:
+        errors = []
+        text, _, plans = checker.load_plan_records(root, errors)
+        try:
+            checker.build_scope(root, args.plan, text, plans)
+        except checker.UsageError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+        if errors:
+            print("ERROR: 未完成检查：" + "；".join(errors), file=sys.stderr)
+            return 1
+    for path in args.paths:
+        candidate = (root / path).resolve()
+        if not path.strip() or not candidate.is_relative_to(root):
+            print(f"ERROR: paths 必须是 root 内的非空路径：{path}", file=sys.stderr)
+            return 2
+    args.paths = [(root / path).resolve().relative_to(root).as_posix() for path in args.paths]
 
     if args.event == "session-start":
-        return print_session_start(root)
+        return print_session_start(root, args.plan)
     if args.event == "pre-write":
-        return print_pre_write(root, args.paths)
+        return print_pre_write(root, args.paths, args.plan)
     if args.event == "post-write":
         return print_post_write(args.paths)
     if args.event == "stop":
-        return print_stop(root)
+        return print_stop(root, args.plan)
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: hook 未完成检查：{exc}", file=sys.stderr)
+        raise SystemExit(1)

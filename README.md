@@ -39,7 +39,7 @@ docs/
       <plan-name>.md
 ```
 
-`docs/plans/*.md` 是兼容读取的旧式平铺位置；新计划一律放在日期目录中。存量计划只有在用户明确要求时才迁移；迁移规则由 `plan-governance` 按需读取，不单独注册 migration skill。
+`docs/plans/*.md` 是兼容读取的旧式平铺位置；新计划一律放在日期目录中，初始化仅接受 候选/设计中，写入前预检可预测冲突。存量计划只有在用户明确要求时才迁移；迁移规则由 `plan-governance` 按需读取，不单独注册 migration skill。
 
 按需增加：
 
@@ -175,6 +175,18 @@ plan-governance-cli init \
 plan-governance-cli check .
 ```
 
+普通 check 的业务阻塞/失败/准入材料缺口为 WARNING，文档没有硬错误时退出 0；严格 check 保留准入阻断。已完成但缺证据或仍有当前阻塞、无效身份/日期/路径、必要输入读取失败等始终退出 1。合法未初始化目录为 not_applicable/0，严格为 1；参数错误为 2。
+
+多计划、多会话通过显式参数聚焦，焦点不写入全项目状态：
+
+```bash
+plan-governance-cli workset . --json --plan api-compat-migration
+plan-governance-cli check . --json --plan api-compat-migration
+plan-governance-cli check . --strict-readiness --plan api-compat-migration
+```
+
+`--plan` 可重复，只接受唯一登记 ID。聚焦结果只带请求计划、必要前置与相关证据/共享写入约束；无关计划的局部阻塞不会导致失败。workset 保留 schema 1，新增 scope；check JSON 提供 mode/status/exit_code/scope/summary/diagnostics，stdout 不混日志。相关事实改变时工作集为 unknown，严格失败；无关地图更新不使聚焦版本失效。AI 必须在调用中传焦点，CLI 无法自动识别聊天任务。完整接口和输出约定见 [CLI 参考](resources/skill/references/cli.md)。
+
 可选检查：
 
 ```bash
@@ -289,10 +301,10 @@ plan-governance-cli hook --event stop
 
 事件语义：
 
-- `session-start`：摘要活跃计划、当前阶段、最后更新、阻塞项和证据链接。
-- `pre-write`：按活跃计划的 `影响模块或文件` 匹配路径，提示当前阶段门禁。
+- `session-start`：未设焦点时列轻量索引；传入 `--plan ID` 时展示聚焦工作集。
+- `pre-write`：有焦点时给自己的门禁和共享约束；路径匹配只提供候选，不自动选计划。
 - `post-write`：写入 `PLAN_MAP.md` 或计划文档后，提示同步状态、证据、覆盖率和反向引用检查。
-- `stop`：运行 `plan-governance-cli check .` 并转发结果；该事件是非阻塞提示，不实现强制 gate。
+- `stop`：使用同包检查器按焦点检查并转发结果；该事件是非阻塞提示，不实现强制 gate。
 
 旧项目如果仍使用五列 `PLAN_MAP.md`，先显式迁移：
 

@@ -37,7 +37,7 @@ def test_main_creates_plan_files(tmp_path, capsys):
             "--goal",
             "分阶段迁移 API。",
             "--status",
-            "待实施",
+            "设计中",
             "--phase",
             "阶段 1",
         ]
@@ -335,7 +335,7 @@ def test_migrate_plan_map_last_updated_rejects_invalid_date(tmp_path):
     plan_map.parent.mkdir(parents=True)
     plan_map.write_text("# PLAN_MAP\n", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="Invalid isoformat"):
+    with pytest.raises(SystemExit) as exc:
         init_plan_governance.main(
             [
                 "--root",
@@ -345,6 +345,8 @@ def test_migrate_plan_map_last_updated_rejects_invalid_date(tmp_path):
                 "2026/07/05",
             ]
         )
+    assert exc.value.code == 2
+    assert plan_map.read_text() == "# PLAN_MAP\n"
 
 
 def test_normal_init_still_requires_plan(tmp_path):
@@ -431,4 +433,32 @@ def test_copy_checker_allows_source_repo_itself(tmp_path, monkeypatch):
 
     assert target == source
     assert target.read_bytes() == b"source checker"
-    assert target.stat().st_mode & 0o111
+    assert target.stat().st_mode & 0o777 == 0o644
+
+
+@pytest.mark.parametrize("extra", [["--status", "已完成"], ["--status", "待实施"], ["--phase", "完成"],
+    ["--root", "second"], ["--plan", "second"], ["--title", ""], ["--last-updated-date", "2026-10-04"]])
+def test_init_parameter_failures_precede_any_mutation(tmp_path, extra):
+    with pytest.raises(SystemExit) as exc:
+        init_plan_governance.main(["--root", str(tmp_path), "--plan", "demo", *extra])
+    assert exc.value.code == 2
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("mode", ["--upgrade-existing", "--update-agent-rules-only", "--migrate-plan-map-last-updated"])
+def test_special_modes_reject_ignored_plan_arguments(tmp_path, mode):
+    with pytest.raises(SystemExit) as exc:
+        init_plan_governance.main(["--root", str(tmp_path), mode, "--plan", "demo"])
+    assert exc.value.code == 2
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_later_target_conflict_is_detected_before_git_or_map_creation(tmp_path):
+    target = tmp_path / "scripts/check_plan_governance.py"
+    target.parent.mkdir()
+    target.write_text("preserve")
+    with pytest.raises(FileExistsError):
+        init_plan_governance.main(["--root", str(tmp_path), "--plan", "demo", "--copy-checker"])
+    assert target.read_text() == "preserve"
+    assert not (tmp_path / ".git").exists()
+    assert not (tmp_path / "docs").exists()

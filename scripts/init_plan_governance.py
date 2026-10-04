@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.util
 import re
 import shutil
 import subprocess
 import sys
 from datetime import date, datetime
 from pathlib import Path
+
+
+_checker_spec = importlib.util.spec_from_file_location("initializer_checker", Path(__file__).with_name("check_plan_governance.py"))
+checker = importlib.util.module_from_spec(_checker_spec)
+_checker_spec.loader.exec_module(checker)
 
 
 VALID_STATUSES = {
@@ -21,6 +27,7 @@ VALID_STATUSES = {
 
 AGENTS_SECTION_BEGIN = "<!-- plan-governance:start -->"
 AGENTS_SECTION_END = "<!-- plan-governance:end -->"
+WRITTEN_FILES = []
 
 
 def slugify(value):
@@ -38,6 +45,7 @@ def write_file(path, content, force):
         raise FileExistsError(f"{path} 已存在；如需覆盖请加 --force")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+    WRITTEN_FILES.append(path)
 
 
 def init_git(root):
@@ -46,6 +54,7 @@ def init_git(root):
 
     root.mkdir(parents=True, exist_ok=True)
     subprocess.run(["git", "init"], cwd=root, check=True)
+    WRITTEN_FILES.append(root / ".git")
     return root / ".git"
 
 
@@ -61,6 +70,7 @@ def agent_rules_body():
 - 普通一次性任务直接处理；已有计划按共享 verification 验证。新旧计划均默认自验，仅在用户明确要求时独立复核；未解决问题继续阻塞。
 - 只实施已授权、已准入的当前阶段。每个阶段有自身 Step 0、验证/完成和失败边界；未解决问题不能记为完成，不可用或超时不能冒充已检查。已有授权不重复索取，新增高影响外部动作按实际授权处理。
 - 首次读取 `docs/PLAN_MAP.md`、索引登记的相关 `docs/plans/` 计划及适用契约/ADR/migration；恢复先核对当前工作集、最近证据和实际 diff，缺失或冲突再展开。
+- 多计划/多会话并行时，每个会话在 check/workset/hook 中显式传入自己的 `--plan ID`；必要前置与共享写入约束仍需读取，写入前重读相关事实，不设置全项目可变焦点。
 - 地图维护状态、阶段、关系、阻塞与证据入口；计划记录本次差异及验证，现行契约优先复用 Schema/OpenAPI。新事实不写回历史草案，变化同步地图及相关引用。
 - 完成时按共享规范记录实际验证与适用用户验收，运行 `plan-governance-cli check .`；准入/CI/发布显式使用 `--strict-readiness`，机械通过不等于业务验收。
 """
@@ -96,6 +106,7 @@ def update_managed_file(root, filename, section, begin, end):
             separator = newline if current.endswith(("\n", "\r")) else newline * 2
         updated = f"{current}{separator}{section}"
     target.write_bytes(updated.encode("utf-8"))
+    WRITTEN_FILES.append(target)
     return target
 
 
@@ -210,13 +221,15 @@ def copy_checker(root, force):
     source = Path(__file__).with_name("check_plan_governance.py")
     target = root / "scripts" / "check_plan_governance.py"
     if source.resolve() == target.resolve():
-        target.chmod(0o755)
         return target
     if target.exists() and not force:
         raise FileExistsError(f"{target} 已存在；如需覆盖请加 --force")
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target)
-    target.chmod(0o755)
+    if target.exists():
+        target.write_bytes(source.read_bytes())
+    else:
+        shutil.copy2(source, target)
+    WRITTEN_FILES.append(target)
     return target
 
 
@@ -281,6 +294,7 @@ def migrate_plan_map_last_updated(root, last_updated):
 
     if changed:
         plan_map.write_text("\n".join(migrated) + ("\n" if text.endswith("\n") else ""), encoding="utf-8")
+        WRITTEN_FILES.append(plan_map)
     return plan_map, changed
 
 
@@ -293,13 +307,13 @@ def upgrade_existing(root):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description="初始化中文 plan-governance 文档。")
-    parser.add_argument("--root", default=".", help="目标仓库根目录，默认当前目录。")
-    parser.add_argument("--plan", help="计划文件名或计划标识，例如 api-compat-migration。")
-    parser.add_argument("--title", help="计划显示名称，默认使用 --plan。")
-    parser.add_argument("--goal", help="计划目标，会写入计划文档。")
+    parser = argparse.ArgumentParser(description="初始化中文 plan-governance 文档。", allow_abbrev=False)
+    parser.add_argument("--root", type=checker.nonempty, default=".", help="目标仓库根目录，默认当前目录。")
+    parser.add_argument("--plan", type=checker.nonempty, help="计划文件名或计划标识，例如 api-compat-migration。")
+    parser.add_argument("--title", type=checker.nonempty, help="计划显示名称，默认使用 --plan。")
+    parser.add_argument("--goal", type=checker.nonempty, help="计划目标，会写入计划文档。")
     parser.add_argument("--status", default="设计中", choices=sorted(VALID_STATUSES), help="初始状态。")
-    parser.add_argument("--phase", default="阶段 0", help="当前阶段名称。")
+    parser.add_argument("--phase", type=checker.nonempty, default="阶段 0", help="当前阶段名称。")
     parser.add_argument("--copy-checker", action="store_true", help="复制检查脚本到目标仓库 scripts/。")
     parser.add_argument("--update-agents-md", action="store_true", help="创建或更新目标仓库 AGENTS.md 中的计划治理规则。")
     parser.add_argument("--update-agent-rules", action="store_true", help="创建或更新目标仓库 AGENTS.md 中的计划治理规则。")
@@ -309,6 +323,7 @@ def parse_args(argv):
     parser.add_argument("--migrate-plan-map-last-updated", action="store_true", help="将旧五列表 PLAN_MAP.md 迁移为包含最后更新的六列表。")
     parser.add_argument("--last-updated-date", default=date.today().isoformat(), help="迁移 PLAN_MAP.md 时填入的最后更新日期，默认今天。")
     parser.add_argument("--force", action="store_true", help="允许覆盖已存在的治理文件。")
+    checker.validate_options(parser, argv)
     args = parser.parse_args(argv)
     only_modes = [
         args.update_agents_md_only,
@@ -320,12 +335,47 @@ def parse_args(argv):
         parser.error("--update-*-only、--upgrade-existing 和 --migrate-plan-map-last-updated 不能同时使用")
     if not any(only_modes) and not args.plan:
         parser.error("正常初始化必须提供 --plan；已有项目可使用 --update-*-only、--upgrade-existing 或 --migrate-plan-map-last-updated")
+    supplied = {token.split("=", 1)[0] for token in argv if token.startswith("--")}
+    if any(only_modes):
+        allowed = {"--root", "--update-agents-md-only", "--update-agent-rules-only", "--upgrade-existing", "--migrate-plan-map-last-updated"}
+        if args.migrate_plan_map_last_updated:
+            allowed.add("--last-updated-date")
+        if supplied - allowed:
+            parser.error("当前模式不接受：" + "、".join(sorted(supplied - allowed)))
+    else:
+        if "--last-updated-date" in supplied:
+            parser.error("--last-updated-date 仅用于迁移")
+        if args.status not in {"候选", "设计中"}:
+            parser.error("新计划只能以 候选/设计中 初始化；准入后再同步状态")
+        if not checker.valid_phase_name(args.phase):
+            parser.error("--phase 必须为阶段身份，例如 阶段 0")
+        if args.update_agents_md and args.update_agent_rules:
+            parser.error("代理规则更新别名不能同时指定")
+    if args.migrate_plan_map_last_updated:
+        try:
+            date.fromisoformat(args.last_updated_date)
+        except ValueError:
+            parser.error("--last-updated-date 必须是有效 ISO 日期")
     return args
 
 
 def main(argv=None):
-    args = parse_args(argv or sys.argv[1:])
+    WRITTEN_FILES.clear()
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     root = Path(args.root).expanduser().resolve()
+    if root.exists() and not root.is_dir():
+        raise NotADirectoryError(f"root 不是目录：{root}")
+    if any((args.update_agents_md_only, args.update_agent_rules_only, args.upgrade_existing,
+            args.update_agents_md, args.update_agent_rules)):
+        target = root / "AGENTS.md"
+        if target.exists():
+            target.read_text(encoding="utf-8")
+    if args.upgrade_existing:
+        target = root / "scripts/check_plan_governance.py"
+        if target.exists() and not target.is_file():
+            raise IsADirectoryError(f"checker 目标不是普通文件：{target}")
+        if target.parent.exists() and not target.parent.is_dir():
+            raise NotADirectoryError(f"checker 父路径不是目录：{target.parent}")
 
     if args.update_agents_md_only:
         target = update_agents_md(root)
@@ -366,14 +416,30 @@ def main(argv=None):
     created_on = date.today()
     plan_file = docs / "plans" / created_on.strftime("%Y%m%d") / f"{plan_slug}.md"
 
+    targets = [plan_map, plan_file]
+    if args.copy_checker:
+        targets.append(root / "scripts/check_plan_governance.py")
+    for target in targets:
+        if target.exists() and (not args.force or not target.is_file()):
+            raise FileExistsError(f"{target} 已存在；未写入任何治理文件")
+        for parent in target.parents:
+            if parent.exists() and not parent.is_dir():
+                raise NotADirectoryError(f"目标父路径不是目录：{parent}")
+    # 首次写入前读取全部必要来源。
+    map_text = plan_map_content(plan_slug, title, args.status, args.phase, created_on)
+    body = plan_content(plan_slug, title, args.status, args.phase, args.goal)
+    if args.update_agents_md or args.update_agent_rules:
+        target = root / "AGENTS.md"
+        if target.exists():
+            target.read_text(encoding="utf-8")
     created = []
     git_dir = init_git(root)
     if git_dir is not None:
         created.append(git_dir)
 
-    write_file(plan_map, plan_map_content(plan_slug, title, args.status, args.phase, created_on), args.force)
+    write_file(plan_map, map_text, args.force)
     created.append(plan_map)
-    write_file(plan_file, plan_content(plan_slug, title, args.status, args.phase, args.goal), args.force)
+    write_file(plan_file, body, args.force)
     created.append(plan_file)
 
     if args.copy_checker:
@@ -392,6 +458,7 @@ def main(argv=None):
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (FileExistsError, FileNotFoundError, ValueError) as exc:
+    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
+        print("初始化未完成；已写入：" + ("、".join(str(p) for p in WRITTEN_FILES) or "无") + "；请核对出错目标后恢复或重试。", file=sys.stderr)
         raise SystemExit(1)

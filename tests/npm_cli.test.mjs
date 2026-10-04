@@ -62,7 +62,7 @@ function exerciseGuide(entry, packageDirectory, cwd) {
   assert.match(invoke("--help").stdout, /overview.*planning.*verification.*cli/);
   for (const args of [["unknown"], ["../SKILL.md"], ["__proto__"], ["toString"], ["overview", "extra"], ["--help", "extra"]]) {
     const result = invoke(...args);
-    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
     assert.equal(result.stdout, "");
     assert.match(result.stderr, /guide/);
   }
@@ -239,10 +239,10 @@ test("CLI forwards a successful strict readiness check", () => {
   try {
     writeProjectFile(tempRoot, "docs/PLAN_MAP.md", "# PLAN_MAP\n\n## 计划索引\n\n| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |\n|---|---|---|---|---|---|\n| [demo](plans/demo.md) | 待实施 | 阶段 1 | 2026-09-06 | - | fixture |\n");
     writeProjectFile(tempRoot, "docs/plans/demo.md", admittedPlan());
-    const result = run(tempRoot, "--strict-readiness");
+    const result = run("check", tempRoot, "--strict-readiness");
     assert.equal(result.status, 0, result.stdout);
     assert.equal(result.stderr, "");
-    assert.match(result.stdout, /计划治理检查通过。/);
+    assert.match(result.stdout, /准入检查通过。/);
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -250,11 +250,11 @@ test("CLI forwards a successful strict readiness check", () => {
 
 test("removed autonomous execution commands point to Codex goals", () => {
   const next = run("plan", "next", "demo");
-  assert.equal(next.status, 1);
+  assert.equal(next.status, 2);
   assert.match(next.stderr, /goal/);
 
   const validate = run("plan", "steps", "validate", "demo");
-  assert.equal(validate.status, 1);
+  assert.equal(validate.status, 2);
   assert.match(validate.stderr, /goal/);
 });
 
@@ -304,12 +304,14 @@ test("strict check and workset reject the same readiness defects without writing
         const workset = run("workset", tempRoot, "--json", ...flags);
         assert.equal(check.status, strict ? strictStatus : 0, `${label}: ${check.stdout}`);
         assert.equal(workset.status, strict ? strictStatus : 0, `${label}: ${workset.stdout}`);
-        assert.equal(check.stderr + workset.stderr, "");
+        assert.equal(workset.stderr, "");
+        if (strict && strictStatus) assert.match(check.stderr, /ERROR:/);
+        else assert.equal(check.stderr, "");
         const payload = JSON.parse(workset.stdout);
         assert.equal(payload.schema_version, 1);
         assert.equal(payload.plans[0].next_action.kind, next);
       }
-      const hook = run("hook", "--root", tempRoot, "--event", "session-start");
+      const hook = run("hook", "--root", tempRoot, "--event", "session-start", "--plan", "demo");
       assert.equal(hook.status, 0, hook.stderr);
       assert.match(hook.stdout, new RegExp(next));
       assert.equal(readFileSync(join(tempRoot, "docs/PLAN_MAP.md"), "utf8"), index);
@@ -336,7 +338,7 @@ test("workset and hook ignore fenced next-action examples", () => {
           assert.equal(result.status, 0, result.stderr);
           assert.equal(JSON.parse(result.stdout).plans[0].next_action.kind, realAction ? "verify" : "unknown");
         }
-        const hook = run("hook", "--root", tempRoot, "--event", "session-start");
+        const hook = run("hook", "--root", tempRoot, "--event", "session-start", "--plan", "demo");
         assert.equal(hook.status, 0, hook.stderr);
         assert.match(hook.stdout, new RegExp(realAction ? "verify" : "unknown"));
         assert.doesNotMatch(hook.stdout, /implement/);
@@ -531,7 +533,7 @@ test("packed package runs from a temporary installation", () => {
       "--root",
       projectRoot,
     ], { cwd: root, encoding: "utf8" });
-    assert.equal(installedStepValidation.status, 1, installedStepValidation.stderr);
+    assert.equal(installedStepValidation.status, 2, installedStepValidation.stderr);
     assert.match(installedStepValidation.stderr, /goal/);
 
     const installedNext = spawnSync(process.execPath, [
@@ -543,7 +545,7 @@ test("packed package runs from a temporary installation", () => {
       "--root",
       projectRoot,
     ], { cwd: root, encoding: "utf8" });
-    assert.equal(installedNext.status, 1, installedNext.stderr);
+    assert.equal(installedNext.status, 2, installedNext.stderr);
     assert.match(installedNext.stderr, /goal/);
 
     const destination = join(tempRoot, "codex", "skills", "plan-governance");
@@ -567,7 +569,7 @@ test("packed package runs from a temporary installation", () => {
         cwd: root,
         encoding: "utf8",
       });
-      assert.equal(rejected.status, 1);
+      assert.equal(rejected.status, 2);
       assert.match(rejected.stderr, /setup (仅支持 --target codex|的 --target 只能指定一次|的 --help 必须单独使用)/);
       assert.equal(existsSync(unsupportedDestination), false);
     }
@@ -592,7 +594,7 @@ test("setup supports dry-run, sync, and conflict protection", () => {
       cwd: root,
       encoding: "utf8",
     });
-    assert.equal(missingTarget.status, 1);
+    assert.equal(missingTarget.status, 2);
     assert.match(missingTarget.stderr, /setup 仅支持 --target codex/);
     assert.equal(existsSync(destination), false);
 
@@ -601,7 +603,7 @@ test("setup supports dry-run, sync, and conflict protection", () => {
         cwd: root,
         encoding: "utf8",
       });
-      assert.equal(rejected.status, 1);
+      assert.equal(rejected.status, 2);
       assert.match(rejected.stderr, /setup (仅支持 --target codex|的 --target 只能指定一次|的 --help 必须单独使用)/);
       assert.equal(existsSync(destination), false);
     }
@@ -663,4 +665,29 @@ test("init uses the package initializer without copying a local checker by defau
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
+});
+
+for (const args of [
+  ["chekc"], ["check", "--root"], ["check", "--json", "--json"], ["workset", "--drift"],
+  ["setup", "--target", "codex", "--destination"], ["setup", "--target", "codex", "--destination", "--dry-run"],
+  ["setup", "--target", "codex", "--destination", ""], ["setup", "--target", "codex", "--dry-run", "--dry-run"],
+  ["graph", "validate", "--layer", "other"], ["graph", "validate", ".", "."],
+  ["graph", "impact", "--from", "x", "--depth", "1x"], ["graph", "impact", "--from", "x", "--format", "yaml"],
+  ["graph", "impact", "--from", "x", "--depth", "2", "--depth", "3"],
+  ["graph", "code", "candidates", "--symbol", "x", "--kind", "method"],
+  ["graph", "code", "impact", "--repo", "x", "--file", "a", "--symbol", "x", "--kind", "invalid"],
+  ["plan", "impact", "--input", "--format", "json"], ["hook", "--event", "stop", "--paths", "x"],
+]) {
+  test(`public syntax errors return 2: ${JSON.stringify(args)}`, () => {
+    const result = run(...args);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.ok(result.stderr);
+  });
+}
+
+test("explicit legacy root still checks with a deprecation notice", () => {
+  const result = run(root, "--json");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /弃用/);
+  assert.equal(JSON.parse(result.stdout).command, "check");
 });

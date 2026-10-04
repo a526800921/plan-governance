@@ -127,9 +127,11 @@ function runRelease(options = {}) {
   const nrmCommand = options.platform === "win32" ? "nrm.cmd" : "nrm";
   const versionInput = (options.args ?? []).find((arg) => arg !== "--dry-run") ?? "patch";
   let reads = 0;
+  const target = ({ patch: "0.3.6", minor: "0.4.0", major: "1.0.0" })[versionInput] ?? versionInput;
   const commands = new Map([
     [JSON.stringify([npmCommand, ["run", "verify"]]), "verify"],
     [JSON.stringify([npmCommand, ["config", "get", "registry"]]), "get"],
+    [JSON.stringify([npmCommand, ["view", `fixture-package@${target}`, "version", "--json", "--registry", officialRegistry]]), "exists"],
     [JSON.stringify([nrmCommand, ["use", "npm"]]), "switch"],
     [JSON.stringify([npmCommand, ["version", versionInput, "--no-git-tag-version"]]), "version"],
     [JSON.stringify([npmCommand, ["publish", "--access", "public", "--registry", officialRegistry]]), "publish"],
@@ -143,13 +145,13 @@ function runRelease(options = {}) {
       });
       reads += 1;
       if (options.readFailure === reads) throw new Error("fixture package read failure");
-      return JSON.stringify({ version: state.version === "original" ? "0.3.5" : "0.3.6" });
+      return JSON.stringify({ name: "fixture-package", version: state.version === "original" ? "0.3.5" : "0.3.6" });
     },
     execFileSync(command, args, runOptions) {
       const action = harness.check(() => {
         const found = commands.get(JSON.stringify([command, plain(args)]));
         assert.ok(found, `unexpected executable/argv: ${command} ${JSON.stringify(args)}`);
-        checkRunOptions(runOptions, found === "get");
+        checkRunOptions(runOptions, ["get", "exists"].includes(found));
         return found;
       });
       trace.push(action);
@@ -158,6 +160,10 @@ function runRelease(options = {}) {
       if (action === "verify" && options.verify) {
         const verified = options.verify();
         if (verified.exit !== 0) throw new Error("fixture verify failed");
+      }
+      if (action === "exists") {
+        if (options.existingVersion) return JSON.stringify(target);
+        throw Object.assign(new Error("fixture npm E404"), { stdout: JSON.stringify({ error: { code: "E404" } }) });
       }
       if (action === "get") return options.registryReturn ?? `${originalRegistry}\n`;
       if (action === "switch") state.registry = "official";
@@ -253,7 +259,7 @@ for (const platform of ["linux", "win32"]) {
   test(`release verifies before registry access and restores on ${platform}`, () => {
     const result = runRelease({ platform });
     assert.equal(result.exit, 0);
-    assert.deepEqual(result.trace, ["verify", "get", "switch", "version", "publish", "restore"]);
+    assert.deepEqual(result.trace, ["verify", "get", "exists", "switch", "version", "publish", "restore"]);
     assert.deepEqual(result.state, { registry: "original", version: "changed", publication: "accepted" });
     assert.equal(result.reads, 2);
     assert.deepEqual(result.errors, []);
@@ -264,7 +270,7 @@ for (const version of ["patch", "minor", "major", "1.2.3", "1.2.3-rc.1+fixture"]
   test(`release preserves supported version argument ${version}`, () => {
     const result = runRelease({ args: [version] });
     assert.equal(result.exit, 0);
-    assert.deepEqual(result.trace, ["verify", "get", "switch", "version", "publish", "restore"]);
+    assert.deepEqual(result.trace, ["verify", "get", "exists", "switch", "version", "publish", "restore"]);
   });
 }
 
@@ -274,7 +280,7 @@ for (const action of ["switch", "version", "publish", "restore"]) {
       const result = runRelease({ failures: { [action]: when } });
       const until = { switch: ["switch"], version: ["switch", "version"], publish: ["switch", "version", "publish"], restore: ["switch", "version", "publish"] };
       assert.equal(result.exit, 1);
-      assert.deepEqual(result.trace, ["verify", "get", ...until[action], "restore"]);
+      assert.deepEqual(result.trace, ["verify", "get", "exists", ...until[action], "restore"]);
       assert.equal(result.state.registry, action === "restore" && when === "before" ? "official" : "original");
       assert.equal(result.state.version, action === "switch" || (action === "version" && when === "before") ? "original" : "changed");
       assert.equal(result.state.publication, action === "restore" || (action === "publish" && when === "after") ? "accepted" : "absent");
@@ -286,7 +292,7 @@ for (const action of ["switch", "version", "publish", "restore"]) {
 test("release retains primary and restore errors without retries", () => {
   const result = runRelease({ failures: { publish: "after", restore: "before" } });
   assert.equal(result.exit, 1);
-  assert.deepEqual(result.trace, ["verify", "get", "switch", "version", "publish", "restore"]);
+  assert.deepEqual(result.trace, ["verify", "get", "exists", "switch", "version", "publish", "restore"]);
   assert.match(result.errors.join("\n"), /fixture publish after failure/);
   assert.match(result.errors.join("\n"), /fixture restore before failure/);
   assert.equal(result.state.version, "changed");
@@ -312,7 +318,7 @@ test("release stops before switching when package version cannot be read", () =>
 test("release still restores if post-publication package version read fails", () => {
   const result = runRelease({ readFailure: 2 });
   assert.equal(result.exit, 1);
-  assert.deepEqual(result.trace, ["verify", "get", "switch", "version", "publish", "restore"]);
+  assert.deepEqual(result.trace, ["verify", "get", "exists", "switch", "version", "publish", "restore"]);
   assert.equal(result.state.publication, "accepted");
 });
 
@@ -331,8 +337,8 @@ test("release dry-run only reads registry and displays the full intended order",
   assert.deepEqual(result.trace, ["get"]);
   assert.equal(result.reads, 0);
   const preview = result.logs.filter((line) => line.includes("dry-run:"));
-  assert.equal(preview.length, 6);
-  for (const [index, expected] of ["npm run verify", "npm config get registry", "nrm use npm", "npm version minor --no-git-tag-version", "npm publish --access public --registry", "恢复 registry"].entries()) {
+  assert.equal(preview.length, 7);
+  for (const [index, expected] of ["npm run verify", "npm config get registry", "npm view", "nrm use npm", "npm version minor --no-git-tag-version", "npm publish --access public --registry", "恢复 registry"].entries()) {
     assert.ok(preview[index].includes(expected), preview[index]);
   }
 });
@@ -354,7 +360,7 @@ test("release assertions reject the old verification-after-switch control flow",
   source = replaceOnce(source, '      run(nrmCommand, ["use", npmRegistry]);', '      run(nrmCommand, ["use", npmRegistry]);\n      run(npmCommand, ["run", "verify"]);');
   const result = runRelease({ source, failures: { verify: "before" } });
   assert.equal(result.exit, 1);
-  assert.deepEqual(result.trace, ["get", "switch", "verify", "restore"]);
+  assert.deepEqual(result.trace, ["get", "exists", "switch", "verify", "restore"]);
   assert.throws(() => assert.deepEqual(result.trace, ["verify"]), assert.AssertionError);
 });
 
@@ -364,9 +370,9 @@ test("release assertions reject the old restore flag set after switching", () =>
     '      run(nrmCommand, ["use", npmRegistry]);\n      restoreRequired = true;');
   const result = runRelease({ source, failures: { switch: "after" } });
   assert.equal(result.exit, 1);
-  assert.deepEqual(result.trace, ["verify", "get", "switch"]);
+  assert.deepEqual(result.trace, ["verify", "get", "exists", "switch"]);
   assert.equal(result.state.registry, "official");
-  assert.throws(() => assert.deepEqual(result.trace, ["verify", "get", "switch", "restore"]), assert.AssertionError);
+  assert.throws(() => assert.deepEqual(result.trace, ["verify", "get", "exists", "switch", "restore"]), assert.AssertionError);
 });
 
 test("VM harness rejects unknown child commands even if entry point catches them", () => {
@@ -436,4 +442,26 @@ process.exitCode = exit;
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
+});
+
+for (const args of [["01.2.3"], ["1.2.3-01"], ["1.2.3-rc..1"], ["1.2.3+"], ["--dry-run", "--dry-run"]]) {
+  test(`release rejects invalid SemVer/duplicate flags ${JSON.stringify(args)}`, () => {
+    const result = runRelease({ args });
+    assert.equal(result.exit, 2);
+    assert.deepEqual(result.trace, []);
+  });
+}
+
+test("release rejects existing versions before switch/version/publish", () => {
+  const result = runRelease({ existingVersion: true });
+  assert.equal(result.exit, 1);
+  assert.deepEqual(result.trace, ["verify", "get", "exists"]);
+  assert.deepEqual(result.state, { registry: "original", version: "original", publication: "absent" });
+});
+
+test("release fails closed if registry availability cannot be confirmed", () => {
+  const result = runRelease({ failures: { exists: "before" } });
+  assert.equal(result.exit, 1);
+  assert.deepEqual(result.trace, ["verify", "get", "exists"]);
+  assert.match(result.errors.join("\n"), /无法确认目标版本/);
 });

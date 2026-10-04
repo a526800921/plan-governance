@@ -27,6 +27,7 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
+| [cli-check-and-interface-contracts](plans/20261004/cli-check-and-interface-contracts.md) | 已完成 | 阶段 1 | 2026-10-04 | iterative-governance-reliability, plan-governance-workflow-streamlining, plan-governance-distribution-setup | [拟议功能契约](plans/20261004/cli-check-and-interface-contracts.md#实现与验收结果)；[公开入口核查](data-quality/20261004-cli-argument-result-audit.md)；[实现自验通过](plans/20261004/cli-check-and-interface-contracts.md#最新阶段复核) |
 | [npm-major-release-2.0.0](plans/20260926/npm-major-release-2.0.0.md) | 已完成 | 阶段 1 | 2026-09-26 | plan-governance-distribution-setup, migration-reference-and-record-naming | [2.0.0 发布与用户范围调整](plans/20260926/npm-major-release-2.0.0.md#阶段证据) |
 | [plan-documentation-date-directories](plans/20260926/plan-documentation-date-directories.md) | 已完成 | 阶段 2 | 2026-09-26 | iterative-governance-reliability | [迁移与验证证据](plans/20260926/plan-documentation-date-directories.md#阶段证据)；[阶段复核记录](plans/20260926/plan-documentation-date-directories.md#最新阶段复核)；[日期目录阻塞归属补修](plans/20260926/plan-documentation-date-directories.md#最近实施验证记录) |
 | [migration-reference-and-record-naming](plans/20260926/migration-reference-and-record-naming.md) | 已完成 | 阶段 1 | 2026-09-26 | plan-documentation-date-directories | [阶段证据](plans/20260926/migration-reference-and-record-naming.md#阶段证据)；[最新阶段复核](plans/20260926/migration-reference-and-record-naming.md#最新阶段复核) |
@@ -56,6 +57,8 @@
 允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
 
 ## 推荐顺序
+
+2026-10-04 新增[check 分层与 CLI 接口设计](plans/20261004/cli-check-and-interface-contracts.md)：默认文档检查、严格准入与目标计划范围分开；多计划/多会话补充设计将焦点贯穿 check/workset/hook/skill 会话入口，显式携带各会话自己的目标及必要前置/共享约束；[公开入口核查](data-quality/20261004-cli-argument-result-audit.md)已记录参数被忽略、错误范围查询和全量信息混入问题。阶段 1 源码与资源入口已完成，756 Python/89.32%、136 Node 及完整 verify 通过；实际安装版仍为 2.0.2，后续主版本发布另行推进，不关闭其他计划的真实阻塞。
 
 当前最新增量：[关闭自动独立复核](plans/20260906/plan-governance-workflow-streamlining.md#源码实施与验证2026-09-29)已在仓库源实施并通过适用验证，默认全部自验，仅在用户明确要求时独立复核；本仓库 AGENTS 已同步，并已[发布 2.0.2、更新全局 CLI 与 Codex skill](plans/20260713/plan-governance-distribution-setup.md#2026-09-29-202-发布与本机更新)。整体用户使用验收继续保留。下文保留此前交付与使用验收背景。
 

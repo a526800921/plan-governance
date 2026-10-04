@@ -224,8 +224,8 @@ def test_stop_runs_governance_check_without_blocking_on_warning(tmp_path, capsys
     result, output = run_hook(tmp_path, "--event", "stop", capsys=capsys)
 
     assert result == 0
-    assert "fixture warning" in output
-    assert "计划治理检查通过" in output
+    assert "fixture warning" not in output
+    assert "缺少" in output
     assert "非阻塞" in output
 
 
@@ -243,7 +243,10 @@ def test_hooks_share_gate_diagnostics_without_blocking_or_writing(tmp_path, caps
     plan += "\n## 影响模块或文件\n\n- `src/`\n"
     write(tmp_path / "docs/PLAN_MAP.md", index)
     write(tmp_path / "docs/plans/demo.md", plan)
-    result, output = run_hook(tmp_path, "--event", event, "--paths", "src/app.py", capsys=capsys)
+    args = ["--event", event, "--plan", "demo"]
+    if event == "pre-write":
+        args += ["--paths", "src/app.py"]
+    result, output = run_hook(tmp_path, *args, capsys=capsys)
     assert result == 0
     if source == "resolved":
         assert "ready" in output

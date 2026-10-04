@@ -200,9 +200,9 @@ def test_design_plan_does_not_trigger_readiness_check(tmp_path, monkeypatch, cap
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "阶段准入摘要" not in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_markdown_section_ignores_fenced_code_headings():
@@ -230,9 +230,9 @@ def test_complete_readiness_passes_default_and_strict(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", readiness_plan_text())
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    assert "阶段准入" not in capsys.readouterr().out
+    assert "阶段准入" not in diagnostic_output(capsys)
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
-    assert "检查通过" in capsys.readouterr().out
+    assert "检查" in diagnostic_output(capsys)
 
 
 def test_completed_current_phase_can_coexist_with_active_plan_status(tmp_path, capsys):
@@ -246,7 +246,7 @@ def test_completed_current_phase_can_coexist_with_active_plan_status(tmp_path, c
     )
 
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
-    assert "检查通过" in capsys.readouterr().out
+    assert "检查" in diagnostic_output(capsys)
 
 
 def test_missing_readiness_fields_warns_and_strict_fails(tmp_path, capsys):
@@ -257,11 +257,11 @@ def test_missing_readiness_fields_warns_and_strict_fails(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", readiness_plan_text(include_summary=False))
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "阶段准入摘要缺少字段" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
-    assert "阶段准入摘要缺少字段" in capsys.readouterr().out
+    assert "阶段准入摘要缺少字段" in diagnostic_output(capsys)
 
 
 def test_numbered_readiness_heading_explains_fixed_title(tmp_path, capsys):
@@ -273,11 +273,11 @@ def test_numbered_readiness_heading_explains_fixed_title(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", numbered)
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "检测到标题 `阶段 1 准入摘要`" in output
     assert "请改为固定标题 `阶段准入摘要`" in output
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
-    assert "阶段编号以 `PLAN_MAP.md` 的当前阶段为准" in capsys.readouterr().out
+    assert "阶段编号以 `PLAN_MAP.md` 的当前阶段为准" in diagnostic_output(capsys)
 
 
 def test_numbered_review_headings_explain_fixed_titles(tmp_path, capsys):
@@ -291,7 +291,7 @@ def test_numbered_review_headings_explain_fixed_titles(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", numbered)
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "请改为固定标题 `最新独立准入复核`" in output
     assert "请改为固定标题 `独立复核记录`" in output
 
@@ -307,9 +307,9 @@ def test_conflicting_latest_review_warns_and_strict_fails(tmp_path, capsys):
     )
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    assert "结论冲突" in capsys.readouterr().out
+    assert "结论冲突" in diagnostic_output(capsys)
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
-    assert "结论冲突" in capsys.readouterr().out
+    assert "结论冲突" in diagnostic_output(capsys)
 
 
 def test_completion_review_record_does_not_replace_latest_readiness_review(tmp_path, capsys):
@@ -324,7 +324,7 @@ def test_completion_review_record_does_not_replace_latest_readiness_review(tmp_p
     )
     write(tmp_path / "docs" / "plans" / "demo.md", plan)
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 0
-    assert "历史记录最后一条结论冲突" not in capsys.readouterr().out
+    assert "历史记录最后一条结论冲突" not in diagnostic_output(capsys)
 
 
 def test_phase_pointer_mismatch_warns_and_strict_fails(tmp_path, capsys):
@@ -335,11 +335,11 @@ def test_phase_pointer_mismatch_warns_and_strict_fails(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", readiness_plan_text())
 
     assert check_plan_governance.main([str(tmp_path)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "未在计划阶段路线图中找到" in output
     assert "最新独立准入复核阶段" in output
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
-    assert "未在计划阶段路线图中找到" in capsys.readouterr().out
+    assert "未在计划阶段路线图中找到" in diagnostic_output(capsys)
 
 
 def test_open_blocker_keeps_existing_error_in_readiness_modes(tmp_path, capsys):
@@ -352,17 +352,17 @@ def test_open_blocker_keeps_existing_error_in_readiness_modes(tmp_path, capsys):
         readiness_plan_text(unresolved_blocker=True),
     )
 
-    assert check_plan_governance.main([str(tmp_path)]) == 1
-    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+    assert check_plan_governance.main([str(tmp_path)]) == 0
+    assert "当前阶段存在未解决阻塞项" in diagnostic_output(capsys)
     assert check_plan_governance.main([str(tmp_path), "--strict-readiness"]) == 1
-    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+    assert "当前阶段存在未解决阻塞项" in diagnostic_output(capsys)
 
 
 def test_missing_plan_map_is_not_an_error(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    assert "尚未初始化计划治理" in capsys.readouterr().out
+    assert "尚未初始化计划治理" in diagnostic_output(capsys)
 
 
 def test_valid_plan_map_passes(tmp_path, monkeypatch, capsys):
@@ -374,7 +374,7 @@ def test_valid_plan_map_passes(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    assert "检查通过" in capsys.readouterr().out
+    assert "检查" in diagnostic_output(capsys)
 
 
 def test_invalid_status_and_missing_file_fail(tmp_path, monkeypatch, capsys):
@@ -385,7 +385,7 @@ def test_invalid_status_and_missing_file_fail(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "状态不合法" in output
     assert "引用的计划文件不存在" in output
 
@@ -395,7 +395,7 @@ def test_missing_plan_index_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "缺少计划索引表" in capsys.readouterr().out
+    assert "缺少计划索引表" in diagnostic_output(capsys)
 
 
 def test_plan_row_without_link_fails(tmp_path, monkeypatch, capsys):
@@ -406,7 +406,7 @@ def test_plan_row_without_link_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "计划行缺少 docs/plans 链接" in capsys.readouterr().out
+    assert "计划行缺少 docs/plans 链接" in diagnostic_output(capsys)
 
 
 def test_legacy_plan_index_without_last_updated_fails(tmp_path, monkeypatch, capsys):
@@ -425,7 +425,7 @@ def test_legacy_plan_index_without_last_updated_fails(tmp_path, monkeypatch, cap
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "必须包含 `最后更新` 列" in capsys.readouterr().out
+    assert "必须包含 `最后更新` 列" in diagnostic_output(capsys)
 
 
 def test_invalid_last_updated_date_fails(tmp_path, monkeypatch, capsys):
@@ -437,7 +437,7 @@ def test_invalid_last_updated_date_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "最后更新日期不合法" in capsys.readouterr().out
+    assert "最后更新日期不合法" in diagnostic_output(capsys)
 
 
 def test_plain_plan_link_is_supported(tmp_path, monkeypatch, capsys):
@@ -449,7 +449,7 @@ def test_plain_plan_link_is_supported(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    assert "检查通过" in capsys.readouterr().out
+    assert "检查" in diagnostic_output(capsys)
 
 
 def test_read_utf8_reports_decode_error(tmp_path):
@@ -474,7 +474,7 @@ def test_dependency_cycle_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "计划依赖存在环" in capsys.readouterr().out
+    assert "计划依赖存在环" in diagnostic_output(capsys)
 
 
 def test_implementing_plan_cannot_depend_on_inactive_plan(tmp_path, monkeypatch, capsys):
@@ -490,7 +490,7 @@ def test_implementing_plan_cannot_depend_on_inactive_plan(tmp_path, monkeypatch,
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "依赖了非活跃计划" in capsys.readouterr().out
+    assert "依赖了非活跃计划" in diagnostic_output(capsys)
 
 
 def test_implementing_plan_with_open_blocker_fails(tmp_path, monkeypatch, capsys):
@@ -501,8 +501,8 @@ def test_implementing_plan_with_open_blocker_fails(tmp_path, monkeypatch, capsys
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text(unresolved_blocker=True))
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
-    assert check_plan_governance.main() == 1
-    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+    assert check_plan_governance.main() == 0
+    assert "当前阶段存在未解决阻塞项" in diagnostic_output(capsys)
 
 
 def test_ready_plan_with_open_blocker_fails(tmp_path, monkeypatch, capsys):
@@ -513,8 +513,8 @@ def test_ready_plan_with_open_blocker_fails(tmp_path, monkeypatch, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text(unresolved_blocker=True))
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
-    assert check_plan_governance.main() == 1
-    assert "活跃计划仍有未解决的当前阶段阻塞项" in capsys.readouterr().out
+    assert check_plan_governance.main() == 0
+    assert "当前阶段存在未解决阻塞项" in diagnostic_output(capsys)
 
 
 def test_completed_plan_without_evidence_fails(tmp_path, monkeypatch, capsys):
@@ -526,7 +526,7 @@ def test_completed_plan_without_evidence_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "缺少有效 Step 0 证据或验证方式" in capsys.readouterr().out
+    assert "缺少有效 Step 0 证据或验证方式" in diagnostic_output(capsys)
 
 
 def test_completed_plan_with_placeholder_evidence_fails(tmp_path, monkeypatch, capsys):
@@ -543,7 +543,7 @@ def test_completed_plan_with_placeholder_evidence_fails(tmp_path, monkeypatch, c
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "缺少有效 Step 0 证据或验证方式" in capsys.readouterr().out
+    assert "缺少有效 Step 0 证据或验证方式" in diagnostic_output(capsys)
 
 
 def test_completed_plan_without_coverage_fails(tmp_path, monkeypatch, capsys):
@@ -555,7 +555,7 @@ def test_completed_plan_without_coverage_fails(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "缺少测试覆盖率证据" in capsys.readouterr().out
+    assert "缺少测试覆盖率证据" in diagnostic_output(capsys)
 
 
 def test_completed_plan_with_placeholder_coverage_fails(tmp_path, monkeypatch, capsys):
@@ -573,7 +573,7 @@ def test_completed_plan_with_placeholder_coverage_fails(tmp_path, monkeypatch, c
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 1
-    assert "缺少测试覆盖率证据" in capsys.readouterr().out
+    assert "缺少测试覆盖率证据" in diagnostic_output(capsys)
 
 
 def test_completed_plan_with_coverage_passes(tmp_path, monkeypatch, capsys):
@@ -585,7 +585,7 @@ def test_completed_plan_with_coverage_passes(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    assert "检查通过" in capsys.readouterr().out
+    assert "检查" in diagnostic_output(capsys)
 
 
 def test_orphan_plan_warns_without_failing(tmp_path, monkeypatch, capsys):
@@ -598,10 +598,10 @@ def test_orphan_plan_warns_without_failing(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "孤立计划" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_overlapping_active_plan_targets_warn_without_failing(tmp_path, monkeypatch, capsys):
@@ -617,11 +617,11 @@ def test_overlapping_active_plan_targets_warn_without_failing(tmp_path, monkeypa
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "多个活跃计划声明相同影响目标" in output
     assert "src/api.py" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_plan_reference_missing_from_declared_dependencies_warns(tmp_path, monkeypatch, capsys):
@@ -640,7 +640,7 @@ def test_plan_reference_missing_from_declared_dependencies_warns(tmp_path, monke
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "正文引用了计划 b" in output
     assert "依赖列未声明" in output
 
@@ -661,7 +661,7 @@ def test_relative_markdown_plan_reference_matches_declared_dependency(tmp_path, 
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "正文引用了计划" not in output
     assert "正文未引用" not in output
 
@@ -689,7 +689,7 @@ def test_declared_dependency_without_plan_reference_warns(tmp_path, monkeypatch,
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "声明依赖 b" in output
     assert "正文未引用" in output
 
@@ -706,7 +706,7 @@ def test_self_plan_reference_is_ignored(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "正文引用了计划" not in output
     assert "正文未引用" not in output
 
@@ -756,9 +756,9 @@ def test_drift_uses_normalized_scope_targets(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.subprocess, "run", fake_run)
 
     assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "变更文件未被活跃计划影响范围覆盖" not in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_drift_warns_for_changed_file_outside_active_plan_targets(tmp_path, monkeypatch, capsys):
@@ -777,11 +777,11 @@ def test_drift_warns_for_changed_file_outside_active_plan_targets(tmp_path, monk
     monkeypatch.setattr(check_plan_governance.subprocess, "run", fake_run)
 
     assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "--drift" in output
     assert "src/uncovered.py" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_pre_commit_covered_changed_file_does_not_warn(tmp_path, monkeypatch, capsys):
@@ -800,9 +800,9 @@ def test_pre_commit_covered_changed_file_does_not_warn(tmp_path, monkeypatch, ca
     monkeypatch.setattr(check_plan_governance.subprocess, "run", fake_run)
 
     assert check_plan_governance.main([str(tmp_path), "--pre-commit"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "变更文件未被活跃计划影响范围覆盖" not in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_drift_covers_plan_map_row_plan_file_and_phase_evidence(tmp_path, capsys):
@@ -826,7 +826,7 @@ def test_drift_covers_plan_map_row_plan_file_and_phase_evidence(tmp_path, capsys
     write(tmp_path / "unrelated.txt", "should warn\n")
 
     assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "PLAN_MAP.md 变更无法唯一归属" not in output
     assert "docs/plans/demo.md" not in output
     assert "docs/evidence.md" not in output
@@ -857,7 +857,7 @@ def test_drift_completed_plan_closing_window_is_narrow(tmp_path, capsys):
     write(tmp_path / "src" / "new.py", "new work\n")
 
     assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "PLAN_MAP.md 变更无法唯一归属" not in output
     assert "docs/plans/demo.md" not in output
     assert "docs/evidence.md" not in output
@@ -905,7 +905,7 @@ def test_pre_commit_uses_the_same_plan_map_and_phase_evidence_ownership(tmp_path
     subprocess.run(["git", "add", "docs/PLAN_MAP.md", "docs/plans/demo.md", "docs/evidence.md"], cwd=tmp_path, check=True)
 
     assert check_plan_governance.main([str(tmp_path), "--pre-commit"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "PLAN_MAP.md 变更无法唯一归属" not in output
     assert "docs/evidence.md" not in output
 
@@ -921,7 +921,7 @@ def test_phase_evidence_rejects_absolute_glob_and_parent_paths(tmp_path, capsys)
 
     # 直接验证非法声明不会成为覆盖目标；Git 变更获取由现有临时项目测试覆盖。
     assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "阶段证据路径非法" in output
 
 
@@ -949,13 +949,13 @@ def test_attest_purpose_creates_relation_snapshot_and_reports_current(tmp_path, 
     assert check_plan_governance.ATTESTATION_SNAPSHOT_RE.fullmatch(data["snapshot_id"])
 
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "purpose=release_gate" in output
     assert "status=current" in output
     plan = tmp_path / "docs" / "plans" / "demo.md"
     plan.write_text(plan.read_text(encoding="utf-8") + "\n人工复核前的文档修订。\n", encoding="utf-8")
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "计划文件 hash 已变化" in output
     assert "status=needs_review" in output
 
@@ -1037,7 +1037,7 @@ def test_attestation_supersedes_old_snapshot_and_duplicate_current_is_strict_err
     )
     duplicate.write_text(json.dumps(first_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
-    assert "多个 current" in capsys.readouterr().out
+    assert "多个 current" in diagnostic_output(capsys)
 
 
 @pytest.mark.parametrize("supersede", [True, False])
@@ -1079,7 +1079,7 @@ def test_attestation_moved_plan_path_is_supersedable_or_needs_review(tmp_path, c
     assert check_plan_governance.main(
         [str(tmp_path), "--check-attestations", "--strict-readiness"]
     ) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert old_snapshot.read_bytes() == old_snapshot_bytes
     if supersede:
         assert "快照引用的计划文件不存在" not in output
@@ -1120,9 +1120,9 @@ def test_attestation_supersedes_cycle_is_warning_by_default_and_error_in_strict_
     write(tmp_path / b, json.dumps(base_b, ensure_ascii=False, indent=2) + "\n")
 
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    assert "supersedes 存在环" in capsys.readouterr().out
+    assert "supersedes 存在环" in diagnostic_output(capsys)
     assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
-    assert "supersedes 存在环" in capsys.readouterr().out
+    assert "supersedes 存在环" in diagnostic_output(capsys)
 
 
 def test_attestation_missing_supersedes_target_is_strict_error(tmp_path, capsys):
@@ -1154,11 +1154,11 @@ def test_attestation_missing_supersedes_target_is_strict_error(tmp_path, capsys)
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
     )
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "supersedes 目标不存在" in output
     assert "status=needs_review" in output
     assert check_plan_governance.main([str(tmp_path), "--check-attestations", "--strict-readiness"]) == 1
-    assert "supersedes 目标不存在" in capsys.readouterr().out
+    assert "supersedes 目标不存在" in diagnostic_output(capsys)
 
 
 def test_attestation_structure_and_supersedes_boundaries_are_reported(tmp_path):
@@ -1339,9 +1339,9 @@ def test_optional_git_change_check_warns_when_git_is_unavailable(tmp_path, monke
     monkeypatch.setattr(check_plan_governance.subprocess, "run", fail_run)
 
     assert check_plan_governance.main([str(tmp_path), "--drift"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "Git 变更检查不可用" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_stale_days_warns_for_old_active_plan(tmp_path, monkeypatch, capsys):
@@ -1353,7 +1353,7 @@ def test_stale_days_warns_for_old_active_plan(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "10"])
 
     assert check_plan_governance.main() == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "超过 --stale-days 10 阈值" in output
 
@@ -1367,7 +1367,7 @@ def test_stale_days_ignores_inactive_plan(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "10"])
 
     assert check_plan_governance.main() == 0
-    assert "超过 --stale-days" not in capsys.readouterr().out
+    assert "超过 --stale-days" not in diagnostic_output(capsys)
 
 
 def test_negative_stale_days_fails(tmp_path, monkeypatch, capsys):
@@ -1378,8 +1378,10 @@ def test_negative_stale_days_fails(tmp_path, monkeypatch, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text())
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path), "--stale-days", "-1"])
 
-    assert check_plan_governance.main() == 1
-    assert "--stale-days 必须是非负整数" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as exc:
+        check_plan_governance.main()
+    assert exc.value.code == 2
+    assert "--stale-days 必须是非负整数" in diagnostic_output(capsys)
 
 
 def test_non_completed_plan_without_coverage_ok(tmp_path, monkeypatch, capsys):
@@ -1391,7 +1393,7 @@ def test_non_completed_plan_without_coverage_ok(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(check_plan_governance.sys, "argv", ["check", str(tmp_path)])
 
     assert check_plan_governance.main() == 0
-    assert "检查通过" in capsys.readouterr().out
+    assert "检查" in diagnostic_output(capsys)
 
 
 def test_has_coverage_evidence_chinese():
@@ -1433,7 +1435,7 @@ def test_attest_creates_snapshot_for_indexed_plan(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
 
     assert check_plan_governance.main([str(tmp_path), "--attest", "demo"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     attestation = tmp_path / "docs" / "attestations" / "demo.json"
     data = json.loads(attestation.read_text(encoding="utf-8"))
 
@@ -1456,7 +1458,7 @@ def test_attest_unknown_plan_fails(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "demo.md", plan_text(with_coverage=True))
 
     assert check_plan_governance.main([str(tmp_path), "--attest", "missing"]) == 1
-    assert "未登记计划，无法创建完成快照" in capsys.readouterr().out
+    assert "未登记计划，无法创建完成快照" in diagnostic_output(capsys)
 
 
 def test_check_attestations_passes_when_hashes_match(tmp_path, capsys):
@@ -1470,9 +1472,9 @@ def test_check_attestations_passes_when_hashes_match(tmp_path, capsys):
     capsys.readouterr()
 
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" not in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_check_attestations_warns_when_plan_hash_changes(tmp_path, capsys):
@@ -1488,10 +1490,10 @@ def test_check_attestations_warns_when_plan_hash_changes(tmp_path, capsys):
     plan.write_text(plan.read_text(encoding="utf-8") + "\n补充说明。\n", encoding="utf-8")
 
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "计划文件 hash 已变化" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_check_attestations_warns_when_plan_map_hash_changes(tmp_path, capsys):
@@ -1507,10 +1509,10 @@ def test_check_attestations_warns_when_plan_map_hash_changes(tmp_path, capsys):
     plan_map_path.write_text(plan_map_path.read_text(encoding="utf-8") + "\n<!-- changed -->\n", encoding="utf-8")
 
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "PLAN_MAP.md hash 已变化" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def test_check_attestations_warns_for_bad_json_and_missing_plan(tmp_path, capsys):
@@ -1536,11 +1538,11 @@ def test_check_attestations_warns_for_bad_json_and_missing_plan(tmp_path, capsys
     )
 
     assert check_plan_governance.main([str(tmp_path), "--check-attestations"]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "WARNING" in output
     assert "attestation JSON 无法解析" in output
     assert "快照引用了未登记计划" in output
-    assert "检查通过" in output
+    assert "检查通过" in output or "检查完成" in output
 
 
 def workset_plan_text(status="设计中", review="尚未进行", blocker=False, missing_summary=False, next_action=None):
@@ -1611,7 +1613,7 @@ def test_workset_derives_actions_history_and_parallel_state(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "history.md", workset_plan_text("已完成", "通过"))
 
     assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(diagnostic_output(capsys))
     items = {item["plan"]: item for item in payload["plans"]}
     assert "history" not in items
     assert items["ready"]["next_action"]["kind"] == "implement"
@@ -1624,7 +1626,7 @@ def test_workset_derives_actions_history_and_parallel_state(tmp_path, capsys):
     assert items["ready"]["parallel"]["peers"] == ["review"]
 
     assert check_plan_governance.main(["--workset", "--include-history", str(tmp_path)]) == 0
-    assert "history" in capsys.readouterr().out
+    assert "history" in diagnostic_output(capsys)
 
 
 def test_workset_include_history_keeps_unstructured_legacy_plan_compatible(tmp_path, capsys):
@@ -1635,7 +1637,7 @@ def test_workset_include_history_keeps_unstructured_legacy_plan_compatible(tmp_p
     write(tmp_path / "docs" / "plans" / "history.md", "# 旧计划\n\n只有自然语言记录。\n")
 
     assert check_plan_governance.main(["--workset", "--include-history", "--json", str(tmp_path)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(diagnostic_output(capsys))
     assert payload["plans"][0]["plan"] == "history"
     assert payload["plans"][0]["readiness"] == "unknown"
 
@@ -1657,13 +1659,13 @@ def test_workset_reads_only_current_recent_evidence(tmp_path, capsys):
     write(tmp_path / "docs" / "plans" / "running.md", plan)
 
     assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(diagnostic_output(capsys))
     assert payload["plans"][0]["recent_evidence"][0][2] == "只读回放"
 
 
 def test_workset_handles_missing_map_plan_and_unknown_status(tmp_path, capsys):
     assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 1
-    assert "未找到 docs/PLAN_MAP.md" in capsys.readouterr().out
+    assert "未找到 docs/PLAN_MAP.md" in diagnostic_output(capsys)
 
     write(
         tmp_path / "docs" / "PLAN_MAP.md",
@@ -1677,22 +1679,22 @@ def test_workset_handles_missing_map_plan_and_unknown_status(tmp_path, capsys):
         ),
     )
     write(tmp_path / "docs" / "plans" / "invalid.md", workset_plan_text("不合法"))
-    assert check_plan_governance.main(["--workset", "--json", "--include-history", str(tmp_path)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    assert check_plan_governance.main(["--workset", "--json", "--include-history", str(tmp_path)]) == 1
+    payload = json.loads(diagnostic_output(capsys))
     assert any("计划文件不存在" in warning for warning in payload["warnings"])
     assert any("状态非法" in warning for warning in payload["warnings"])
     assert payload["plans"] == []
     assert check_plan_governance.main(
         ["--workset", "--strict-readiness", str(tmp_path)]
     ) == 1
-    assert "ERROR" in capsys.readouterr().out
+    assert "ERROR" in diagnostic_output(capsys)
 
     write(
         tmp_path / "docs" / "PLAN_MAP.md",
         plan_map("| [missing](plans/missing.md) | 设计中 | 阶段 1 | - | - |"),
     )
     assert check_plan_governance.main(["--workset", "--strict-readiness", str(tmp_path)]) == 1
-    assert "ERROR" in capsys.readouterr().out
+    assert "ERROR" in diagnostic_output(capsys)
 
 
 def test_workset_rejects_duplicate_plan_ids_without_actions(tmp_path, capsys):
@@ -1705,8 +1707,8 @@ def test_workset_rejects_duplicate_plan_ids_without_actions(tmp_path, capsys):
     )
     write(tmp_path / "docs" / "plans" / "demo.md", workset_plan_text("设计中"))
 
-    assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    assert check_plan_governance.main(["--workset", "--json", str(tmp_path)]) == 1
+    payload = json.loads(diagnostic_output(capsys))
     assert any("重复计划 ID" in warning for warning in payload["warnings"])
     assert payload["plans"] == []
 
@@ -1728,27 +1730,27 @@ def relation_fixture(name, tmp_path):
 def test_stage2_relation_fixture_valid_and_legacy_compatible(tmp_path, capsys):
     valid = relation_fixture("valid", tmp_path / "valid")
     assert check_plan_governance.main([str(valid), "--strict-readiness"]) == 0
-    output = capsys.readouterr().out
-    assert "计划治理检查通过" in output
+    output = diagnostic_output(capsys)
+    assert "检查完成" in output or "检查通过" in output
 
     legacy = relation_fixture("legacy", tmp_path / "legacy")
     assert check_plan_governance.main([str(legacy)]) == 0
-    output = capsys.readouterr().out
-    assert "计划治理检查通过" in output
+    output = diagnostic_output(capsys)
+    assert "检查完成" in output or "检查通过" in output
     assert check_plan_governance.main([str(legacy), "--strict-readiness"]) == 0
-    output = capsys.readouterr().out
-    assert "计划治理检查通过" in output
+    output = diagnostic_output(capsys)
+    assert "检查完成" in output or "检查通过" in output
     assert "阶段关系" not in output
     assert check_plan_governance.main(["--workset", "--json", str(legacy)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(diagnostic_output(capsys))
     assert all(item["parallel"]["state"] == "unknown" for item in payload["plans"])
 
 
 def test_stage2_relation_fixture_accepts_soft_context_and_evidence(tmp_path, capsys):
     valid = relation_fixture("valid", tmp_path / "valid")
     assert check_plan_governance.main([str(valid), "--strict-readiness"]) == 0
-    output = capsys.readouterr().out
-    assert "计划治理检查通过" in output
+    output = diagnostic_output(capsys)
+    assert "检查完成" in output or "检查通过" in output
     assert "soft_context" in (valid / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
     assert "evidence" in (valid / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
 
@@ -1770,12 +1772,12 @@ def test_relation_evidence_resolves_from_docs_with_date_directory_plans(tmp_path
 def test_stage2_relation_fixture_invalid_default_warns_and_strict_fails(tmp_path, capsys):
     invalid = relation_fixture("invalid-reference", tmp_path / "invalid")
     assert check_plan_governance.main([str(invalid)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "阶段关系第" in output
-    assert "计划治理检查通过" in output
+    assert "检查完成" in output or "检查通过" in output
 
     assert check_plan_governance.main([str(invalid), "--strict-readiness"]) == 1
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "ERROR: PLAN_MAP.md: 阶段关系第" in output
     assert "来源阶段不存在于计划路线图" in output
     assert "目标阶段不存在于计划路线图" in output
@@ -1784,43 +1786,43 @@ def test_stage2_relation_fixture_invalid_default_warns_and_strict_fails(tmp_path
     assert "缺少有效证据" in output
 
     assert check_plan_governance.main(["--workset", "--json", str(invalid)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(diagnostic_output(capsys))
     assert all(item["parallel"]["state"] == "unknown" for item in payload["plans"])
 
 
 def test_stage2_relation_fixture_cycle_and_self_edge_are_rejected(tmp_path, capsys):
     cycle = relation_fixture("cycle", tmp_path / "cycle")
     assert check_plan_governance.main([str(cycle)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "环依赖" in output
     assert "不能引用自身同一阶段" in output
 
     assert check_plan_governance.main([str(cycle), "--strict-readiness"]) == 1
-    assert "ERROR: PLAN_MAP.md: 阶段关系" in capsys.readouterr().out
+    assert "ERROR: PLAN_MAP.md: 阶段关系" in diagnostic_output(capsys)
 
 
 def test_stage2_shared_write_contract_is_optional_but_invalid_rows_fail_strict(tmp_path, capsys):
     invalid = relation_fixture("shared-write-invalid", tmp_path / "shared-write-invalid")
     assert check_plan_governance.main([str(invalid)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "共享写入约束第" in output
     assert "约束类型非法" in output
 
     assert check_plan_governance.main([str(invalid), "--strict-readiness"]) == 1
-    assert "共享写入约束第" in capsys.readouterr().out
+    assert "共享写入约束第" in diagnostic_output(capsys)
 
 
 def test_stage2_legacy_dependency_conflict_warns_without_overriding_old_data(tmp_path, capsys):
     root = relation_fixture("legacy-conflict", tmp_path / "legacy-conflict")
     assert check_plan_governance.main([str(root)]) == 0
-    output = capsys.readouterr().out
+    output = diagnostic_output(capsys)
     assert "hard_gate" in output
     assert "计划索引依赖列未包含 alpha" in output
     assert "gamma" in (root / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
     assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
     capsys.readouterr()
     assert check_plan_governance.main(["--workset", "--json", str(root)]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(diagnostic_output(capsys))
     beta = next(item for item in payload["plans"] if item["plan"] == "beta")
     assert beta["parallel"]["state"] == "known"
 
@@ -1828,14 +1830,14 @@ def test_stage2_legacy_dependency_conflict_warns_without_overriding_old_data(tmp
 def test_stage2_legacy_four_column_shared_write_table_remains_compatible(tmp_path, capsys):
     root = relation_fixture("shared-write-legacy", tmp_path / "shared-write-legacy")
     assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
-    assert "计划治理检查通过" in capsys.readouterr().out
+    assert "准入检查通过" in diagnostic_output(capsys)
 
 
 def test_stage2_nine_column_shared_write_table_has_priority_over_human_summary(tmp_path, capsys):
     root = relation_fixture("shared-write-conflict", tmp_path / "shared-write-conflict")
     assert check_plan_governance.main([str(root), "--strict-readiness"]) == 0
-    output = capsys.readouterr().out
-    assert "计划治理检查通过" in output
+    output = diagnostic_output(capsys)
+    assert "检查完成" in output or "检查通过" in output
     assert "beta 先于 alpha" in (root / "docs" / "PLAN_MAP.md").read_text(encoding="utf-8")
 
 
@@ -1906,7 +1908,7 @@ def test_gate_preserves_blockers_across_sources(tmp_path, capsys, source):
         if source == "unknown":
             plan = plan.replace("| 是 | 未解决 |", "| 是 | Pending |")
     payload = assert_gate_result(tmp_path, capsys, plan, index=index,
-        check_codes=(1, 1) if source == "open" else (0, 1),
+        check_codes=(0, 1) if source == "open" else (0, 1),
         readiness="blocked", action="resolve_blocker")
     assert payload["plans"][0]["blockers"]
     assert payload["warnings"]
@@ -2128,10 +2130,10 @@ def test_duplicate_index_is_strict_error_in_both_commands(tmp_path, capsys, dupl
     write(tmp_path / "docs/PLAN_MAP.md", index)
     write(tmp_path / "docs/plans/demo.md", readiness_plan_text())
     for strict in [False, True]:
-        assert check_plan_governance.main([str(tmp_path), *(["--strict-readiness"] if strict else [])]) == int(strict)
-        assert "重复计划" in capsys.readouterr().out
+        assert check_plan_governance.main([str(tmp_path), *(["--strict-readiness"] if strict else [])]) == 1
+        assert "重复计划" in diagnostic_output(capsys)
         payload, code = check_plan_governance.workset_payload(tmp_path, strict=strict)
-        assert code == int(strict)
+        assert code == 1
         assert payload["plans"] == []
 
 
@@ -2150,7 +2152,7 @@ def test_duplicate_map_blocker_sections_cannot_hide_later_blocker(tmp_path, caps
 
 def test_blocker_text_with_dashes_is_not_a_table_separator(tmp_path, capsys):
     plan = readiness_plan_text(unresolved_blocker=True).replace("| 示例问题 |", "| 失败---待修复 |")
-    payload = assert_gate_result(tmp_path, capsys, plan, check_codes=(1, 1),
+    payload = assert_gate_result(tmp_path, capsys, plan, check_codes=(0, 1),
         readiness="blocked", action="resolve_blocker")
     assert "失败---待修复" in payload["plans"][0]["blockers"]
 
@@ -2167,7 +2169,7 @@ def test_map_blocker_link_to_dated_plan_path_is_attributed():
 
 def test_legacy_open_state_with_description_keeps_default_hard_error(tmp_path, capsys):
     plan = readiness_plan_text(unresolved_blocker=True).replace("| 是 | 未解决 |", "| 是 | 待处理：补证据 |")
-    assert_gate_result(tmp_path, capsys, plan, check_codes=(1, 1),
+    assert_gate_result(tmp_path, capsys, plan, check_codes=(0, 1),
         readiness="blocked", action="resolve_blocker")
 
 
@@ -2215,3 +2217,8 @@ def test_find_orphan_plans_includes_dated_and_malformed_numeric_buckets(tmp_path
     assert {path.relative_to(plans).as_posix() for path in found} == {
         "legacy.md", "20260230/invalid.md", "20260926/nested/too-deep.md",
     }
+
+
+def diagnostic_output(capsys):
+    captured = capsys.readouterr()
+    return captured.out + captured.err

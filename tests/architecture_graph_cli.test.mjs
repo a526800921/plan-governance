@@ -257,3 +257,40 @@ test("code impact rejects a GitNexus JSON error instead of reporting no impact",
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Target 'Missing' not found/);
 });
+
+test("constrained candidate search never expands when file is missing or has no match", () => {
+  const target = fixture((rootPath) => {
+    writeFileSync(join(rootPath, "Only.py"), "class Only:\n    pass\n");
+    writeFileSync(join(rootPath, "Empty.py"), "# no definitions\n");
+  });
+  const missing = codeCandidates(target, ["--file", "Missing.py", "--symbol", "Only", "--kind", "class"]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /指定代码文件不存在/);
+  const empty = codeCandidates(target, ["--file", "Empty.py", "--symbol", "Only", "--kind", "class"]);
+  assert.equal(empty.status, 0, empty.stderr);
+  assert.equal(JSON.parse(empty.stdout).resolution, "no_candidate");
+  const outside = codeCandidates(target, ["--file", "../outside.py", "--symbol", "Only", "--kind", "class"]);
+  assert.equal(outside.status, 1);
+});
+
+for (const response of ["null", "[]", "not JSON", "{}", '{"risk":"LOW","impactedCount":-1}', '{"error":"failed","risk":"LOW","impactedCount":0}']) {
+  test(`code impact rejects malformed external success payload ${response}`, () => {
+    const target = fixture();
+    const bin = mkdtempSync(join(tmpdir(), "plan-impact-invalid-"));
+    const stub = join(bin, "gitnexus");
+    writeFileSync(stub, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(response)});\n`, { mode: 0o755 });
+    const result = codeImpact(target, ["--repo", "fixture", "--file", "a.py", "--symbol", "run", "--kind", "function"], bin);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /GitNexus/);
+    assert.equal(result.stdout, "");
+  });
+}
+
+test("code impact distinguishes a normal empty result from invalid responses", () => {
+  const target = fixture();
+  const bin = mkdtempSync(join(tmpdir(), "plan-impact-empty-"));
+  writeFileSync(join(bin, "gitnexus"), '#!/usr/bin/env node\nconsole.log(JSON.stringify({risk:"LOW", impactedCount:0}));\n', { mode: 0o755 });
+  const result = codeImpact(target, ["--repo", "fixture", "--file", "a.py", "--symbol", "run", "--kind", "method"], bin);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).result.impactedCount, 0);
+});

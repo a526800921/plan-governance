@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { isAbsolute, resolve, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import { parse as parseYaml } from "yaml";
 
@@ -61,9 +61,11 @@ function usage() {
 架构图谱入口：<root>/docs/graph/architecture/index.yaml`);
 }
 
-function error(message) {
+class UsageError extends Error { code = 2; }
+
+function error(message, status = 1) {
   console.error(`graph: ERROR: ${message}`);
-  return 1;
+  return status;
 }
 
 function graphPath(root) {
@@ -407,57 +409,58 @@ function validate(root, layer = "functional") {
   return 0;
 }
 
-function parseValidateArgs(args) {
-  const options = { layer: "functional", root: process.cwd() };
+function parseOptions(args, name, defaults, required = []) {
+  if (args.length === 1 && ["-h", "--help"].includes(args[0])) return null;
+  const options = { ...defaults, root: process.cwd() };
+  const seen = new Set();
   const positional = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--layer") options.layer = args[++index];
-    else if (arg === "-h" || arg === "--help") return null;
-    else positional.push(arg);
+  let terminated = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--" && !terminated) { terminated = true; continue; }
+    if (!terminated && arg.startsWith("-")) {
+      const key = arg.slice(2);
+      if (!arg.startsWith("--") || !Object.hasOwn(defaults, key)) throw new UsageError(`${name} 不支持参数：${arg}`);
+      if (seen.has(key)) throw new UsageError(`${arg} 只能指定一次`);
+      seen.add(key);
+      const value = args[++i];
+      if (!value?.trim() || value.startsWith("-")) throw new UsageError(`${arg} 缺少值`);
+      options[key] = value;
+    } else positional.push(arg);
   }
-  if (!["functional", "architecture"].includes(options.layer)) {
-    throw new Error("validate --layer 只能是 functional 或 architecture");
+  if (positional.length > 1) throw new UsageError(`${name} 只能接收一个 root 路径`);
+  if (positional.some((value) => !value.trim())) throw new UsageError("root 不能为空");
+  if (positional.length) options.root = resolve(positional[0]);
+  for (const key of required) if (!options[key]) throw new UsageError(`${name} 必须指定 --${key} <value>`);
+  if ("format" in options && !["text", "json"].includes(options.format)) throw new UsageError("--format 只能是 text 或 json");
+  if ("depth" in options) {
+    if (!/^[0-9]+$/.test(String(options.depth)) || Number(options.depth) < 1 || Number(options.depth) > 10) throw new UsageError("--depth 必须是 1 到 10 的整数");
+    options.depth = Number(options.depth);
   }
-  if (positional.length > 1) throw new Error("validate 只能接收一个 root 路径");
-  if (positional.length === 1) options.root = resolve(positional[0]);
+  if (!existsSync(options.root) || !statSync(options.root).isDirectory()) throw new Error(`root 不存在或不是目录：${options.root}`);
+  return options;
+}
+
+function parseValidateArgs(args) {
+  const options = parseOptions(args, "validate", { layer: "functional" });
+  if (options && !["functional", "architecture"].includes(options.layer)) throw new UsageError("validate --layer 只能是 functional 或 architecture");
   return options;
 }
 
 function parseImpactArgs(args) {
-  const options = { from: null, depth: 2, format: "text", root: process.cwd() };
-  const positional = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--from") options.from = args[++index];
-    else if (arg === "--depth") options.depth = Number(args[++index]);
-    else if (arg === "--format") options.format = args[++index];
-    else if (arg === "-h" || arg === "--help") return null;
-    else positional.push(arg);
-  }
-  if (positional.length > 0) options.root = resolve(positional.at(-1));
-  if (!options.from) throw new Error("impact 必须指定 --from <graph-node-id>");
-  if (!Number.isInteger(options.depth) || options.depth < 1 || options.depth > 10) throw new Error("--depth 必须是 1 到 10 的整数");
-  if (!["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
-  return options;
+  return parseOptions(args, "impact", { from: null, depth: 2, format: "text" }, ["from"]);
 }
 
 function parsePlanImpactArgs(args) {
-  const options = { input: null, format: "text", root: process.cwd() };
-  const positional = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--input") options.input = args[++index];
-    else if (arg === "--format") options.format = args[++index];
-    else if (arg === "-h" || arg === "--help") return null;
-    else positional.push(arg);
-  }
-  if (positional.length > 1) throw new Error("plan impact 只能接收一个 root 路径");
-  if (positional.length === 1) options.root = resolve(positional[0]);
-  if (!options.input) throw new Error("plan impact 必须指定 --input <plan-impact-request.json>");
-  if (!options.format || !["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
-  if (!existsSync(options.root)) throw new Error(`root 不存在：${options.root}`);
-  return options;
+  return parseOptions(args, "plan impact", { input: null, format: "text" }, ["input"]);
+}
+
+function candidateFile(root, file) {
+  const path = resolve(root, file);
+  const inside = (candidate) => { const rel = relative(realpathSync(root), candidate); return rel !== ".." && !rel.startsWith("../") && !isAbsolute(rel); };
+  if (!existsSync(path) || !statSync(path).isFile()) throw new Error(`指定代码文件不存在或不是普通文件：${file}`);
+  if (!inside(realpathSync(path))) throw new Error(`代码文件必须位于 root 内：${file}`);
+  return relative(root, path);
 }
 
 function loadPlanImpactRequest(root, input) {
@@ -481,8 +484,9 @@ function loadPlanImpactRequest(root, input) {
     const anchor = request.code_anchor;
     if (!anchor || typeof anchor !== "object") throw new Error("code_locator_requested=true 时必须提供 code_anchor");
     for (const field of ["file", "symbol", "kind"]) {
-      if (typeof anchor[field] !== "string" || anchor[field].length === 0) throw new Error(`code_anchor.${field} 缺失`);
+      if (typeof anchor[field] !== "string" || anchor[field].trim().length === 0) throw new Error(`code_anchor.${field} 缺失`);
     }
+    if (!["class", "function"].includes(anchor.kind)) throw new Error("code_anchor.kind 只能是 class 或 function");
   } else if (request.code_anchor !== undefined) {
     throw new Error("未请求代码定位时不得提供 code_anchor");
   }
@@ -515,8 +519,8 @@ function listCodeFiles(root) {
 
 function runCodeCandidateSearch(root, options) {
   let files;
-  if (options.file && existsSync(resolve(root, options.file))) {
-    files = [options.file];
+  if (options.file) {
+    files = [candidateFile(root, options.file)];
   } else {
     files = listCodeFiles(root);
   }
@@ -539,28 +543,13 @@ function runCodeCandidateSearch(root, options) {
 }
 
 function parseCodeCandidatesArgs(args) {
-  const options = { file: null, symbol: null, kind: null, format: "text", root: process.cwd() };
-  const positional = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--file") options.file = args[++index];
-    else if (arg === "--symbol") options.symbol = args[++index];
-    else if (arg === "--kind") options.kind = args[++index];
-    else if (arg === "--format") options.format = args[++index];
-    else if (arg === "-h" || arg === "--help") return null;
-    else positional.push(arg);
-  }
-  if (positional.length > 1) throw new Error("code candidates 只能接收一个 root 路径");
-  if (positional.length === 1) options.root = resolve(positional[0]);
-  if (!options.symbol) throw new Error("code candidates 必须指定 --symbol <symbol>");
-  if (!options.kind) throw new Error("code candidates 必须指定 --kind <kind>");
-  if (!options.file && options.file !== null) throw new Error("--file 必须指定路径");
-  if (!options.format || !["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
-  if (!existsSync(options.root)) throw new Error(`root 不存在：${options.root}`);
+  const options = parseOptions(args, "code candidates", { file: null, symbol: null, kind: null, format: "text" }, ["symbol", "kind"]);
+  if (options && !["class", "function"].includes(options.kind)) throw new UsageError("--kind 只能是 class 或 function");
   return options;
 }
 
 function codeCandidates(root, options) {
+  if (!["class", "function"].includes(options.kind) || !options.symbol?.trim()) throw new Error("代码定位 kind/symbol 无效");
   const candidates = runCodeCandidateSearch(root, options);
   const resolution = candidates.length === 1
     ? "unique_candidate"
@@ -588,27 +577,8 @@ function printCodeCandidatesText(result) {
 }
 
 function parseCodeImpactArgs(args) {
-  const options = { repo: null, file: null, symbol: null, kind: null, depth: 3, format: "text", root: process.cwd() };
-  const positional = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--repo") options.repo = args[++index];
-    else if (arg === "--file") options.file = args[++index];
-    else if (arg === "--symbol") options.symbol = args[++index];
-    else if (arg === "--kind") options.kind = args[++index];
-    else if (arg === "--depth") options.depth = Number(args[++index]);
-    else if (arg === "--format") options.format = args[++index];
-    else if (arg === "-h" || arg === "--help") return null;
-    else positional.push(arg);
-  }
-  if (positional.length > 1) throw new Error("code impact 只能接收一个 root 路径");
-  if (positional.length === 1) options.root = resolve(positional[0]);
-  ["repo", "file", "symbol", "kind"].forEach((field) => {
-    if (!options[field]) throw new Error(`code impact 必须指定 --${field} <value>`);
-  });
-  if (!Number.isInteger(options.depth) || options.depth < 1 || options.depth > 10) throw new Error("--depth 必须是 1 到 10 的整数");
-  if (!options.format || !["text", "json"].includes(options.format)) throw new Error("--format 只能是 text 或 json");
-  if (!existsSync(options.root)) throw new Error(`root 不存在：${options.root}`);
+  const options = parseOptions(args, "code impact", { repo: null, file: null, symbol: null, kind: null, depth: 3, format: "text" }, ["repo", "file", "symbol", "kind"]);
+  if (options && !["class", "function", "method"].includes(options.kind)) throw new UsageError("--kind 只能是 class、function 或 method");
   return options;
 }
 
@@ -637,9 +607,11 @@ function codeImpact(root, options) {
   } catch (cause) {
     throw new Error(`GitNexus 代码级影响查询返回了无法解析的结果：${cause.message}`);
   }
-  if (gitnexusResult?.error) {
+  if (!gitnexusResult || typeof gitnexusResult !== "object" || Array.isArray(gitnexusResult)) throw new Error("GitNexus 响应必须是非空对象");
+  if (gitnexusResult.error) {
     throw new Error(`GitNexus 代码级影响查询失败：${String(gitnexusResult.error)}`);
   }
+  if (!Number.isInteger(gitnexusResult.impactedCount) || gitnexusResult.impactedCount < 0 || typeof gitnexusResult.risk !== "string") throw new Error("GitNexus 响应缺少有效 risk/impactedCount");
   return {
     schema_version: 1,
     query: {
@@ -920,7 +892,7 @@ function main(args) {
   const command = args[0];
   if (!command || command === "--help" || command === "-h") {
     usage();
-    return command ? 0 : 1;
+    return command ? 0 : 2;
   }
   try {
     if (command === "validate") {
@@ -943,7 +915,7 @@ function main(args) {
       return 0;
     }
     if (command === "plan") {
-      if (args[1] !== "impact") return error(`plan 不支持子命令：${args[1] ?? "<missing>"}`);
+      if (args[1] !== "impact") return error(`plan 不支持子命令：${args[1] ?? "<missing>"}`, 2);
       const options = parsePlanImpactArgs(args.slice(2));
       if (options === null) {
         usage();
@@ -977,11 +949,11 @@ function main(args) {
         else printCodeImpactText(result);
         return 0;
       }
-      return error(`code 不支持子命令：${args[1] ?? "<missing>"}`);
+      return error(`code 不支持子命令：${args[1] ?? "<missing>"}`, 2);
     }
-    return error(`不支持子命令：${command}`);
+    return error(`不支持子命令：${command}`, 2);
   } catch (cause) {
-    return error(cause.message);
+    return error(cause.message, cause.code === 2 ? 2 : 1);
   }
 }
 

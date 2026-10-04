@@ -7,9 +7,10 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -21,10 +22,12 @@ const hookRuntime = resolve(packageRoot, "scripts", "plan_governance_hook.py");
 const graphRuntime = resolve(packageRoot, "scripts", "graph_governance.mjs");
 const manifestPath = resolve(packageRoot, "resources", "manifest.json");
 
-function fail(message) {
+function fail(message, status = 1) {
   console.error(`plan-governance-cli: ${message}`);
-  return 1;
+  return status;
 }
+
+class UsageError extends Error { code = 2; }
 
 function runPython(script, args) {
   try {
@@ -89,28 +92,34 @@ function parseSetupArgs(args) {
     const arg = args[index];
     if (arg === "--target") {
       if (options.target !== null) {
-        throw new Error("setup 的 --target 只能指定一次");
+        throw new UsageError("setup 的 --target 只能指定一次");
       }
       const value = args[++index];
-      if (!value || value.startsWith("-")) {
-        throw new Error("setup 的 --target 缺少值");
+      if (!value?.trim() || value.startsWith("-")) {
+        throw new UsageError("setup 的 --target 缺少值");
       }
       options.target = value;
     } else if (arg === "--destination") {
-      options.destination = args[++index];
+      if (options.destination !== null) throw new UsageError("setup 的 --destination 只能指定一次");
+      const value = args[++index];
+      if (!value?.trim() || value.startsWith("-")) throw new UsageError("setup 的 --destination 缺少路径");
+      options.destination = value;
     } else if (arg === "--dry-run") {
       options.dryRun = true;
     } else if (arg === "--force") {
       options.force = true;
     } else if (arg === "-h" || arg === "--help") {
-      throw new Error("setup 的 --help 必须单独使用");
+      throw new UsageError("setup 的 --help 必须单独使用");
     } else {
-      throw new Error(`setup 不支持参数：${arg}`);
+      throw new UsageError(`setup 不支持参数：${arg}`);
+    }
+    if (["--dry-run", "--force"].includes(arg) && args.indexOf(arg) !== index) {
+      throw new UsageError(`setup 的 ${arg} 只能指定一次`);
     }
   }
 
   if (options.target !== "codex") {
-    throw new Error("setup 仅支持 --target codex");
+    throw new UsageError("setup 仅支持 --target codex");
   }
   return options;
 }
@@ -195,6 +204,10 @@ function setup(args) {
       for (const file of resourceFiles(skill.definition, skill.prefix)) {
         accessSync(file.source, constants.R_OK);
         const destination = resolve(target.root, file.relative);
+        for (let parent = dirname(destination); ; parent = dirname(parent)) {
+          if (existsSync(parent) && !statSync(parent).isDirectory()) throw new Error(`目标父路径不是目录：${parent}`);
+          if (dirname(parent) === parent) break;
+        }
         const existing = existsSync(destination) ? readFileSync(destination, "utf8") : null;
         const sourceContent = readFileSync(file.source, "utf8");
         if (existing !== null && existing !== sourceContent && !options.force) {
@@ -207,18 +220,26 @@ function setup(args) {
     return fail(error.message);
   }
 
-  for (const plan of plans) {
+  const written = [];
+  try { for (const plan of plans) {
     if (plan.existing === plan.sourceContent) {
       console.log(`已是最新：${plan.destination}`);
     } else if (options.dryRun) {
       console.log(`将写入：${plan.destination}`);
     } else {
       mkdirSync(dirname(plan.destination), { recursive: true });
-      const temporary = join(tmpdir(), `plan-governance-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      writeFileSync(temporary, plan.sourceContent, "utf8");
-      renameSync(temporary, plan.destination);
+      if (plan.existing !== null) {
+        writeFileSync(plan.destination, plan.sourceContent, "utf8");
+      } else {
+        const temporary = join(dirname(plan.destination), `.plan-governance-${process.pid}-${Math.random().toString(16).slice(2)}`);
+        writeFileSync(temporary, plan.sourceContent, "utf8");
+        renameSync(temporary, plan.destination);
+      }
+      written.push(plan.destination);
       console.log(`已同步：${plan.destination}`);
     }
+  } } catch (error) {
+    return fail(`同步失败：${error.message}；已写入：${written.join("、") || "无"}；未完成，请按实际文件恢复或重试。`);
   }
   if (options.dryRun) console.log("setup dry-run 完成，未修改目标目录。");
   return 0;
@@ -232,13 +253,13 @@ function guide(args) {
     ["verification", "references/verification.md"],
     ["cli", "references/cli.md"],
   ]);
-  if (args.length === 1 && args[0] === "--help") {
+  if (args.length === 1 && ["-h", "--help"].includes(args[0])) {
     console.log("用法：plan-governance-cli guide [overview|planning|migration|verification|cli]\n缺省 overview；只读当前包内规则，不依赖 cwd 或 Python。");
     return 0;
   }
   const topic = args[0] ?? "overview";
   if (args.length > 1 || !topics.has(topic)) {
-    return fail("guide 仅接受一个主题：overview、planning、migration、verification、cli；用 guide --help 查看用法。");
+    return fail("guide 仅接受一个主题：overview、planning、migration、verification、cli；用 guide --help 查看用法。", 2);
   }
   const path = resolve(packageRoot, "resources", "skill", topics.get(topic));
   try {
@@ -254,6 +275,19 @@ function guide(args) {
 function main() {
   const args = process.argv.slice(2);
   const command = args[0];
+  if (["-h", "--help"].includes(command) && args.length === 1) {
+    console.log(`用法：plan-governance-cli <command> [options]
+  check [root] [--plan ID] [--json] [--strict-readiness]
+  workset [root] [--plan ID] [--json] [--evidence-limit N]
+  guide [overview|planning|migration|verification|cli]
+  setup --target codex [--destination DIR] [--dry-run] [--force]
+  init --root DIR --plan ID
+  hook --root DIR --event EVENT [--plan ID] [--paths PATH ...]
+  graph validate|impact|code [options]
+  plan impact --input FILE [root]
+各命令 --help 查看详细用法；退出码 0 成功、1 检查/运行失败、2 参数错误。`);
+    return 0;
+  }
   if (command === "guide") return guide(args.slice(1));
   if (command === "setup") return setup(args.slice(1));
   if (command === "workset") return runPython(checker, ["--workset", ...args.slice(1)]);
@@ -261,18 +295,22 @@ function main() {
   if (command === "hook") return runPython(hookRuntime, args.slice(1));
   if (command === "graph") return runNode(graphRuntime, args.slice(1));
   if (command === "plan" && args[1] === "next") {
-    return fail("plan next 已移除；在 Codex 中请使用 goal 管理跨轮持续推进。");
+    return fail("plan next 已移除；在 Codex 中请使用 goal 管理跨轮持续推进。", 2);
   }
   if (command === "plan" && args[1] === "steps" && args[2] === "validate") {
-    return fail("自主执行步骤校验已移除；在 Codex 中请使用 goal 管理跨轮持续推进。");
+    return fail("自主执行步骤校验已移除；在 Codex 中请使用 goal 管理跨轮持续推进。", 2);
   }
   if (command === "plan") return runNode(graphRuntime, args);
   if (command === "check") return runPython(checker, args.slice(1));
-  return runPython(checker, args);
+  if (!command || command.startsWith("-") || command === "." || command.startsWith("./") || command.startsWith("../") || isAbsolute(command)) {
+    console.error("plan-governance-cli: 旧式直接检查入口已弃用，请显式使用 check。");
+    return runPython(checker, args);
+  }
+  return fail(`未知命令：${command}；请使用 --help 查看命令。`, 2);
 }
 
 try {
   process.exitCode = main();
 } catch (error) {
-  process.exitCode = fail(error.message);
+  process.exitCode = fail(error.message, error.code === 2 ? 2 : 1);
 }

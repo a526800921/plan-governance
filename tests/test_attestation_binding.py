@@ -366,7 +366,7 @@ def test_invalid_explicit_paths_do_not_create_directories(tmp_path, capsys, path
     project(tmp_path)
     before = tree(tmp_path)
     code, output = invoke(tmp_path, capsys, *create_args(*paths))
-    assert code == 1, output
+    assert code == (2 if paths == [""] else 1), output
     assert tree(tmp_path) == before
 
 
@@ -406,9 +406,9 @@ def test_symlinks_in_all_automatic_and_explicit_paths_are_rejected(tmp_path, cap
     assert tree(outside) == external_before
 
 
-@pytest.mark.parametrize("args,expected", [(["--attest-file"], 2), (["--attest-file", "src/demo.py"], 1),
-    (["--attest", "demo", "--attest-file", "src/demo.py"], 1),
-    (["--workset", "--attest", "demo", "--attest-purpose", "release_gate", "--attest-file", "src/demo.py"], 1)])
+@pytest.mark.parametrize("args,expected", [(["--attest-file"], 2), (["--attest-file", "src/demo.py"], 2),
+    (["--attest", "demo", "--attest-file", "src/demo.py"], 2),
+    (["--workset", "--attest", "demo", "--attest-purpose", "release_gate", "--attest-file", "src/demo.py"], 2)])
 def test_binding_argument_errors_are_visible_and_never_write(tmp_path, capsys, args, expected):
     project(tmp_path)
     before = tree(tmp_path)

@@ -600,9 +600,9 @@ def risk_review_state(plan_text, phase):
     return result
 
 
-def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors, review_state=None):
+def check_phase_structure(plan_name, data, plan_text, strict, warnings, errors, review_state=None, selected=False):
     """检查待实施/实施中计划的阶段准入结构，不判断业务证据真实性。"""
-    if data["status"] not in ACTIVE:
+    if data["status"] not in ACTIVE and not selected:
         return
 
     current_phase = data["phase"]
@@ -1452,6 +1452,8 @@ def create_attestation(
     attest_files=None,
 ):
     binding = None
+    if errors:
+        return None
     if attest_files is not None:
         if errors:
             return None
@@ -1567,7 +1569,7 @@ def attestation_issue(warnings, errors, strict, message):
 
 
 def warn_attestation_drift(warnings, root, plans, errors=None, strict=False, reports=None,
-                           pending=None, enforce_binding_review=True):
+                           pending=None, enforce_binding_review=True, selected=None):
     errors = errors if errors is not None else []
     attestations_dir = root / "docs" / "attestations"
     try:
@@ -1599,6 +1601,8 @@ def warn_attestation_drift(warnings, root, plans, errors=None, strict=False, rep
         bound = "binding" in attestation
         invalid_structure = False
         plan_name = str(attestation.get("plan", "")).strip()
+        if selected and plan_name in plans and plan_name not in selected:
+            continue
         if not plan_name or plan_name not in plans:
             message = f"{path}: 快照引用了未登记计划：{plan_name or '<missing>'}"
             if not bound:
@@ -1898,6 +1902,10 @@ def plan_index_issues(plan_map_text):
         status = row[1].strip("` ")
         if status not in VALID_STATUSES:
             issues.append(f"{name}: 计划状态非法：{status}")
+        try:
+            parse_plan_date(row[3].strip("` "))
+        except ValueError:
+            issues.append(f"{name}: 最后更新日期不合法：{row[3]}")
     return issues
 
 
@@ -1992,12 +2000,12 @@ def structural_ambiguities(plan_text, phase):
     return issues
 
 
-def phase_gate(plan_map_text, plan_name, data, plan_text):
+def phase_gate(plan_map_text, plan_name, data, plan_text, selected=False):
     """共享只读派生；严重级别由 check/workset/hook 的入口契约决定。"""
     issues = structural_ambiguities(plan_text, data["phase"])
     warnings = []
     review_state = risk_review_state(plan_text, data["phase"])
-    check_phase_structure(plan_name, data, plan_text, True, warnings, issues, review_state)
+    check_phase_structure(plan_name, data, plan_text, True, warnings, issues, review_state, selected=selected)
     if review_state["enabled"]:
         issues.extend(review_state["issues"] + review_state["blockers"])
     if data["status"] in ACTIVE and is_placeholder(data["phase"]):
@@ -2008,17 +2016,28 @@ def phase_gate(plan_map_text, plan_name, data, plan_text):
     indexed = mapped.get(plan_name, [])
     summary = current_summary(plan_text)
     value = summary.get("当前阻塞项", "").strip()
-    declared = [value] if value and not is_placeholder(value) else []
+    declared = [value] if value and not is_placeholder(value) and not re.match(r"^无(?:[；;，,。]|$)", value) else []
     blockers = list(dict.fromkeys(details + indexed + declared))
+    issue_codes = {}
     if blockers:
-        issues.append("当前阶段存在未解决阻塞项：" + "；".join(blockers))
+        message = "当前阶段存在未解决阻塞项：" + "；".join(blockers)
+        issues.append(message)
+        issue_codes[message] = "CURRENT_PHASE_BLOCKED"
         if ((details or indexed) and value == "无") or ((details or declared) and not indexed):
             issues.append("当前阻塞来源需同步：PLAN_MAP 索引、未决问题或阶段准入摘要缺失/冲突")
     if review_state["enabled"]:
         blockers.extend(review_state["blockers"])
     else:
         legacy_state = legacy_review_state(plan_text, data["phase"])
-        blockers.extend(legacy_state["blockers"])
+        history = [r for r in review_history_rows(plan_text) if len(r) == 6 and r[2] == data["phase"]]
+        completion_positions = [i for i, r in enumerate(history)
+                                if "完成" in r[1] and review_outcome(r[3]) == "passed"
+                                and valid_review_date(r[0]) is not None
+                                and not any(is_placeholder(v) for v in r)]
+        completed_review = (data["status"] in COMPLETED and completion_positions
+                            and all(review_outcome(r[3]) == "passed" for r in history[completion_positions[-1]:]))
+        if not completed_review:
+            blockers.extend(legacy_state["blockers"])
         review = key_value_table(fixed_section(plan_text, "最新独立准入复核"))
         conclusion = review.get("结论", "").strip()
         if review.get("阶段") == data["phase"] and conclusion.startswith(("未通过", "不通过", "失败", "不满足", "拒绝")):
@@ -2029,17 +2048,26 @@ def phase_gate(plan_map_text, plan_name, data, plan_text):
     warnings.extend(recent_warnings)
     issues = [message.removeprefix(f"{plan_name}: ") for message in issues]
     return {"blockers": list(dict.fromkeys(blockers)), "issues": list(dict.fromkeys(issues)),
-            "warnings": warnings, "review": review_state}
+            "warnings": warnings, "review": review_state, "issue_codes": issue_codes}
 
 
-def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, warnings, errors):
+def check_phase_readiness(plan_map_text, plan_name, data, plan_text, strict, warnings, errors, selected=False):
+    if selected and data["status"] in INACTIVE:
+        readiness_issue(warnings, errors, strict, f"{plan_name}: 已废弃/替代/合并的计划不能准入")
+        return
     if data["status"] not in WARNING_ACTIVE:
         return
-    gate = phase_gate(plan_map_text, plan_name, data, plan_text)
+    gate = phase_gate(plan_map_text, plan_name, data, plan_text, selected=selected)
     warnings.extend(f"{plan_name}: {message}" for message in gate["warnings"])
     for message in gate["issues"]:
+        for target in (errors, warnings):
+            if isinstance(target, DiagnosticList):
+                sources = target.metadata["sources"]
+                target.context(plan_name, data["phase"], category="readiness",
+                               code=gate["issue_codes"].get(message, "PHASE_NOT_READY"),
+                               path=sources[0]["path"] if sources else data["path"], section="当前阶段")
         # 缺失材料的设计计划仍合法；其显式冲突和阻塞保持可见而不强制准入。
-        readiness_issue(warnings, errors, strict and data["status"] in ACTIVE, f"{plan_name}: {message}")
+        readiness_issue(warnings, errors, strict and (data["status"] in ACTIVE or selected), f"{plan_name}: {message}")
 
 
 def top_level_section(text, heading):
@@ -2343,10 +2371,244 @@ def recent_evidence(plan_text, phase=None):
     return current_recent_evidence(plan_text, phase)[0]
 
 
-def workset_payload(root, include_history=False, strict=False):
+class UsageError(ValueError):
+    pass
+
+
+def validate_options(parser, argv, repeatable=()):
+    """Argparse handles values/types; reject ambiguous duplicate declarations."""
+    seen = set()
+    for token in argv:
+        if token == "--":
+            break
+        option = token.split("=", 1)[0]
+        action = parser._option_string_actions.get(option)
+        if action is None or action.dest in repeatable:
+            continue
+        if action.dest in seen:
+            parser.error(f"{option} 只能指定一次")
+        seen.add(action.dest)
+
+
+def nonempty(value):
+    if not value.strip():
+        raise argparse.ArgumentTypeError("参数值不能为空")
+    return value
+
+
+def scoped_table(text, title, keep):
+    section = top_level_section(text, title)
+    if section is None:
+        return text
+    rows = markdown_table_rows(section)
+    selected = [row for i, row in enumerate(rows) if i == 0 or keep(row)]
+    replacement = "\n\n" + "\n".join("| " + " | ".join(row) + " |" for row in selected) + "\n\n"
+    start = re.search(rf"^##\s+{re.escape(title)}\s*$", mask_fenced_code(text), re.MULTILINE).end()
+    return text[:start] + replacement + text[start + len(section):]
+
+
+def scoped_map(text, names):
+    for title in ("阶段关系", "机器可检查共享写入约束"):
+        text = scoped_table(text, title, lambda row: len(row) < 3 or bool({clean_relation_value(row[0]), clean_relation_value(row[2])} & names))
+    return text
+
+
+def historical_phase_review(text, phase):
+    """复用历史校验，不使用后续阶段的最新结果替代来源阶段。"""
+    for title, width in (("阶段复核记录", 8), ("独立复核记录", 6)):
+        rows = markdown_table_rows(fixed_section(text, title))
+        expected = (["日期", "类型", "阶段", "方式", "风险", "结论", "证据", "复核者"]
+                    if width == 8 else ["日期", "类型", "阶段", "结论", "证据", "复核者"])
+        relevant = [r for r in rows[1:] if len(r) < 3 or r[2] == phase or not valid_phase_name(r[2])]
+        if relevant and (rows[0] != expected or rows.count(expected) > 1
+                         or any(len(r) != width or len(r) < 3 or not valid_phase_name(r[2]) for r in relevant)):
+            return {"passed": False, "issues": [f"来源阶段 {phase} 的 {title} 结构无效"], "blockers": []}
+    explicit = [r for r in markdown_table_rows(fixed_section(text, "阶段复核记录")) if len(r) == 8 and r[2] == phase]
+    legacy = [r for r in review_history_rows(text) if len(r) == 6 and r[2] == phase]
+    if explicit:
+        row = explicit[-1]
+        latest = dict(zip(["日期", "阶段", "方式", "风险", "结论", "证据", "复核者"], [row[0], row[2], *row[3:]]))
+        latest["风险依据"] = "来源阶段历史证据"
+        synthetic = "## 当前阶段\n\n### 阶段准入摘要\n\n| 字段 | 内容 |\n|---|---|\n| 复核策略 | 默认自验 |\n| 最新阶段复核 | #最新阶段复核 |\n\n## 最新阶段复核\n\n| 字段 | 内容 |\n|---|---|\n"
+        synthetic += "\n".join(f"| {key} | {value} |" for key, value in latest.items())
+        synthetic += "\n\n## 阶段复核记录\n\n| 日期 | 类型 | 阶段 | 方式 | 风险 | 结论 | 证据 | 复核者 |\n|---|---|---|---|---|---|---|---|\n"
+        synthetic += "\n".join("| " + " | ".join(r) + " |" for r in explicit)
+        return risk_review_state(synthetic, phase)
+    if legacy:
+        row = legacy[-1]
+        synthetic = "## 最新独立准入复核\n\n| 字段 | 内容 |\n|---|---|\n"
+        synthetic += "\n".join(f"| {key} | {value} |" for key, value in zip(["日期", "阶段", "结论", "证据", "复核者"], [row[0], *row[2:]]))
+        synthetic += "\n\n## 独立复核记录\n\n| 日期 | 类型 | 阶段 | 结论 | 证据 | 复核者 |\n|---|---|---|---|---|---|\n"
+        synthetic += "\n".join("| " + " | ".join(r) + " |" for r in legacy)
+        return legacy_review_state(synthetic, phase)
+    return {"passed": False, "issues": [f"来源阶段 {phase} 缺少有效复核历史"], "blockers": []}
+
+
+def build_scope(root, requested, text, plans):
+    if len(requested) != len(set(requested)):
+        raise UsageError("--plan 不接受重复计划 ID")
+    unknown = set(requested) - set(plans)
+    if unknown:
+        raise UsageError("未登记的 --plan：" + "、".join(sorted(unknown)))
+    scope = {"requested_plans": requested, "focused_phases": [{"plan": n, "phase": plans[n]["phase"]} for n in requested],
+             "evaluated_plans": list(requested), "dependencies": [], "evidence_links": [], "shared_writes": [], "global_diagnostics": []}
+    relation_header, relations = relation_rows(text)
+    shared_header, shared = shared_write_rows(text)
+    relations = [[clean_relation_value(cell) for cell in row] for row in relations]
+    shared = [[clean_relation_value(cell) for cell in row] for row in shared]
+    if relation_header == [] or shared_header == []:
+        scope["global_diagnostics"].append("相关关系表缺少固定表头，无法可信确认作用域")
+    queue = [(name, plans[name]["phase"]) for name in requested]
+    visited = set()
+    edges = {}
+    for name, phase in queue:
+        if (name, phase) in visited:
+            continue
+        visited.add((name, phase))
+        # 已完成前置由完成证据核验，不重新开启其已经关闭的历史依赖链。
+        if plans[name]["status"] in COMPLETED:
+            continue
+        incoming = [r for r in relations if len(r) == 7 and clean_relation_value(r[2]) == name and clean_relation_value(r[3]) == phase and r[4] == "hard_gate"]
+        predecessors = [(clean_relation_value(r[0]), clean_relation_value(r[1]), r[5], r[6]) for r in incoming]
+        explicit = {row[0] for row in predecessors}
+        for dep in extract_declared_dependencies(plans[name]["depends"]) if phase == plans[name]["phase"] else []:
+            if dep not in explicit:
+                predecessors.append((dep, plans.get(dep, {}).get("phase", ""), "计划索引依赖", "PLAN_MAP.md"))
+        for dep, source_phase, unlock, evidence in predecessors:
+            if dep not in plans:
+                scope["global_diagnostics"].append(f"{name}: 必要前置不存在：{dep}")
+                continue
+            edges.setdefault(f"{name}@{phase}", []).append(f"{dep}@{source_phase}")
+            record = {"plan": dep, "phase": source_phase, "required_by": name, "reason": unlock, "evidence": evidence}
+            if record not in scope["dependencies"]:
+                scope["dependencies"].append(record)
+            queue.append((dep, source_phase))
+    for cycle in detect_dependency_cycles(edges):
+        scope["global_diagnostics"].append(f"相关阶段依赖存在环：{cycle}")
+    names = {name for name, _ in visited}
+    scope["evaluated_plans"] = sorted(names)
+    filtered = scoped_map(text, names)
+    for row in relations:
+        if len(row) == 7 and {row[0], row[2]} & names and row[4] in {"evidence", "soft_context"}:
+            scope["evidence_links"].append({"plan": row[0], "phase": row[1], "required_by": row[2], "relation": row[4], "evidence": row[6]})
+    for row in shared:
+        if len(row) == 9 and {row[0], row[2]} & names:
+            scope["shared_writes"].append({"plans": [row[0], row[2]], "targets": row[5], "order": row[6], "reason": row[7], "evidence": row[8]})
+    # 同伴仅检查范围声明，不投影其业务状态。
+    affected = {}
+    for name, data in plans.items():
+        if name in names or data["status"] in WARNING_ACTIVE:
+            try:
+                affected[name] = extract_affected_targets(data["path"].read_text(encoding="utf-8"))
+            except (OSError, UnicodeError):
+                affected[name] = []
+    for name in requested:
+        for peer, targets in affected.items():
+            if peer in requested:
+                continue
+            overlap = sorted({a for a in affected.get(name, []) for b in targets if a == b or a.startswith(b.rstrip("/") + "/") or b.startswith(a.rstrip("/") + "/")})
+            if overlap:
+                scope["shared_writes"].append({"plans": [name, peer], "targets": overlap, "reason": "影响范围重叠；需要单一写入或串行合并"})
+    projection = {"index": [r for r in table_rows(text, "计划索引") if r and (link := extract_plan_link(r[0])) and Path(link).stem in names],
+                  "relations": [r for r in relations if len(r) < 3 or {r[0], r[2]} & names],
+                  "shared": scope["shared_writes"], "headers": [relation_header, shared_header],
+                  "scope_issues": scope["global_diagnostics"], "identity_issues": plan_index_issues(text),
+                  "blockers": {k: v for k, v in map_blockers(text)[0].items() if k in names}, "blocker_issues": map_blockers(text)[1]}
+    contents = {}
+    for name in sorted(names):
+        try:
+            contents[name] = sha256_file(plans[name]["path"])
+        except OSError:
+            contents[name] = None
+    scope["facts_version"] = hashlib.sha256(json.dumps([projection, contents], ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    return scope, filtered
+
+
+def dependency_diagnostics(root, scope, text, plans):
+    errors = list(scope["global_diagnostics"])
+    for dep in scope["dependencies"]:
+        name, phase = dep["plan"], dep["phase"]
+        data = plans[name]
+        read_errors = []
+        body = read_utf8(data["path"], read_errors)
+        reasons = list(read_errors)
+        if data["status"] in INACTIVE:
+            reasons.append("必要前置已废弃/替代，须确认有效承接")
+        elif phase != data["phase"]:
+            review = historical_phase_review(body, phase)
+            reasons.extend(review["issues"] + review["blockers"])
+            if not review["passed"]:
+                reasons.append(f"来源阶段 {phase} 未通过")
+        elif data["status"] in COMPLETED:
+            if not has_completion_evidence(body) or not has_coverage_evidence(body):
+                reasons.append("已完成前置缺少完成/验证证据")
+            reasons.extend(phase_gate(text, name, data, body)["blockers"])
+        else:
+            gate = phase_gate(text, name, data, body)
+            reasons.extend(gate["issues"])
+            review = gate["review"] if gate["review"]["enabled"] else legacy_review_state(body, phase)
+            if not review["passed"]:
+                reasons.append("必要前置当前阶段尚未通过")
+        dep["phase_passed"] = not reasons
+        dep["blockers"] = list(dict.fromkeys(reasons))
+        errors.extend(f"{name}@{phase}: {reason}" for reason in dep["blockers"])
+    return list(dict.fromkeys(errors))
+
+
+def scope_unchanged(root, scope):
+    errors = []
+    text, _, plans = load_plan_records(root, errors)
+    if errors or plan_index_issues(text):
+        return False
+    try:
+        fresh, _ = build_scope(root, scope["requested_plans"], text, plans)
+        return fresh["facts_version"] == scope["facts_version"]
+    except (UsageError, OSError, ValueError):
+        return False
+
+
+def workset_payload(root, include_history=False, strict=False, requested=None):
+    if not requested:
+        return unscoped_workset_payload(root, include_history, strict)
+    errors = []
+    text, _, plans = load_plan_records(root, errors)
+    errors.extend(plan_index_issues(text))
+    empty = {"schema_version": 1, "source": "derived", "plans": [], "warnings": errors,
+             "scope": {"requested_plans": requested, "evaluated_plans": [], "dependencies": []}}
+    if errors:
+        return empty, 1
+    scope, selected_map = build_scope(root, requested, text, plans)
+    output, status = unscoped_workset_payload(root, include_history, strict, focus=requested, supplied=(selected_map, plans))
+    dep_errors = dependency_diagnostics(root, scope, selected_map, plans)
+    output["warnings"].extend(dep_errors)
+    output["scope"] = scope
+    blocked = {d["required_by"] for d in scope["dependencies"] if not d["phase_passed"]}
+    while True:
+        expanded = blocked | {d["required_by"] for d in scope["dependencies"] if d["plan"] in blocked}
+        if expanded == blocked:
+            break
+        blocked = expanded
+    for item in output["plans"]:
+        if item["plan"] in blocked or scope["global_diagnostics"]:
+            item["readiness"] = "blocked"
+            item["next_action"] = {"state": "known", "kind": "resolve_blocker", "reason": "必要前置尚未满足，见 scope.dependencies"}
+    if not scope_unchanged(root, scope):
+        output["warnings"].append("相关事实在读取期间发生变化；请重读聚焦工作集")
+        for item in output["plans"]:
+            item["readiness"] = "unknown"
+            item["next_action"] = {"state": "unknown", "kind": "unknown", "reason": "相关事实已变更"}
+        status = 1 if strict else status
+    return output, 1 if scope["global_diagnostics"] or (strict and dep_errors) else status
+
+
+def unscoped_workset_payload(root, include_history=False, strict=False, focus=None, supplied=None):
     errors = []
     strict_failures = []
-    plan_map_text, _, plans = load_plan_records(root, errors)
+    document_failures = []
+    if supplied:
+        plan_map_text, plans = supplied
+    else:
+        plan_map_text, _, plans = load_plan_records(root, errors)
     output = {
         "schema_version": 1,
         "source": "derived",
@@ -2368,20 +2630,23 @@ def workset_payload(root, include_history=False, strict=False):
         strict_failures.extend(relation_errors)
 
     for name, data in plans.items():
-        if not include_history and data["status"] not in WARNING_ACTIVE:
+        if focus and name not in focus:
+            continue
+        if not focus and not include_history and data["status"] not in WARNING_ACTIVE:
             continue
         path = data["path"]
         if not path.exists():
             message = f"{name}: 计划文件不存在：{path}"
             output["warnings"].append(message)
             strict_failures.append(message)
+            document_failures.append(message)
             continue
         plan_text = read_utf8(path, errors)
         summary = current_summary(plan_text)
-        gate = phase_gate(plan_map_text, name, data, plan_text)
+        gate = phase_gate(plan_map_text, name, data, plan_text, selected=bool(focus) and strict and data["status"] in WARNING_ACTIVE)
         blockers = gate["blockers"]
         output["warnings"].extend(f"{name}: {message}" for message in gate["issues"] + gate["warnings"])
-        if data["status"] in ACTIVE:
+        if data["status"] in ACTIVE or focus:
             strict_failures.extend(gate["issues"])
         uncertain = gate["issues"] or blocker_index_issues or relation_errors
         if blockers:
@@ -2436,6 +2701,17 @@ def workset_payload(root, include_history=False, strict=False):
             else:
                 readiness = "design"
                 action = {"state": "unknown", "kind": "unknown", "reason": "缺少结构化下一动作"}
+        elif focus and data["status"] in COMPLETED:
+            valid = has_completion_evidence(plan_text) and has_coverage_evidence(plan_text) and not blockers
+            readiness = "unknown"
+            action = {"state": "unknown", "kind": "unknown", "reason": "当前完成声明已检查；终态无下一实施动作" if valid else "完成声明缺少有效证据"}
+            if not valid:
+                strict_failures.append(f"{name}: 完成声明缺少有效证据")
+                document_failures.append(f"{name}: 完成声明缺少有效证据")
+        elif focus and data["status"] in INACTIVE:
+            readiness = "unknown"
+            action = {"state": "unknown", "kind": "unknown", "reason": "终态计划不能准入"}
+            strict_failures.append(f"{name}: 终态计划不能准入")
         else:
             readiness = "unknown"
             action = {"state": "unknown", "kind": "unknown", "reason": "计划状态不在工作集派生范围"}
@@ -2460,7 +2736,7 @@ def workset_payload(root, include_history=False, strict=False):
         output["plans"] = []
         output["warnings"].extend(index_issues)
         strict_failures.extend(index_issues)
-    return output, 1 if strict and strict_failures else 0
+    return output, 1 if errors or index_issues or document_failures or (strict and strict_failures) else 0
 
 
 def print_workset_text(payload, strict=False):
@@ -2519,26 +2795,91 @@ def limit_workset_evidence(root, payload, limit):
     return result
 
 
-def run_workset(root, as_json=False, include_history=False, strict=False, evidence_limit=None):
-    payload, status = workset_payload(root, include_history=include_history, strict=strict)
+def run_workset(root, as_json=False, include_history=False, strict=False, evidence_limit=None, requested=None):
+    payload, status = workset_payload(root, include_history=include_history, strict=strict, requested=requested)
     if as_json:
         if evidence_limit is not None:
             payload = limit_workset_evidence(root, payload, evidence_limit)
+            scope = payload.get("scope")
+            if scope and scope.get("facts_version") and not scope_unchanged(root, scope):
+                payload["warnings"].append("证据窗口读取期间相关事实发生变化；请重读聚焦工作集")
+                for item in payload["plans"]:
+                    item["readiness"] = "unknown"
+                    item["next_action"] = {"state": "unknown", "kind": "unknown", "reason": "相关事实已变更"}
+                status = 1 if strict else status
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print_workset_text(payload, strict=strict)
     return status
 
 
+class DiagnosticList(list):
+    def __init__(self, records, severity):
+        super().__init__()
+        self.records = records
+        self.severity = severity
+        self.context()
+
+    def context(self, plan=None, phase=None, category="document", code=None, path=None, section=None):
+        self.metadata = {"plan": plan, "phase": phase, "category": category,
+                         "code": code or ("DOCUMENT_ERROR" if category == "document" else "PHASE_NOT_READY"),
+                         "sources": [{"path": str(path), "section": section}] if path else []}
+
+    def append(self, value):
+        super().append(value)
+        self.records.append({**self.metadata, "severity": self.severity, "message": value})
+
+    def extend(self, values):
+        for value in values:
+            self.append(value)
+
+
+def finish_check(args, records, scope=None, reports=None, attested_path=None, not_applicable=False):
+    unique = {}
+    for item in records:
+        key = (item["plan"], item["phase"], item["code"], item["message"])
+        if key not in unique or item["severity"] == "error":
+            unique[key] = item
+    diagnostics = list(unique.values())
+    counts = {level + "s": sum(item["severity"] == level for item in diagnostics) for level in ("error", "warning")}
+    status = "failed" if counts["errors"] else "not_applicable" if not_applicable else "warning" if counts["warnings"] else "passed"
+    code = 1 if counts["errors"] else 0
+    result = {"schema_version": 1, "command": "check", "mode": "readiness" if args.strict_readiness else "consistency",
+              "status": status, "exit_code": code, "scope": scope or {"requested_plans": [], "evaluated_plans": getattr(args, "evaluated_plans", []), "dependencies": []},
+              "summary": counts, "diagnostics": diagnostics}
+    if reports:
+        result["attestations"] = reports
+    if attested_path:
+        result["created_attestation"] = str(attested_path)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        for item in diagnostics:
+            print(f"{item['severity'].upper()}: {item['message']}", file=sys.stderr if item["severity"] == "error" else sys.stdout)
+        for report in reports or []:
+            print(f"ATTESTATION: {report}")
+        if attested_path:
+            print(f"已创建完成快照：{attested_path}")
+        if not code:
+            if not_applicable:
+                print("未执行：当前目录未启用计划治理。")
+            elif counts["warnings"]:
+                print(f"{'准入' if args.strict_readiness else '文档'}检查完成，有 {counts['warnings']} 项告警。")
+            else:
+                print("准入检查通过。" if args.strict_readiness else "计划治理检查通过（文档一致性）。")
+    return code
+
+
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description="检查计划治理文档的一致性。")
-    parser.add_argument("root", nargs="?", default=".", help="仓库根目录，默认当前目录。")
+    parser = argparse.ArgumentParser(description="检查计划治理文档的一致性；--strict-readiness 用于准入。", allow_abbrev=False)
+    parser.add_argument("root", nargs="?", type=nonempty, default=None, help="仓库根目录，默认当前目录。")
     parser.add_argument("--workset", action="store_true", help="输出只读当前工作集。")
     parser.add_argument("--json", action="store_true", help="以 JSON 输出工作集。")
     parser.add_argument("--include-history", action="store_true", help="工作集包含历史计划。")
     parser.add_argument("--evidence-limit", type=int, metavar="N",
                         help="仅工作集 JSON：每个计划显示末尾 N 条记录（正整数），省略时返回全部。")
-    parser.add_argument("--root", dest="mode_root", help="工作集的仓库根目录。")
+    parser.add_argument("--root", dest="mode_root", type=nonempty, help="仓库根目录，与 positional root 二选一。")
+    parser.add_argument("--plan", action="append", type=nonempty, default=[], help="可重复：聚焦已登记计划 ID，各会话独立传入。")
     parser.add_argument("--drift", action="store_true", help="检查工作区变更是否被活跃计划影响范围覆盖。")
     parser.add_argument("--pre-commit", action="store_true", help="检查 staged 变更是否被活跃计划影响范围覆盖。")
     parser.add_argument(
@@ -2546,15 +2887,15 @@ def parse_args(argv):
         action="store_true",
         help="将待实施/实施中计划的阶段准入结构缺陷从 WARNING 提升为 ERROR。",
     )
-    parser.add_argument("--attest", metavar="PLAN", help="为已登记计划创建或覆盖完成快照。")
-    parser.add_argument("--attest-file", action="append", metavar="PATH",
+    parser.add_argument("--attest", type=nonempty, metavar="PLAN", help="为已登记计划创建或覆盖完成快照。")
+    parser.add_argument("--attest-file", type=nonempty, action="append", metavar="PATH",
                         help="可重复：与 --attest/--attest-purpose 显式绑定被审查的普通文件。")
     parser.add_argument(
         "--attest-purpose",
         choices=sorted(ATTESTATION_PURPOSES),
         help="创建带 purpose/snapshot_id 关系的完成快照；不传时保持旧 <plan>.json 格式。",
     )
-    parser.add_argument("--supersedes", help="新 attestation 要替代的仓库内相对快照路径。")
+    parser.add_argument("--supersedes", type=nonempty, help="新 attestation 要替代的仓库内相对快照路径。")
     parser.add_argument(
         "--review-status",
         choices=sorted(ATTESTATION_REVIEW_STATUSES),
@@ -2570,7 +2911,30 @@ def parse_args(argv):
         default=None,
         help="检查活跃计划是否超过 N 天未更新；省略 N 时默认 10 天。",
     )
+    validate_options(parser, argv, {"plan", "attest_file"})
     args = parser.parse_args(argv)
+    if args.mode_root is not None and args.root is not None:
+        parser.error("root 与 --root 不能同时使用")
+    args.root = args.mode_root or args.root or "."
+    if len(args.plan) != len(set(args.plan)):
+        parser.error("--plan 不接受重复 ID")
+    if args.workset:
+        if any((args.drift, args.pre_commit, args.stale_days is not None, args.attest, args.attest_file is not None, args.attest_purpose, args.supersedes, args.check_attestations)):
+            parser.error("workset 不接受 check 的检查/快照参数")
+    elif args.include_history:
+        parser.error("--include-history 仅适用于 workset")
+    if args.attest and any((args.plan, args.drift, args.pre_commit, args.workset)):
+        parser.error("--attest 不能与 workset/plan/drift/pre-commit 混用")
+    if args.attest_file is not None and (not args.attest or not args.attest_purpose):
+        parser.error("--attest-file 必须与 --attest/--attest-purpose 一起使用")
+    if (args.attest_purpose or args.supersedes) and not args.attest:
+        parser.error("--attest-purpose/--supersedes 必须与 --attest 一起使用")
+    if any(token.split("=", 1)[0] == "--review-status" for token in argv) and not args.attest_purpose:
+        parser.error("--review-status 必须与 --attest/--attest-purpose 一起使用")
+    if args.supersedes and not args.attest_purpose:
+        parser.error("--supersedes 必须与 --attest-purpose 一起使用")
+    if args.stale_days is not None and args.stale_days < 0:
+        parser.error("--stale-days 必须是非负整数")
     if args.evidence_limit is not None:
         if args.evidence_limit <= 0:
             parser.error("--evidence-limit 必须为正整数")
@@ -2584,63 +2948,61 @@ def main(argv=None):
     if args.attest_file is not None and (not args.attest or not args.attest_purpose or args.workset):
         print("ERROR: --attest-file 必须与 --attest/--attest-purpose 一起使用，不能用于 workset")
         return 1
+    root = Path(args.root).expanduser().resolve()
     if args.workset:
+        if not root.is_dir():
+            payload = {"schema_version": 1, "source": "derived", "plans": [], "warnings": [f"root 不存在或不是目录：{root}"]}
+            print(json.dumps(payload, ensure_ascii=False) if args.json else payload["warnings"][0])
+            return 1
         return run_workset(
-            Path(args.mode_root or args.root),
+            root,
             as_json=args.json,
             include_history=args.include_history,
             strict=args.strict_readiness,
             evidence_limit=args.evidence_limit,
+            requested=args.plan,
         )
-    root = Path(args.root)
     docs = root / "docs"
     plan_map = docs / "PLAN_MAP.md"
-    errors = []
-    warnings = []
+    records = []
+    errors = DiagnosticList(records, "error")
+    warnings = DiagnosticList(records, "warning")
+    scope = None
+    if not root.is_dir():
+        errors.context(category="runtime", code="INVALID_ROOT")
+        errors.append(f"root 不存在或不是目录：{root}")
+        return finish_check(args, records)
 
     try:
         bound_input = args.attest_file is not None or (args.check_attestations and has_attestation_binding(root))
     except (ValueError, OSError) as exc:
-        level = "ERROR" if args.strict_readiness else "WARNING"
-        print(f"{level}: 快照清单无法读取：{exc}")
-        return 1 if args.strict_readiness else 0
+        attestation_issue(warnings, errors, args.strict_readiness, f"快照清单无法读取：{exc}")
+        return finish_check(args, records)
     unsafe_map = False
     if bound_input:
         try:
             binding_file(root, "docs/PLAN_MAP.md")
         except (ValueError, OSError) as exc:
             if args.attest_file is not None:
-                print(f"ERROR: binding 创建预检失败：{exc}")
-                return 1
+                errors.append(f"binding 创建预检失败：{exc}")
+                return finish_check(args, records)
             unsafe_map = True
     if unsafe_map:
         reports = []
         warn_attestation_drift(warnings, root, {}, errors=errors, strict=args.strict_readiness, reports=reports)
-        for warning in warnings:
-            print(f"WARNING: {warning}")
-        for report in reports:
-            print(f"ATTESTATION: {report}")
-        for error in errors:
-            print(f"ERROR: {error}")
-        return 1 if errors else 0
+        return finish_check(args, records, reports=reports)
     if not plan_map.exists():
+        reports = []
         if args.check_attestations:
-            reports = []
             warn_attestation_drift(warnings, root, {}, errors=errors, strict=args.strict_readiness, reports=reports)
-            if reports or errors:
-                for warning in warnings:
-                    print(f"WARNING: {warning}")
-                for report in reports:
-                    print(f"ATTESTATION: {report}")
-                for error in errors:
-                    print(f"ERROR: {error}")
-                return 1 if errors else 0
-        print("未找到 docs/PLAN_MAP.md；当前仓库尚未初始化计划治理。")
-        return 0
+        readiness_issue(warnings, errors, args.strict_readiness or bool(args.plan), "未找到 docs/PLAN_MAP.md；当前仓库尚未初始化计划治理")
+        return finish_check(args, records, reports=reports, not_applicable=not errors)
 
     text = read_utf8(plan_map, errors)
     _, blocker_index_issues = map_blockers(text)
-    for issue in plan_index_issues(text) + blocker_index_issues:
+    for issue in plan_index_issues(text):
+        fail(errors, issue)
+    for issue in blocker_index_issues:
         readiness_issue(warnings, errors, args.strict_readiness, issue)
     plan_rows = table_rows(text, "计划索引")
     if not plan_rows:
@@ -2674,7 +3036,7 @@ def main(argv=None):
                     attestation_issue(warnings, errors, args.attest_file is not None or args.strict_readiness,
                                       f"{name}: binding 计划读取预检失败：{exc}")
                     unsafe_plans.add(name)
-            if not path.exists():
+            if not path.exists() and (not args.plan or name in args.plan):
                 fail(errors, f"docs/PLAN_MAP.md: 引用的计划文件不存在：{link}")
             plans[name] = {
                 "path": path,
@@ -2686,6 +3048,12 @@ def main(argv=None):
         else:
             fail(errors, f"docs/PLAN_MAP.md: 计划行缺少 docs/plans 链接：{row[0]}")
 
+    if args.plan and not errors:
+        scope, text = build_scope(root, args.plan, text, plans)
+    elif args.plan:
+        return finish_check(args, records)
+
+    args.evaluated_plans = list(plans)
     readable_plans = {name: data for name, data in plans.items() if name not in unsafe_plans}
     relation_errors, relation_warnings = validate_relation_graph(text, readable_plans)
     warnings.extend(relation_warnings)
@@ -2698,31 +3066,38 @@ def main(argv=None):
     inactive = {name for name, data in plans.items() if data["status"] in INACTIVE}
     for name, data in plans.items():
         deps = extract_declared_dependencies(data["depends"])
+        if not scope:
+            for missing in set(deps) - set(plans):
+                errors.append(f"{name}: 声明依赖的计划不存在：{missing}")
         edges[name] = [dep for dep in deps if dep in plans]
-        if data["status"] in IMPLEMENTING:
+        if data["status"] in IMPLEMENTING and (not scope or name in scope["evaluated_plans"]):
             for dep in edges[name]:
                 if dep in inactive:
                     fail(errors, f"{name}: 实施中计划依赖了非活跃计划 {dep}")
 
     for cycle in detect_dependency_cycles(edges):
-        fail(errors, f"计划依赖存在环：{cycle}")
+        if not scope:
+            fail(errors, f"计划依赖存在环：{cycle}")
 
-    for orphan in find_orphan_plans(docs, plans):
-        warn(warnings, f"{orphan}: docs/plans 中存在未登记到 PLAN_MAP.md 的孤立计划")
+    if not scope:
+        for orphan in find_orphan_plans(docs, plans):
+            warn(warnings, f"{orphan}: docs/plans 中存在未登记到 PLAN_MAP.md 的孤立计划")
 
     active_plan_targets = {}
     plan_texts = {}
     for name, data in plans.items():
-        if name in unsafe_plans:
+        if name in unsafe_plans or (scope and name not in args.plan):
             continue
+        for target in (errors, warnings):
+            target.context(name, data["phase"], path=data["path"].relative_to(root))
         plan_text = read_utf8(data["path"], errors)
         plan_texts[name] = plan_text
         if data["status"] in COMPLETED and not has_completion_evidence(plan_text):
             fail(errors, f"{data['path']}: 已完成计划缺少有效 Step 0 证据或验证方式")
         if data["status"] in COMPLETED and not has_coverage_evidence(plan_text):
             fail(errors, f"{data['path']}: 已完成计划缺少测试覆盖率证据")
-        if data["status"] in ACTIVE and has_current_blocker(plan_text):
-            fail(errors, f"{data['path']}: 活跃计划仍有未解决的当前阶段阻塞项")
+        if data["status"] in COMPLETED and phase_gate(text, name, data, plan_text)["blockers"]:
+            fail(errors, f"{data['path']}: 已完成计划仍有当前阶段阻塞/失败")
         if data["status"] in WARNING_ACTIVE:
             targets = extract_affected_targets(plan_text)
             plan_relative = data["path"].relative_to(root).as_posix()
@@ -2739,6 +3114,8 @@ def main(argv=None):
                 )
             active_plan_targets[name] = targets
 
+        for target in (errors, warnings):
+            target.context(name, data["phase"], category="readiness", path=data["path"].relative_to(root), section="当前阶段")
         check_phase_readiness(
             text,
             name,
@@ -2747,15 +3124,19 @@ def main(argv=None):
             args.strict_readiness,
             warnings,
             errors,
+            selected=bool(scope),
         )
 
+    for target in (errors, warnings):
+        target.context(category="advisory", code="SHARED_WRITE_RISK")
     for target, plan_names in detect_overlapping_targets(active_plan_targets).items():
         warn(warnings, f"{target}: 多个活跃计划声明相同影响目标：{', '.join(plan_names)}")
 
     known_plans = set(plans)
     for name, data in plans.items():
-        if data["status"] not in WARNING_ACTIVE:
+        if data["status"] not in WARNING_ACTIVE or (scope and name not in args.plan):
             continue
+        warnings.context(name, data["phase"], category="advisory", code="DEPENDENCY_REFERENCE", path=data["path"].relative_to(root))
         declared = set(edges.get(name, []))
         referenced = extract_plan_references(plan_texts.get(name, ""), known_plans, name)
         for missing in sorted(referenced - declared):
@@ -2763,9 +3144,31 @@ def main(argv=None):
         for unreferenced in sorted(declared - referenced):
             warn(warnings, f"{name}: PLAN_MAP.md 声明依赖 {unreferenced}，但计划正文未引用")
 
+    for target in (errors, warnings):
+        target.context(category="advisory", code="OPTIONAL_CHECK")
     try:
         drift_files = changed_files(root) if args.drift else set()
         pre_commit_files = changed_files(root, staged=True) if args.pre_commit else set()
+        if scope:
+            peer_targets = {}
+            for peer, data in plans.items():
+                if peer not in args.plan and data["path"].is_file():
+                    body = data["path"].read_text(encoding="utf-8")
+                    peer_targets[peer] = extract_affected_targets(body) + [data["path"].relative_to(root).as_posix()]
+            def relevant_changes(files, staged):
+                selected = set()
+                for file in files:
+                    own = any(target_matches_path(t, file) for targets in active_plan_targets.values() for t in targets)
+                    peers = any(target_matches_path(t, file) for targets in peer_targets.values() for t in targets)
+                    if file == "docs/PLAN_MAP.md":
+                        owners = plan_map_change_owners(root, staged, set(plans))
+                        if owners and all(owner and not set(owner) & set(args.plan) for owner in owners):
+                            continue
+                    if own or not peers:
+                        selected.add(file)
+                return selected
+            drift_files = relevant_changes(drift_files, False)
+            pre_commit_files = relevant_changes(pre_commit_files, True)
         completion_window_targets = completed_plan_drift_targets(
             plans,
             plan_texts,
@@ -2802,8 +3205,16 @@ def main(argv=None):
         if args.stale_days < 0:
             fail(errors, f"--stale-days 必须是非负整数：{args.stale_days}")
         else:
-            warn_stale_plans(warnings, plans, args.stale_days)
+            warn_stale_plans(warnings, {n: d for n, d in plans.items() if not scope or n in args.plan}, args.stale_days)
 
+    if scope:
+        errors.context(category="document", code="SCOPE_STRUCTURE_INVALID")
+        errors.extend(scope["global_diagnostics"])
+        warnings.context(category="readiness", code="DEPENDENCY_BLOCKED")
+        errors.context(category="readiness", code="DEPENDENCY_BLOCKED")
+        for message in dependency_diagnostics(root, scope, text, plans):
+            if message not in scope["global_diagnostics"]:
+                readiness_issue(warnings, errors, args.strict_readiness, message)
     if args.check_attestations:
         attestation_reports = []
         warn_attestation_drift(
@@ -2813,6 +3224,7 @@ def main(argv=None):
             errors=errors,
             strict=args.strict_readiness,
             reports=attestation_reports,
+            selected=scope["evaluated_plans"] if scope else None,
         )
     else:
         attestation_reports = []
@@ -2821,6 +3233,16 @@ def main(argv=None):
     if (args.attest_purpose or args.supersedes) and not args.attest:
         fail(errors, "--attest-purpose/--supersedes 必须与 --attest 一起使用")
     if args.attest:
+        target = plans.get(args.attest)
+        if target and not errors and args.attest_purpose != "compliance":
+            body = read_utf8(target["path"], errors)
+            if target["status"] in INACTIVE:
+                errors.append("终态目标不能创建完成/发布门快照")
+            elif target["status"] not in COMPLETED:
+                gate = phase_gate(text, args.attest, target, body, selected=True)
+                errors.extend(gate["issues"])
+            elif phase_gate(text, args.attest, target, body)["blockers"]:
+                fail(errors, "完成快照目标仍有未解决阻塞")
         attested_path = create_attestation(
             root,
             plan_map,
@@ -2833,23 +3255,19 @@ def main(argv=None):
             attest_files=args.attest_file,
         )
 
-    for warning in warnings:
-        print(f"WARNING: {warning}")
-
-    for report in attestation_reports:
-        print(f"ATTESTATION: {report}")
-
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}")
-        return 1
-
-    if attested_path is not None:
-        print(f"已创建完成快照：{attested_path}")
-
-    print("计划治理检查通过。")
-    return 0
+    if scope and not scope_unchanged(root, scope):
+        errors.context(category="readiness", code="FACTS_CHANGED")
+        warnings.context(category="readiness", code="FACTS_CHANGED")
+        readiness_issue(warnings, errors, args.strict_readiness, "相关事实在读取期间发生变化；请重新检查")
+    return finish_check(args, records, scope=scope, reports=attestation_reports, attested_path=attested_path)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except UsageError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(2)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1)
