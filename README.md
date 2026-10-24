@@ -68,6 +68,8 @@ docs/
 
 新计划按创建时的本地日期存放在 `docs/plans/YYYYMMDD/<plan>.md`；修改时不改变日期目录。根目录旧计划继续可读，工具升级不会自动迁移。用户明确要求迁移存量计划时，由 `plan-governance` 按需读取迁移参考。复核记录建议命名为 `YYYYMMDD-<subject>[-stageN]-<review-type>[-rN].md`，数据质量记录建议命名为 `YYYYMMDD-<subject>-<record-type>[-rN].<ext>`；日期放在最前，checker 不强制这些文件名。可复用 fixture 按场景/版本命名，attestation 由 CLI 管理。init 只创建最小结构；可选 [spec 模板](resources/skill/assets/spec.template.md) 随 skill 分发，不自动创建目标项目 spec 或空目录。
 
+地图以标题、简短说明和计划索引开篇，每行只保留当前摘要及有效证据入口；实施、测试和反馈过程写入所属计划或证据文档。更新时替换过期摘要，历史保留在原记录中。存量整理按本次涉及范围进行，具体归属与归档规则见[地图记录规范](resources/skill/references/planning.md#地图记录与文档归属)。
+
 ## 任务分流与验收
 
 | 任务 | 最少必要文档与动作 |
@@ -109,18 +111,20 @@ plan-governance-cli init \
   --update-agent-rules
 ```
 
-如尚未安装 CLI，先运行 `npm install -g plan-governance-cli`。初始化默认只创建治理文档和代理规则，不复制项目本地检查器。
+如尚未安装 CLI，先运行 `npm install -g plan-governance-cli`。初始化默认创建治理文档；上例通过 `--update-agent-rules` 同时创建或更新代理规则，不复制项目本地检查器。
 
 这会创建：
 
 ```text
 .git/
 docs/PLAN_MAP.md
-docs/plans/20260926/api-compat-migration.md
+docs/plans/YYYYMMDD/api-compat-migration.md
 AGENTS.md
 ```
 
-其中检查器是 npm 包的内部运行资源；正常使用不需要在目标项目中创建 `scripts/check_plan_governance.py`。
+`YYYYMMDD` 使用创建当天的本地日期。检查器是 npm 包的内部运行资源；正常使用不需要在目标项目中创建 `scripts/check_plan_governance.py`。
+
+新地图直接使用同包的 [PLAN_MAP 模板](resources/skill/assets/PLAN_MAP.template.md)，保持索引前置和三张分类表。模板缺失、为空、占位符错误或基本索引结构损坏时，在任何项目写入前失败。此机制不重排已有地图；已有项目的入口刷新和辅助文件升级不依赖该模板。
 
 如果目标目录还不是 Git 仓库，初始化流程会先执行 `git init`；已有 `.git/` 时会跳过，不重复初始化。
 
@@ -132,15 +136,25 @@ AGENTS.md
 --update-agents-md
 ```
 
-默认不会覆盖已有文件。需要覆盖时显式加：
+初始化默认不覆盖已有治理文档。明确需要重新生成并覆盖时，才加：
 
 ```bash
 --force
 ```
 
+正常刷新 `AGENTS.md` 受管章节不需要 `--force`，且会保留块外内容；标记缺失配对、重复或倒序时拒绝写入，须先核对修复。已有项目日常升级使用下一节的入口刷新命令。
+
 ## 更新已有项目
 
-全局 npm 安装、`setup` 同步 skill、项目入口刷新是三个独立步骤。前两步不更新各项目的 `AGENTS.md`；`check` 会对已有地图项目的治理受管块提示差异、损坏或不可读取，严格模式也仅告警，不自动覆盖。差异可能来自定制，先核对再更新；规则来源与诊断边界见 [CLI 参考](resources/skill/references/cli.md#分发与资源)。
+全局 npm 安装、`setup` 同步 skill、项目入口刷新是三个独立步骤。前两步不更新各项目的 `AGENTS.md`：
+
+| 步骤 | 操作与范围 |
+|---|---|
+| 更新 CLI | `npm install -g plan-governance-cli@latest`，更新全局 CLI 与包内资源 |
+| 同步 Codex skill | 先运行 `plan-governance-cli setup --target codex --dry-run` 核对差异；需要保留的定制另行保存后，再运行 `plan-governance-cli setup --target codex --force` 同步受管资源 |
+| 刷新项目入口 | 在各目标项目运行 `plan-governance-cli check .`，核对入口差异后执行下面的入口刷新命令，再次运行 `check .` 验证 |
+
+项目入口更新安排在任务交接、没有进行中的实施或复核时。`check` 的入口诊断仅作告警，不自动覆盖；差异也可能来自定制。规则来源与诊断边界见 [CLI 参考](resources/skill/references/cli.md#分发与资源)。
 
 如果项目已经有 `docs/PLAN_MAP.md` 和计划文件，不要重新初始化计划文档。只更新代理执行规则时运行：
 
@@ -178,6 +192,16 @@ plan-governance-cli check .
 ```
 
 普通 check 的业务阻塞/失败/准入材料缺口为 WARNING，文档没有硬错误时退出 0；严格 check 保留准入阻断。已完成但缺证据或仍有当前阻塞、无效身份/日期/路径、必要输入读取失败等始终退出 1。合法未初始化目录为 not_applicable/0，严格为 1；参数错误为 2。
+
+已有地图的项目还会检查根目录 `AGENTS.md` 的治理受管块：
+
+| 诊断 | 含义与处理 |
+|---|---|
+| `AGENT_RULES_DRIFT` | 与当前工具自带规则不同，可能过期或含定制；核对后按诊断给出的命令刷新 |
+| `AGENT_RULES_INVALID` | 标记缺失配对、重复或倒序；先人工核对修复 |
+| `AGENT_RULES_UNAVAILABLE` | 文件不可读、非 UTF-8、非普通文件或为符号链接；未完成核对，先排查原因 |
+
+三类诊断在严格模式下也只作 WARNING，原有业务错误照常阻断。无文件或无受管标记时跳过；比较忽略换行方式和行尾空白，不包含块外定制。检查依据是当前工具所带规则，不查询线上最新版本；复制到项目的旧检查器也只能比较自身版本。
 
 多计划、多会话通过显式参数聚焦，焦点不写入全项目状态：
 
@@ -249,11 +273,12 @@ plan-governance-cli guide                 # 入口
 plan-governance-cli guide planning        # 计划/契约/探索
 plan-governance-cli guide verification    # 阶段门/复核/验证/用户验收
 plan-governance-cli guide cli             # CLI 操作
+plan-governance-cli guide migration       # 用户要求迁移存量计划时按需读取
 ```
 
 读取当前包内正文，与 cwd 无关，不需要 Python，不下载或修改项目。未知主题、多余参数、缺失或空资源非零退出。项目受管入口依赖已安装 skill 或具备上述能力的 CLI；两者均不可用时明确说明前提，不自动安装。
 
-SKILL 保留任务边界、自主执行原则和按需入口，三份 references 按需读取并随 manifest/setup/npm 分发。已有项目只刷新受管入口，不迁移旧计划、不改用户块外内容。选择同一版本的规范来源，安装副本与仓库同版本号也可能有不同内容。
+SKILL 保留任务边界、自主执行原则和按需入口，四份 references 按需读取并随 manifest/setup/npm 分发。已有项目只刷新受管入口，不迁移旧计划、不改用户块外内容。选择同一版本的规范来源，安装副本与仓库同版本号也可能有不同内容。
 
 也可以不全局安装，直接使用当前公开版本：
 
@@ -319,6 +344,7 @@ plan-governance-cli init --root . --migrate-plan-map-last-updated --last-updated
 当前检查项包括：
 
 - `PLAN_MAP.md` 引用的计划文件是否存在。
+- 已有地图项目的 `AGENTS.md` 治理受管块是否与当前工具规则一致、标记是否完整及文件是否可读取；问题只作告警。
 - 根目录平铺计划及 `docs/plans/YYYYMMDD/*.md` 是否存在未登记到 `PLAN_MAP.md` 的孤立计划；孤立计划以 `WARNING` 提示，不阻断检查。
 - 计划状态是否合法。
 - 计划依赖是否存在环。
@@ -332,6 +358,8 @@ plan-governance-cli init --root . --migrate-plan-map-last-updated --last-updated
 - `ERROR` 会导致检查失败；`WARNING` 用于提示需要人工复核但不改变退出码的风险。
 
 计划停滞检测使用计划索引中的 `最后更新`，不推断文件修改时间。
+
+机械检查不覆盖地图全文排版与业务事实真实性；通过检查仍需按地图记录规范核对可读性、当前摘要和证据。
 
 已完成计划修改检测需要完成快照或 hash 等独立元数据；当前版本不锁定已完成计划文件，避免修正文档错误时产生误报。公共契约变化关联验证需要计划文档提供结构化目标文件声明；当前版本不做 spec diff 强校验。
 
@@ -389,7 +417,7 @@ python3 -m pytest
 | `候选` | 记录了想法，但尚未承诺实施 |
 | `设计中` | 正在明确范围、契约和门禁 |
 | `待实施` | 当前阶段门禁已通过，但尚未开始 |
-| `实施中` | 当前阶段正在修改代码或文档 |
+| `实施中` | 当前阶段正在实施或验证，也包括技术完成后等待适用用户验收 |
 | `已完成` | 实现、测试、证据、文档及适用用户验收均已完成 |
 | `已替代` | 被另一个计划取代 |
 | `已合并` | 并入另一个计划 |
