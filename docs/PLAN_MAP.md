@@ -21,7 +21,7 @@
 
 | 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
 |---|---|---|---|---|---|
-| [plan-governance-workflow-streamlining](plans/20260906/plan-governance-workflow-streamlining.md) | 实施中 | 阶段 1 | 2026-10-24 | iterative-governance-reliability | [地图记录规范补充](plans/20260906/plan-governance-workflow-streamlining.md#地图记录规范补充2026-10-24)；[最新复核](plans/20260906/plan-governance-workflow-streamlining.md#最新阶段复核)。文档增量自验通过，整体实际使用验收仍开放；历次交付见专项计划。 |
+| [plan-governance-workflow-streamlining](plans/20260906/plan-governance-workflow-streamlining.md) | 实施中 | 阶段 1 | 2026-10-24 | iterative-governance-reliability | [入口漂移提示与唯一地图模板](plans/20260906/plan-governance-workflow-streamlining.md#入口漂移提示与唯一地图模板2026-10-24)及入口精简已实现并自验通过；已发布3.0.2并同步本机，整体实际使用验收仍开放。 |
 
 ### 已完成
 
@@ -41,7 +41,7 @@
 | [agent-runtime-integration](plans/20260706/agent-runtime-integration.md) | 已完成 | 阶段 3 | 2026-07-06 | stale-plan-detection, plan-drift-check-enhancements, independent-acceptance-rules | [验证方式](plans/20260706/agent-runtime-integration.md#验证方式) |
 | [phase-entry-gate-hardening](plans/20260713/phase-entry-gate-hardening.md) | 已完成 | 阶段 3 | 2026-07-13 | agent-runtime-integration, independent-acceptance-rules | [验证方式](plans/20260713/phase-entry-gate-hardening.md#验证方式) |
 | [plan-governance-npm-cli](plans/20260713/plan-governance-npm-cli.md) | 已完成 | 阶段 2 | 2026-07-13 | phase-entry-gate-hardening | [阶段 2 完成证据](plans/20260713/plan-governance-npm-cli.md#阶段-2-完成证据) |
-| [plan-governance-distribution-setup](plans/20260713/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-10-24 | plan-governance-npm-cli | [3.0.1 发布核验](plans/20260713/plan-governance-distribution-setup.md#2026-10-24-301-发布)：官方 version/latest、包校验值及本机 CLI/skill 均已核验；历次分发记录见专项计划。 |
+| [plan-governance-distribution-setup](plans/20260713/plan-governance-distribution-setup.md) | 已完成 | 阶段 3 | 2026-10-24 | plan-governance-npm-cli | [3.0.2 发布核验](plans/20260713/plan-governance-distribution-setup.md#2026-10-24-302-发布)：官方version/latest、包校验值及本机CLI/skill均已核验；历次分发记录见专项计划。 |
 | [requirements-grilling-integration](plans/20260719/requirements-grilling-integration.md) | 已完成 | 阶段 2 | 2026-07-19 | phase-entry-gate-hardening, plan-governance-distribution-setup | [完成证据](plans/20260719/requirements-grilling-integration.md#完成证据) |
 | [functional-graph-governance](plans/20260722/functional-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-22 | requirements-grilling-integration, phase-entry-gate-hardening, agent-runtime-integration | [完成证据](plans/20260722/functional-graph-governance.md#完成证据) |
 | [architecture-graph-governance](plans/20260722/architecture-graph-governance.md) | 已完成 | 阶段 3 | 2026-07-25 | functional-graph-governance | [当前阶段](plans/20260722/architecture-graph-governance.md#当前阶段) |
@@ -137,7 +137,7 @@
 
 | 计划 | 阶段 | 证据 |
 |---|---|---|
-| plan-governance-distribution-setup | 3.0.1 发布（2026-10-24） | [发布证据](plans/20260713/plan-governance-distribution-setup.md#2026-10-24-301-发布)：完整 verify 通过，官方 version/latest、19 项包文件元数据和校验值一致，registry 已恢复；本机 CLI/skill 已同步，原文件与权限保留 |
+| plan-governance-distribution-setup | 3.0.2 发布（2026-10-24） | [发布证据](plans/20260713/plan-governance-distribution-setup.md#2026-10-24-302-发布)：完整verify通过，官方version/latest、19项包文件元数据和校验值一致，registry已恢复；本机CLI/skill已更新，原文件及权限保留 |
 | plan-governance-distribution-setup | 2.0.2 发布与本机更新（2026-09-29） | [2.0.2 官方发布与本机更新已核验](plans/20260713/plan-governance-distribution-setup.md#2026-09-29-202-发布与本机更新)：官方 version/latest 与包校验值、全局 CLI、Codex skill 11 项受管资源及 3 项非受管保留均已核验 |
 | plan-governance-distribution-setup | 2.0.1 发布与本机更新（2026-09-26） | [2.0.1 官方发布与本机更新已核验](plans/20260713/plan-governance-distribution-setup.md#2026-09-26-201-发布与本机更新)：官方 version/latest、包校验值、全局 CLI 和 Codex 11 项受管 skill 资源均已核验 |
 | plan-governance-distribution-setup | 1.2.0 发布与 Codex 更新（2026-09-26） | [1.2.0 发布与本地更新完成](plans/20260713/plan-governance-distribution-setup.md#2026-09-26-120-发布与-codex-更新)：官方 version/latest、GitHub repository 元数据、包校验值、全局 CLI 和 Codex 两个 skill 的 12 项受管资源均已核验 |

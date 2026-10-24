@@ -5,6 +5,8 @@ import json
 import posixpath
 import re
 import secrets
+import shlex
+import stat
 import subprocess
 import sys
 from datetime import date, datetime, timezone
@@ -33,12 +35,72 @@ ATTESTATION_REVIEW_STATUSES = {"current", "superseded", "needs_review"}
 ATTESTATION_SNAPSHOT_RE = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{8}$")
 
 
+# 与初始化器共用正文；单文件复制的检查器也能核对同版本入口。
+def agent_rules_body():
+    return """## 计划治理
+
+处理已有计划或需要持续协调的工作时，读取实际发现的 `plan-governance` skill；开发或审查该 skill 自身时使用仓库源及对应 CLI。规范来源一次选定后复用，按当前动作读取同源 references。
+
+只有 CLI 可用时，以 `plan-governance-cli guide` 为入口，再按需读取 `guide planning`、`guide verification` 或 `guide cli`。所需规则或能力不可用时说明缺口，不自动安装，不拼接不同版本。
+
+- 按用户授权和当前计划范围推进；未解决问题如实保留，流程建议不扩大实施或外部操作授权。阶段准入、复核方式、验证与适用用户验收统一按所选规范的 verification 执行。
+- 从 `docs/PLAN_MAP.md` 定位相关计划、当前阶段、依赖和证据，再按索引读取必要文档；恢复先核对当前事实与实际差异。文档职责、记录格式和状态同步统一按 planning 执行。
+- 多计划/多会话并行时，在 check/workset/hook 中显式传入本会话的 `--plan ID`；必要前置、共享写入及写入前复核按 cli 执行，不设置全项目可变焦点。
+- 完成时运行 `plan-governance-cli check .`；准入/发布使用 `--strict-readiness`。机械检查不替代实际验证和用户验收。
+"""
+
+
 def fail(errors, message):
     errors.append(message)
 
 
 def warn(warnings, message):
     warnings.append(message)
+
+
+def agent_rules_markers(text, begin="<!-- plan-governance:start -->", end="<!-- plan-governance:end -->"):
+    """读取与更新共用边界；位置保留原换行字节，忽略代码围栏示例。"""
+    visible = mask_fenced_code(text)
+    starts = list(re.finditer(rf"^{re.escape(begin)}(?=[ \t]*\r?$)", visible, re.MULTILINE))
+    ends = list(re.finditer(rf"^{re.escape(end)}(?=[ \t]*\r?$)", visible, re.MULTILINE))
+    if not starts and not ends:
+        return None
+    if len(starts) != 1 or len(ends) != 1 or starts[0].end() >= ends[0].start():
+        raise ValueError("AGENTS.md 治理受管标记缺失配对、重复或倒序；请先人工核对")
+    return starts[0], ends[0]
+
+
+def agent_rules_issue(root):
+    """仅核对受管入口；返回项目级建议，不推断业务准入或自动覆盖。"""
+    path = root / "AGENTS.md"
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return "AGENT_RULES_UNAVAILABLE", "AGENTS.md 无法读取，未完成治理入口核对"
+    if not stat.S_ISREG(info.st_mode):
+        return "AGENT_RULES_UNAVAILABLE", "AGENTS.md 不是普通文件（含符号链接），未完成治理入口核对"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return "AGENT_RULES_UNAVAILABLE", "AGENTS.md 无法读取为 UTF-8，未完成治理入口核对"
+    try:
+        markers = agent_rules_markers(text)
+    except ValueError as exc:
+        return "AGENT_RULES_INVALID", f"{exc}，未比较规则内容"
+    if not markers:
+        return None
+
+    def normalized(value):
+        return "\n".join(line.rstrip() for line in value.strip().splitlines())
+
+    start, end = markers
+    actual = text[start.end():end.start()]
+    if normalized(actual) != normalized(agent_rules_body()):
+        command = f"plan-governance-cli init --root {shlex.quote(str(root))} --update-agent-rules-only"
+        return "AGENT_RULES_DRIFT", f"AGENTS.md 治理受管块与当前工具不同，可能过期或含定制；核对差异后可执行 `{command}`。不会自动覆盖"
+    return None
 
 
 def read_utf8(path, errors):
@@ -2998,6 +3060,12 @@ def main(argv=None):
         readiness_issue(warnings, errors, args.strict_readiness or bool(args.plan), "未找到 docs/PLAN_MAP.md；当前仓库尚未初始化计划治理")
         return finish_check(args, records, reports=reports, not_applicable=not errors)
 
+    issue = agent_rules_issue(root)
+    if issue:
+        code, message = issue
+        warnings.context(category="advisory", code=code, path="AGENTS.md", section="计划治理")
+        warnings.append(message)
+        warnings.context()
     text = read_utf8(plan_map, errors)
     _, blocker_index_issues = map_blockers(text)
     for issue in plan_index_issues(text):

@@ -457,6 +457,10 @@ test("packed package runs from a temporary installation", () => {
       encoding: "utf8",
     });
     assert.equal(initialized.status, 0, initialized.stderr);
+    const generatedMap = readFileSync(join(projectRoot, "docs/PLAN_MAP.md"), "utf8");
+    assert.ok(generatedMap.indexOf("## 计划索引") < generatedMap.indexOf("## 治理范围"));
+    assert.doesNotMatch(generatedMap, /\{\{\w+\}\}/);
+    assert.equal((generatedMap.match(/\| \[Installed Demo\]/g) ?? []).length, 1);
     const planDate = readdirSync(join(projectRoot, "docs", "plans")).find((entry) => /^\d{8}$/.test(entry));
     const plan = readFileSync(join(projectRoot, "docs", "plans", planDate, "installed-demo.md"), "utf8");
     assert.match(plan, /^## 需求探索$/m);
@@ -496,6 +500,23 @@ test("packed package runs from a temporary installation", () => {
     assert.equal(initializedWithRules.status, 0, initializedWithRules.stderr);
     assert.equal(existsSync(join(agentRulesRoot, "AGENTS.md")), true);
     assert.equal(existsSync(join(agentRulesRoot, "CLAUDE.md")), false);
+    const installedRulesPath = join(agentRulesRoot, "AGENTS.md");
+    const installedRules = readFileSync(installedRulesPath, "utf8");
+    const entryCheck = () => spawnSync(process.execPath, [installedCli, "check", agentRulesRoot, "--json"], {
+      cwd: guideCwd, encoding: "utf8",
+    });
+    const currentCheck = entryCheck();
+    assert.equal(currentCheck.status, 0, currentCheck.stderr);
+    assert.ok(!JSON.parse(currentCheck.stdout).diagnostics.some((d) => d.code.startsWith("AGENT_RULES_")));
+    writeFileSync(installedRulesPath, installedRules.replace("<!-- plan-governance:end -->", "旧项目保持旧独立门禁\n<!-- plan-governance:end -->"));
+    const staleCheck = entryCheck();
+    assert.equal(staleCheck.status, 0, staleCheck.stderr);
+    assert.ok(JSON.parse(staleCheck.stdout).diagnostics.some((d) => d.code === "AGENT_RULES_DRIFT"));
+    const updateEntry = spawnSync(process.execPath, [installedCli, "init", "--root", agentRulesRoot, "--update-agent-rules-only"], {
+      cwd: guideCwd, encoding: "utf8",
+    });
+    assert.equal(updateEntry.status, 0, updateEntry.stderr);
+    assert.equal(readFileSync(installedRulesPath, "utf8"), installedRules);
 
     const removedTargetRoot = join(tempRoot, "removed-target-project");
     const removedTarget = spawnSync(process.execPath, [

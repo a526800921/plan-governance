@@ -104,7 +104,8 @@ def test_main_can_create_agents_md(tmp_path):
     assert "plan-governance-cli guide" in text
     assert "python3 scripts/check_plan_governance.py" not in text
     assert "--strict-readiness" in text
-    assert "高影响" in text
+    assert "guide verification" in text
+    assert "guide planning" in text
     assert init_plan_governance.AGENTS_SECTION_BEGIN in text
     assert init_plan_governance.AGENTS_SECTION_END in text
 
@@ -461,4 +462,52 @@ def test_later_target_conflict_is_detected_before_git_or_map_creation(tmp_path):
         init_plan_governance.main(["--root", str(tmp_path), "--plan", "demo", "--copy-checker"])
     assert target.read_text() == "preserve"
     assert not (tmp_path / ".git").exists()
+    assert not (tmp_path / "docs").exists()
+
+
+def test_generated_map_uses_packaged_template_and_has_one_real_plan(tmp_path, monkeypatch):
+    template = Path(__file__).resolve().parents[1] / "resources/skill/assets/PLAN_MAP.template.md"
+    modified = tmp_path / "custom-template.md"
+    modified.write_text(template.read_text() + "\n模板维护的新说明。\n")
+    monkeypatch.setattr(init_plan_governance, "plan_map_template_path", lambda: modified, raising=False)
+    root = tmp_path / "project"
+    init_plan_governance.main(["--root", str(root), "--plan", "demo", "--title", "中文 ] | 标题\n下一行", "--status", "设计中"])
+    text = (root / "docs/PLAN_MAP.md").read_text()
+    assert "模板维护的新说明。" in text
+    assert text.index("## 计划索引") < text.index("## 治理范围")
+    rows = init_plan_governance.checker.table_rows(text, "计划索引")
+    assert len(rows) == 1 and len(rows[0]) == 6
+    link = init_plan_governance.checker.extract_plan_link(rows[0][0])
+    assert (root / "docs" / link).is_file()
+    assert rows[0][1:5] == ["设计中", "阶段 0", date.today().isoformat(), "-"]
+    for heading in ("未完成", "已完成", "已废弃"):
+        section = text.split("### " + heading + "\n", 1)[1].split("\n#", 1)[0]
+        table = [line for line in section.splitlines() if line.startswith("|")]
+        assert len(table) == (3 if heading == "未完成" else 2)
+        assert all(len(line.strip("|").split("|")) == 6 for line in table)
+
+
+@pytest.mark.parametrize("failure", ["missing", "empty", "unknown", "missing_slot", "broken_structure", "separator", "order", "title"])
+def test_bad_map_template_fails_before_any_project_write(tmp_path, monkeypatch, failure):
+    original = Path(__file__).resolve().parents[1] / "resources/skill/assets/PLAN_MAP.template.md"
+    template = tmp_path / "template.md"
+    contents = {"empty": "", "unknown": original.read_text() + "{{unknown}}",
+                "missing_slot": original.read_text().replace("{{unfinished_row}}", ""),
+                "broken_structure": original.read_text().replace("### 已完成", "### 丢失"),
+                "separator": original.read_text().replace("|---|---|---|---|---|---|", "", 1),
+                "order": original.read_text().replace("### 未完成", "### 暂存").replace("### 已完成", "### 未完成").replace("### 暂存", "### 已完成"),
+                "title": original.read_text().replace("# PLAN_MAP", "")}
+    if failure != "missing":
+        template.write_text(contents[failure])
+    monkeypatch.setattr(init_plan_governance, "plan_map_template_path", lambda: template, raising=False)
+    root = tmp_path / "project"
+    with pytest.raises((OSError, ValueError)):
+        init_plan_governance.main(["--root", str(root), "--plan", "demo", "--update-agent-rules"])
+    assert not root.exists()
+
+
+def test_entry_only_update_does_not_require_map_template(tmp_path, monkeypatch):
+    monkeypatch.setattr(init_plan_governance, "plan_map_template_path", lambda: tmp_path / "missing.md")
+    assert init_plan_governance.main(["--root", str(tmp_path), "--update-agent-rules-only"]) == 0
+    assert (tmp_path / "AGENTS.md").exists()
     assert not (tmp_path / "docs").exists()

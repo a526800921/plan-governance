@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import html
 import importlib.util
 import re
 import shutil
@@ -59,21 +60,7 @@ def init_git(root):
 
 
 def agent_rules_body():
-    return """## 计划治理
-
-本项目使用轻量计划治理。处理已有计划或需要持续协调的工作时，读取实际发现的 `plan-governance` skill；开发或审查该 skill 自身时使用仓库源及对应 CLI。规范来源一次选定后复用，按当前动作读取同源 references。
-
-只有 CLI 可用时，运行 `plan-governance-cli guide` 读取入口，再按需运行 `guide planning`、`guide verification` 或 `guide cli`。两者均不可用或所需能力缺失时说明前提，不自动安装，也不猜测/拼接不同版本的规则。
-
-最小执行边界：
-
-- 普通一次性任务直接处理；已有计划按共享 verification 验证。新旧计划均默认自验，仅在用户明确要求时独立复核；未解决问题继续阻塞。
-- 只实施已授权、已准入的当前阶段。每个阶段有自身 Step 0、验证/完成和失败边界；未解决问题不能记为完成，不可用或超时不能冒充已检查。已有授权不重复索取，新增高影响外部动作按实际授权处理。
-- 首次读取 `docs/PLAN_MAP.md`、索引登记的相关 `docs/plans/` 计划及适用契约/ADR/migration；恢复先核对当前工作集、最近证据和实际 diff，缺失或冲突再展开。
-- 多计划/多会话并行时，每个会话在 check/workset/hook 中显式传入自己的 `--plan ID`；必要前置与共享写入约束仍需读取，写入前重读相关事实，不设置全项目可变焦点。
-- 地图维护状态、阶段、关系、阻塞与证据入口；计划记录本次差异及验证，现行契约优先复用 Schema/OpenAPI。新事实不写回历史草案，变化同步地图及相关引用。
-- 完成时按共享规范记录实际验证与适用用户验收，运行 `plan-governance-cli check .`；准入/CI/发布显式使用 `--strict-readiness`，机械通过不等于业务验收。
-"""
+    return checker.agent_rules_body()
 
 
 def managed_section(begin, end):
@@ -92,12 +79,10 @@ def update_managed_file(root, filename, section, begin, end):
 
     # Keep line endings and trailing whitespace outside the managed block intact.
     current = target.read_bytes().decode("utf-8")
-    pattern = re.compile(
-        rf"{re.escape(begin)}.*?{re.escape(end)}",
-        re.DOTALL,
-    )
-    if pattern.search(current):
-        updated = pattern.sub(lambda match: section.rstrip(), current)
+    markers = checker.agent_rules_markers(current, begin, end)
+    if markers:
+        start, finish = markers
+        updated = current[:start.start()] + section.rstrip() + current[finish.end():]
     else:
         newline = "\r\n" if "\r\n" in current else "\n"
         if not current or current.endswith(newline * 2):
@@ -124,82 +109,54 @@ def update_agent_rules(root):
     return [update_agents_md(root)]
 
 
+def plan_map_template_path():
+    return Path(__file__).resolve().parents[1] / "resources" / "skill" / "assets" / "PLAN_MAP.template.md"
+
+
 def plan_map_content(plan_slug, title, status, phase, created_on=None):
     created_on = created_on or date.today()
-    today = created_on.isoformat()
+    template = plan_map_template_path().read_text(encoding="utf-8")
+    if not template.startswith("# PLAN_MAP\n") or len(re.findall(r"^# ", template, re.MULTILINE)) != 1:
+        raise ValueError("地图模板须以唯一一级标题开始")
+    required = {"plan_slug", "unfinished_row", "completed_row", "deprecated_row"}
+    tokens = re.findall(r"{{(.*?)}}", template)
+    if set(tokens) != required or any(tokens.count(key) != 1 for key in required - {"plan_slug"}):
+        raise ValueError("地图模板缺失、重复或包含未知占位符")
+    headings = ["## 计划索引", "### 未完成", "### 已完成", "### 已废弃", "## 治理范围"]
+    positions = []
+    for heading in headings:
+        matches = list(re.finditer(rf"^{re.escape(heading)}$", template, re.MULTILINE))
+        if len(matches) != 1:
+            raise ValueError("地图模板缺少或重复索引分类章节")
+        positions.append(matches[0].start())
+    if positions != sorted(positions):
+        raise ValueError("地图模板索引必须位于治理说明前，分类顺序固定")
+
+    # 标签不能注入新表格列、换行或 Markdown 链接。
+    label = html.escape(" ".join(title.splitlines()), quote=False)
+    for char, entity in [("\\", "&#92;"), ("|", "&#124;"), ("[", "&#91;"), ("]", "&#93;")]:
+        label = label.replace(char, entity)
     plan_relative = f"plans/{created_on:%Y%m%d}/{plan_slug}.md"
-    row = f"| [{title}]({plan_relative}) | {status} | {phase} | {today} | - | - |"
-    unfinished_row = row if status in {"候选", "设计中", "待实施", "实施中"} else ""
-    completed_row = row if status == "已完成" else ""
-    deprecated_row = row if status in {"已废弃", "已替代", "已合并"} else ""
-    return f"""# PLAN_MAP
-
-## 治理范围
-
-本文件只跟踪跨阶段、影响公共契约、依赖真实反馈，或会与其他计划发生关系的计划。普通一次性任务不要加入这里。
-
-## 文档权责
-
-- `docs/PLAN_MAP.md` 是状态、依赖、替代/合并/废弃关系、推荐顺序、阻塞项和证据链接的事实源。
-- `docs/plans/YYYYMMDD/*.md` 默认记录新计划的行为差异、阶段、Step 0 和验收；旧式 `docs/plans/*.md` 计划继续兼容读取。现行契约优先引用已有 Schema/OpenAPI，无合适来源且需长期维护时才按需建立 `docs/specs/*.md`。同一事实不重复维护。
-- 总路线图、优先级计划和索引只记录顺序、状态摘要和专项计划链接，不复制字段级方案、枚举、Step 0 细节或完成定义。
-- 当专项计划变化时，必须同步所有引用该计划的路线图、优先级计划或索引。
-- 如果同一事实在多个文档中重复，保留一个事实源，其他文档改为链接引用。
-- `PLAN_MAP.md` 的 `状态` 是计划级生命周期，`当前阶段` 是阶段身份指针；阶段 N 完成后，阶段 N+1 默认保持 `设计中`。
-- 阶段准入摘要、样本矩阵和独立复核记录只写入专项计划，不复制到本索引。
-- 启用治理后，已有草案、历史设计、归档计划和临时分析文档默认只作为背景材料，不再作为规范事实源；后续新规范默认进入 `docs/plans/YYYYMMDD/*.md`、ADR、migration、正式 spec 或 `docs/PLAN_MAP.md`。
-- 计划索引固定分为 `未完成`、`已完成`、`已废弃` 三张表；`已替代`、`已合并`等不再推进的终态归入 `已废弃` 表，但保留真实状态值。
-
-## 计划索引
-
-### 未完成
-
-| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
-|---|---|---|---|---|---|
-{unfinished_row}
-
-### 已完成
-
-| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
-|---|---|---|---|---|---|
-{completed_row}
-
-### 已废弃
-
-| 计划 | 状态 | 当前阶段 | 最后更新 | 依赖 | 证据 |
-|---|---|---|---|---|---|
-{deprecated_row}
-
-允许状态：`候选`、`设计中`、`待实施`、`实施中`、`已完成`、`已替代`、`已合并`、`已废弃`。
-
-## 推荐顺序
-
-1. `{plan_slug}`
-
-## 依赖关系
-
-| 计划 | 依赖 | 原因 |
-|---|---|---|
-| {plan_slug} | - | - |
-
-## 替代、合并和废弃
-
-| 计划 | 关系 | 目标 | 原因 |
-|---|---|---|---|
-| - | - | - | - |
-
-## 当前阻塞项
-
-| 问题 | 推荐方案 | 影响范围 | 是否阻塞当前阶段 | 状态 |
-|---|---|---|---|---|
-| - | - | - | 否 | 已延后 |
-
-## 完成证据
-
-| 计划 | 阶段 | 证据 |
-|---|---|---|
-| - | - | - |
-"""
+    row = f"| [{label}]({plan_relative}) | {status} | {phase} | {created_on.isoformat()} | - | - |"
+    groups = {"unfinished_row": {"候选", "设计中", "待实施", "实施中"},
+              "completed_row": {"已完成"}, "deprecated_row": {"已替代", "已合并", "已废弃"}}
+    if status not in VALID_STATUSES:
+        raise ValueError(f"计划状态不合法：{status}")
+    values = {key: row if status in states else "" for key, states in groups.items()}
+    values["plan_slug"] = plan_slug
+    rendered = re.sub(r"{{(.*?)}}", lambda match: values[match.group(1)], template)
+    header = ["计划", "状态", "当前阶段", "最后更新", "依赖", "证据"]
+    for heading, key in zip(headings[1:4], groups):
+        section = rendered.split(heading + "\n", 1)[1].split("\n#", 1)[0]
+        rows = checker.markdown_table_rows(section)
+        expected = 2 if status in groups[key] else 1
+        lines = section.strip().splitlines()
+        valid_separator = len(lines) >= 2 and re.fullmatch(r"\|(?:\s*:?-{3,}:?\s*\|){6}", lines[1])
+        valid_data_row = expected == 1 or (len(lines) >= 3 and lines[2] == row)
+        if (not valid_separator or not valid_data_row or len(rows) != expected
+                or rows[0] != header or any(len(item) != 6 for item in rows)):
+            raise ValueError("地图模板分类表必须保持六列且每个计划仅出现一次")
+    return rendered
 
 
 def plan_template_path():
@@ -369,7 +326,7 @@ def main(argv=None):
             args.update_agents_md, args.update_agent_rules)):
         target = root / "AGENTS.md"
         if target.exists():
-            target.read_text(encoding="utf-8")
+            checker.agent_rules_markers(target.read_text(encoding="utf-8"))
     if args.upgrade_existing:
         target = root / "scripts/check_plan_governance.py"
         if target.exists() and not target.is_file():

@@ -10,16 +10,12 @@
 <!-- plan-governance:start -->
 ## 计划治理
 
-本项目使用轻量计划治理。处理已有计划或需要持续协调的工作时，读取实际发现的 `plan-governance` skill；开发或审查该 skill 自身时使用仓库源及对应 CLI。规范来源一次选定后复用，按当前动作读取同源 references。
+处理已有计划或需要持续协调的工作时，读取实际发现的 `plan-governance` skill；开发或审查该 skill 自身时使用仓库源及对应 CLI。规范来源一次选定后复用，按当前动作读取同源 references。
 
-只有 CLI 可用时，运行 `plan-governance-cli guide` 读取入口，再按需运行 `guide planning`、`guide verification` 或 `guide cli`。两者均不可用或所需能力缺失时说明前提，不自动安装，也不猜测/拼接不同版本的规则。
+只有 CLI 可用时，以 `plan-governance-cli guide` 为入口，再按需读取 `guide planning`、`guide verification` 或 `guide cli`。所需规则或能力不可用时说明缺口，不自动安装，不拼接不同版本。
 
-最小执行边界：
-
-- 普通一次性任务直接处理；已有计划按共享 verification 验证。新旧计划均默认自验，仅在用户明确要求时独立复核；未解决问题继续阻塞。
-- 只实施已授权、已准入的当前阶段。每个阶段有自身 Step 0、验证/完成和失败边界；未解决问题不能记为完成，不可用或超时不能冒充已检查。已有授权不重复索取，新增高影响外部动作按实际授权处理。
-- 首次读取 `docs/PLAN_MAP.md`、索引登记的相关 `docs/plans/` 计划及适用契约/ADR/migration；新计划位于 `docs/plans/YYYYMMDD/`，旧式根目录计划继续兼容；恢复先核对当前工作集、最近证据和实际 diff，缺失或冲突再展开。
-- 多计划/多会话并行时，每个会话在 check/workset/hook 中显式传入自己的 `--plan ID`；必要前置与共享写入约束仍需读取，写入前重读相关事实，不设置全项目可变焦点。
-- 地图维护状态、阶段、关系、阻塞与证据入口；计划记录本次差异及验证，现行契约优先复用 Schema/OpenAPI。新事实不写回历史草案，变化同步地图及相关引用。
-- 完成时按共享规范记录实际验证与适用用户验收，运行 `plan-governance-cli check .`；准入/CI/发布显式使用 `--strict-readiness`，机械通过不等于业务验收。
+- 按用户授权和当前计划范围推进；未解决问题如实保留，流程建议不扩大实施或外部操作授权。阶段准入、复核方式、验证与适用用户验收统一按所选规范的 verification 执行。
+- 从 `docs/PLAN_MAP.md` 定位相关计划、当前阶段、依赖和证据，再按索引读取必要文档；恢复先核对当前事实与实际差异。文档职责、记录格式和状态同步统一按 planning 执行。
+- 多计划/多会话并行时，在 check/workset/hook 中显式传入本会话的 `--plan ID`；必要前置、共享写入及写入前复核按 cli 执行，不设置全项目可变焦点。
+- 完成时运行 `plan-governance-cli check .`；准入/发布使用 `--strict-readiness`。机械检查不替代实际验证和用户验收。
 <!-- plan-governance:end -->

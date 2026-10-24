@@ -694,3 +694,24 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 新 CLI 的 `setup --target codex --force --dry-run` 仅预览三项变更；正式 `setup --target codex --force` 同步 `SKILL.md`、`assets/PLAN_MAP.template.md`、`references/planning.md`。普通 dry-run 随后全部显示最新，11/11 受管资源与发布源一致。
 - 原有 14/14 文件和目录的属主、常规权限及文件集合保持，3/3 非受管文件字节不变；没有执行权限修改。`/tmp` 中的 `guide overview/planning` 与同步后的 skill 原文一致。
 - 安装版对分发维护与减负计划的聚焦严格治理退出 0，保留相同 4 条既有告警；registry 保持 `https://registry.npmjs.org/`。安装后只补文档检查，不重复发布前完整测试；其他项目未迁移，Git 未提交或推送。
+
+
+### 2026-10-24 3.0.2 发布
+
+用户确认保留现有 `init` 命令设计，并明确要求测试完成后发布 npm。本轮用 `patch` 从3.0.1升级到3.0.2，发布[入口漂移告警、唯一地图模板及入口精简](../20260906/plan-governance-workflow-streamlining.md#入口漂移提示与唯一地图模板2026-10-24)；没有另增upgrade/sync子命令。本轮发布不包含本机全局安装、目标项目入口迁移或Git提交推送。
+
+- `npm run release:npm -- --dry-run patch`退出0；正式`npm run release:npm -- patch`退出0。脚本重跑完整verify：严格治理保留4条既有依赖引用告警，787项Python测试通过、覆盖率89.07%（门槛85%），136项Node测试通过、0 skipped，包括真实临时打包安装与入口刷新回归。
+- 脚本确认官方registry尚无3.0.2后升级并发布，`package.json`和`package-lock.json`同步为3.0.2。npm已接受发布；原registry `https://registry.npmjs.org/`已恢复，随后回读一致。
+- 本地`npm pack --dry-run --json`返回19个文件，压缩89,140字节、展开316,784字节；shasum `ba663e7ee59ca1fe4b79229e581bb76dd39c3779`，integrity `sha512-QlWEqodHylC0yU/Gh7PhgEGg6YJClMBKA+FNG60fIJCZHe/YCwt/d5yfw/9bvySK5yEF7Pru3deBW48aYcZz/g==`。未生成tgz。
+- 发布后两次官方查询返回E404，处理期间未重复发布。随后官方`npm view plan-governance-cli@3.0.2 version dist-tags dist --json --prefer-online --registry=https://registry.npmjs.org/`退出0，确认`version: 3.0.2`、`latest: 3.0.2`、19个文件及完整shasum/integrity均与本地dry-run一致。
+- 发布后仓库聚焦严格治理和全仓文档检查退出0，保留4条既有依赖引用告警，`git diff --check`通过。本机仍为此前安装的3.0.1，本轮没有执行全局安装或skill同步。
+
+
+#### 3.0.2 本机更新
+
+用户随后要求“本地更新”。更新前全局CLI为3.0.1，Codex skill的11项受管资源与旧包一致。完整14文件备份为`/Users/jafish/.codex/backups/plan-governance-pre-3.0.2-20261024-153827.tar.gz`，SHA-256 `dfea6a7f7566649dd7de28bce840c02b53ff529fb0f93e4e82f1b0cef8e5472e`，同名JSON保留文件集合、摘要和属主/权限。
+
+- `npm install --global plan-governance-cli@3.0.2 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund`退出0，`npm ls -g`确认为3.0.2。19/19项安装包文件与发布工作区逐字节一致。
+- 新CLI先执行`setup --target codex --force --dry-run`，只预览地图模板和cli参考两项写入；正式同步成功。普通dry-run随后11项均显示最新，11/11受管资源与发布源一致。
+- 原14个文件及目录的属主、常规权限和文件集合保持，3个非受管文件字节不变；未执行权限修改。overview/planning/cli三个guide在`/tmp`下的输出与skill原文一致。
+- 本仓库入口已在源码实施时同步，新安装CLI的相关计划聚焦严格检查退出0、无入口漂移诊断，保留4条既有依赖引用告警；registry保持官方源。完成记录后的全仓检查和空白检查通过。其他项目入口未自动更新，未提交或推送Git。
