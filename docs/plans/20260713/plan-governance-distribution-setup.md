@@ -672,3 +672,25 @@ Python 全量测试 87 项通过，总覆盖率 91.93%；npm CLI 测试 7 项通
 - 更新前全局 CLI 为 2.0.2，Codex skill 的 11 项受管资源均与旧包一致。完整 14 文件快照为 `/Users/jafish/.codex/backups/plan-governance-pre-3.0.0-20261004-133330.tar.gz`，归档 SHA-256 `38c01506952d9d01d1534546a3a8c0959d4a5e8a8f6aaf69e1e3c9516234d821`；同名 JSON 记录原字节摘要、属主与权限。
 - `npm install --global plan-governance-cli@3.0.0 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；全局 CLI 版本为 3.0.0，已安装的 19/19 生产文件与发布工作区逐字节一致。安装版 `setup --target codex --force --dry-run` 预览三项写入，正式 `setup --target codex --force` 同步 SKILL.md、verification.md、cli.md；随后普通 dry-run 显示全部最新，11/11 受管资源与新包一致。原有 14/14 文件属主和权限保留，3/3 非受管文件字节保留；本地项目依赖仍为 yaml@2.9.0。
 - 安装版聚焦 strict check JSON 返回 passed/0、无诊断；workset 聚焦目标为已完成且无下一实施动作。全仓库 strict check 通过并保留四条既有依赖 WARNING，git diff --check 通过。此次发布和安装采用自验；不迁移其他项目或清除其真实业务阻塞。
+
+
+### 2026-10-24 3.0.1 发布
+
+用户在地图规范文档补充完成后授权发布 npm。本轮以 `patch` 从 3.0.0 升至 3.0.1，发布 skill 入口、planning 记录规范及地图 Markdown 模板；初始化器与检查器保持原行为，尚未新增索引前置的 init 输出或自动排版诊断。改动与局限见[文档增量](../20260906/plan-governance-workflow-streamlining.md#地图记录规范补充2026-10-24)。本轮不更新全局 CLI 或安装版 skill，不提交或推送 Git。
+
+- `npm run release:npm -- --dry-run patch` 退出 0；随后 `npm run release:npm -- patch` 退出 0。完整 verify 中严格治理通过并保留 4 条既有依赖引用告警，756 项 Python 测试通过、总覆盖率 89.30%（门槛 85%），136 项 Node 测试全部通过、0 skipped。
+- 发布脚本确认官方 registry 尚无 3.0.1 后升级并发布；`package.json` 和 `package-lock.json` 同步为 3.0.1。npm 接受发布，脚本恢复原 registry `https://registry.npmjs.org/`，发布后回读一致。
+- 本地 `npm pack --dry-run --json` 为 19 个文件、87,712 字节；shasum `11bf5faf507a34710cd93de6676150fb73b8d81e`，integrity `sha512-e/N/4PMF3/wis9xq0Z8657+XVKfCq2cLVk+OvGrjfV9Um20Fv0f9fYWKQ4vz0rniVXyltuzoaIT0FaOUhYvLMA==`。dry-run 未生成 tgz。
+- 官方发布后数次回读返回 E404，npm 提示处于处理窗口；未重复发布。随后 `npm view plan-governance-cli@3.0.1 version dist-tags dist --json --prefer-online --registry=https://registry.npmjs.org/` 退出 0，确认 `version: 3.0.1`、`latest: 3.0.1`，19 个文件、shasum 与完整 integrity 均与本地 dry-run 一致。
+- 发布后两项相关计划的聚焦严格治理与全仓治理检查退出 0，保留相同 4 条既有告警；`git diff --check` 通过。
+
+
+#### 3.0.1 本机更新
+
+用户随后明确要求“本地也更新”。先核对全局 CLI 为 3.0.0，Codex skill 的 11 项受管文件与旧包逐字节一致；实际目标为 `~/.agents/skills/plan-governance`，没有另建 `~/.codex/skills/plan-governance` 副本。
+
+- 更新前完整 14 文件备份：`/Users/jafish/.codex/backups/plan-governance-pre-3.0.1-20261024-114445.tar.gz`，SHA-256 `94d2bed77c1a8458098b674a3ba46b008b7bc945680b3f76fd933bb2e8192e35`；同名 JSON 保存字节摘要、文件集合及属主/权限。
+- `npm install --global plan-governance-cli@3.0.1 --registry=https://registry.npmjs.org/ --prefer-online --no-audit --no-fund` 退出 0；`npm ls -g` 确认 3.0.1，安装包 19/19 项生产文件与发布工作区逐字节一致。
+- 新 CLI 的 `setup --target codex --force --dry-run` 仅预览三项变更；正式 `setup --target codex --force` 同步 `SKILL.md`、`assets/PLAN_MAP.template.md`、`references/planning.md`。普通 dry-run 随后全部显示最新，11/11 受管资源与发布源一致。
+- 原有 14/14 文件和目录的属主、常规权限及文件集合保持，3/3 非受管文件字节不变；没有执行权限修改。`/tmp` 中的 `guide overview/planning` 与同步后的 skill 原文一致。
+- 安装版对分发维护与减负计划的聚焦严格治理退出 0，保留相同 4 条既有告警；registry 保持 `https://registry.npmjs.org/`。安装后只补文档检查，不重复发布前完整测试；其他项目未迁移，Git 未提交或推送。
